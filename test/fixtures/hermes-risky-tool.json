@@ -1,0 +1,9 @@
+{
+  "tool_name": "terminal",
+  "tool_input": {
+    "command": "hermes send --to telegram test"
+  },
+  "extra": {
+    "tool_call_id": "hermes-guard-risky-fixture"
+  }
+}

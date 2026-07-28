@@ -69,6 +69,32 @@ export class LedgerService {
       await client.query('COMMIT'); return { id: inserted.rows[0].id, duplicate: false };
     } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
   }
+  async reverse(originalId: string, entry: LedgerEntryInput, options: { approvalId?: string; actorId?: string } = {}) {
+    if (entry.entryType !== 'reversal' || entry.paymentStatus !== 'settled') throw new FinancialPolicyError('invalid_reversal_entry');
+    const client = await this.database.connect();
+    try {
+      await client.query('BEGIN');
+      const original = await client.query<{ id: string; currency: string; net_minor: string | number }>(
+        'SELECT id,currency,net_minor FROM ledger_entries WHERE id=$1 FOR SHARE',
+        [originalId],
+      );
+      if (!original.rows[0]) throw new FinancialPolicyError('original_entry_not_found');
+      if (original.rows[0].currency !== entry.currency || Number(original.rows[0].net_minor) + entry.netMinor !== 0) throw new FinancialPolicyError('reversal_mismatch');
+      const duplicate = await client.query<{ id: string }>('SELECT id FROM ledger_entries WHERE idempotency_key=$1', [entry.idempotencyKey]);
+      if (duplicate.rows[0]) { await client.query('COMMIT'); return { id: duplicate.rows[0].id, duplicate: true }; }
+      const inserted = await client.query<{ id: string }>(
+        `INSERT INTO ledger_entries(transaction_id,entry_type,currency,gross_minor,fees_minor,tax_minor,net_minor,counterparty,
+         payment_status,evidence_uri,idempotency_key,external_reference,reconciliation_status)
+         VALUES($1,'reversal',$2,$3,$4,$5,$6,$7,'settled',$8,$9,$10,'reconciled') RETURNING id`,
+        [entry.transactionId,entry.currency,entry.grossMinor,entry.feesMinor ?? 0,entry.taxMinor ?? 0,entry.netMinor,
+         entry.counterparty,entry.evidenceUri ?? null,entry.idempotencyKey,`reversal_of:${originalId}`],
+      );
+      await client.query("INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload) VALUES('owner',$1,'ledger_reversal_appended','ledger_entry',$2,$3)",
+        [options.actorId ?? 'owner',inserted.rows[0].id,JSON.stringify({ original_id: originalId })]);
+      await client.query('COMMIT');
+      return { id: inserted.rows[0].id, duplicate: false };
+    } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+  }
   private validateExpense(entry: LedgerEntryInput, options: { approvalId?: string; justification?: ExpenseJustification }) {
     const j = options.justification;
     if (!options.approvalId) throw new FinancialPolicyError('owner_approval_required');
@@ -84,4 +110,32 @@ export class LedgerService {
     const result = evaluateExpense({ amountPaise: entry.grossMinor, todaySpentPaise: Number(t.today), experimentSpentPaise: Number(t.experiment), spendablePaise: Number(s.released) - Number(t.expenses), reservePaise: Number(s.reserve), cashBalancePaise: Number(t.cash), approved: true, singleLimitPaise: this.policy.singleLimitMinor, dailyLimitPaise: this.policy.dailyLimitMinor, experimentLimitPaise: this.policy.experimentLimitMinor });
     if (!result.allowed) throw new FinancialPolicyError(result.reason!);
   }
+}
+
+export async function releaseOperatingTranche(database: Database, input: {
+  amountMinor: number; currency: string; approvalId: string; actorType: string; actorId: string;
+}) {
+  if (input.actorType !== 'owner') throw new FinancialPolicyError('owner_authority_required');
+  if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0 || !/^[A-Z]{3}$/.test(input.currency)) throw new FinancialPolicyError('invalid_tranche');
+  const client = await database.connect();
+  try {
+    await client.query('BEGIN');
+    const failed = await client.query("SELECT gate_key FROM readiness_gates WHERE priority='P0' AND status<>'PASS' LIMIT 1 FOR SHARE");
+    if (failed.rows[0]) throw new FinancialPolicyError('p0_gate_incomplete');
+    const approval = await client.query(
+      `SELECT id FROM approvals WHERE id=$1 AND action_type='tranche_release' AND status='approved'
+       AND expires_at>now() AND cost_minor=$2 AND currency=$3 FOR SHARE`,
+      [input.approvalId,input.amountMinor,input.currency],
+    );
+    if (!approval.rows[0]) throw new FinancialPolicyError('owner_approval_required');
+    const state = await client.query<{ available: string | number; released: string | number }>(
+      'SELECT available_operating_minor AS available,released_operating_minor AS released FROM financial_policy_state WHERE currency=$1 FOR UPDATE',
+      [input.currency],
+    );
+    if (!state.rows[0] || Number(state.rows[0].released) + input.amountMinor > Number(state.rows[0].available)) throw new FinancialPolicyError('reserve_preservation_required');
+    await client.query('UPDATE financial_policy_state SET released_operating_minor=released_operating_minor+$2,updated_at=now() WHERE currency=$1', [input.currency,input.amountMinor]);
+    await client.query("INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload) VALUES('owner',$1,'operating_tranche_released','financial_policy_state',$2,$3)",
+      [input.actorId,input.currency,JSON.stringify({ amount_minor: input.amountMinor, approval_id: input.approvalId })]);
+    await client.query('COMMIT');
+  } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
 }

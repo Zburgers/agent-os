@@ -48,15 +48,15 @@ const call = (method, params = {}) => new Promise((resolve, reject) => {
 await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
 ws.onmessage = event => { const message = JSON.parse(event.data); const handler = waiting.get(message.id); if (handler) { waiting.delete(message.id); message.error ? handler.reject(new Error(message.error.message)) : handler.resolve(message.result); } };
 await call('Runtime.enable');
+await call('Page.addScriptToEvaluateOnNewDocument', { source: "window.__goofyErrors=[];window.addEventListener('error',event=>window.__goofyErrors.push(String(event.message)));window.addEventListener('unhandledrejection',event=>window.__goofyErrors.push(String(event.reason)))" });
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
-const until = async (expression, description) => { for (let attempt = 0; attempt < 30; attempt += 1) { if (await value(expression)) return; await wait(250); } throw Error("timed_out:" + description + ":" + await value("JSON.stringify(window.__goofyErrors || [])")); };
+const until = async (expression, description) => { for (let attempt = 0; attempt < 30; attempt += 1) { if (await value(expression)) return; await wait(250); } throw Error("timed_out:" + description + ":" + await value("JSON.stringify({errors:window.__goofyErrors || [],content:document.querySelector('#pageContent')?.innerText || ''})")); };
 const value = async expression => { const evaluated = await call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }); if (evaluated.exceptionDetails) throw Error(evaluated.exceptionDetails.exception?.description ?? evaluated.exceptionDetails.text); return evaluated.result.value; };
 await wait(500);
 const token = JSON.stringify(process.env.GOOFY_BROWSER_TOKEN);
 await value(`fetch('/api/session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:${token}})}).then(response=>{if(!response.ok)throw Error('login '+response.status);return response.status})`);
 const baseUrl = 'http://127.0.0.1:' + process.env.GOOFY_BROWSER_PORT;
 await call('Page.navigate', { url: baseUrl + '/' });
-await value("window.__goofyErrors=[];window.addEventListener('unhandledrejection',event=>window.__goofyErrors.push(String(event.reason)))");
 const csrfToken = await value(`fetch('/api/session').then(async response => { if (!response.ok) throw Error('session ' + response.status); const session = await response.json(); if (session.session !== 'session' || !session.csrf_token) throw Error('dashboard_not_authenticated:' + document.title); return session.csrf_token; })`);
 const pageCsrf = await value("document.querySelector('meta[name=csrf-token]')?.content || ''");
 if (pageCsrf !== csrfToken) throw Error("dashboard_csrf_mismatch:" + pageCsrf.length);

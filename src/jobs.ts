@@ -1,8 +1,10 @@
 import type { PoolClient } from 'pg';
 import { audit, controls, pool } from './db.ts';
 import { evaluateAction } from './policy.ts';
+import { actorContext } from './actor.ts';
+import { authorizeEffect } from './effects.ts';
 
-export type Job = { id: string; action_kind: 'job'; idempotency_key: string; attempts: number; max_attempts: number };
+export type Job = { id: string; action_kind: 'job'; idempotency_key: string; current_occurrence_key: string; attempts: number; max_attempts: number; interval_seconds: number | null };
 export type ClaimedJob = { job: Job; runId: string };
 const retryDelaySeconds = 60;
 
@@ -32,7 +34,7 @@ export async function recoverAbandonedJobs() {
   } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
 }
 
-export async function claimNextJob(): Promise<ClaimedJob | null> {
+export async function claimNextJob(workerId = 'one-shot-worker'): Promise<ClaimedJob | null> {
   const state = await controls();
   if (!evaluateAction(state, { kind: 'job' }).allowed) return null;
   const client = await pool.connect();
@@ -43,15 +45,27 @@ export async function claimNextJob(): Promise<ClaimedJob | null> {
     const claimed = await client.query<Job>(
       `WITH candidate AS (SELECT id FROM jobs WHERE status='queued' AND attempts < max_attempts AND next_run_at <= now()
        ORDER BY next_run_at, created_at FOR UPDATE SKIP LOCKED LIMIT 1)
-       UPDATE jobs SET status='running', attempts=attempts+1, lease_until=now()+interval '5 minutes', updated_at=now()
-       WHERE id IN (SELECT id FROM candidate) RETURNING id, action_kind, idempotency_key, attempts, max_attempts`,
+       UPDATE jobs SET status='running', attempts=attempts+1, lease_until=now()+interval '5 minutes',
+       claimed_by=$1, heartbeat_at=now(), updated_at=now(),
+       current_occurrence_key=COALESCE(current_occurrence_key,idempotency_key || ':' || to_char(next_run_at AT TIME ZONE 'UTC','YYYYMMDDHH24MISSUS'))
+       WHERE id IN (SELECT id FROM candidate) RETURNING id, action_kind, idempotency_key,current_occurrence_key,attempts,max_attempts,interval_seconds`,
+      [workerId],
     );
     if (!claimed.rowCount) { await client.query('COMMIT'); return null; }
     const job = claimed.rows[0];
-    const run = await client.query<{ id: string }>("INSERT INTO job_runs(job_id,status) VALUES($1,'running') RETURNING id", [job.id]);
+    const run = await client.query<{ id: string }>("INSERT INTO job_runs(job_id,status,attempt,worker_id) VALUES($1,'running',$2,$3) RETURNING id", [job.id, job.attempts, workerId]);
     await client.query('COMMIT');
     return { job, runId: run.rows[0].id };
   } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+}
+
+export async function heartbeatJob(claim: ClaimedJob, workerId: string) {
+  const result = await pool.query(
+    `UPDATE jobs SET lease_until=now()+interval '5 minutes',heartbeat_at=now(),updated_at=now()
+     WHERE id=$1 AND status='running' AND claimed_by=$2 AND lease_until>now()`,
+    [claim.job.id, workerId],
+  );
+  if (!result.rowCount) throw new Error('job_lease_lost');
 }
 
 export async function executeInternalJob(claim: ClaimedJob): Promise<'completed' | 'already_completed'> {
@@ -61,18 +75,72 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
     // A stale worker cannot overwrite a job recovered and claimed by another worker.
     const active = await client.query("SELECT id FROM jobs WHERE id=$1 AND status='running' AND lease_until > now() FOR UPDATE", [claim.job.id]);
     if (!active.rowCount) throw new Error('job_lease_lost');
+    const intent = await authorizeEffect(client, {
+      idempotencyKey: claim.job.current_occurrence_key,
+      kind: 'internal',
+      jobId: claim.job.id,
+      runId: claim.runId,
+    }, actorContext({
+      actorType: 'worker',
+      actorId: 'durable-supervisor',
+      credentialScope: 'effects:internal',
+      originPlatform: 'supervisor',
+    }));
+    if (intent.state === 'denied') throw new Error(intent.policyCode ?? 'effect_denied');
     const effect = await client.query<{ id: string }>(
       `INSERT INTO job_effects(job_id,run_id,effect_key,effect_type,status,result) VALUES($1,$2,$3,'internal','completed',$4)
        ON CONFLICT (job_id,effect_key) DO NOTHING RETURNING id`,
-      [claim.job.id, claim.runId, claim.job.idempotency_key, JSON.stringify({ result: 'internal_job_completed' })],
+      [claim.job.id, claim.runId, claim.job.current_occurrence_key, JSON.stringify({ result: 'internal_job_completed' })],
     );
     const outcome = effect.rowCount ? 'completed' : 'already_completed';
+    await client.query(
+      `UPDATE effect_intents SET state='succeeded',receipt=$2,finished_at=now(),updated_at=now()
+       WHERE id=$1 AND state='authorized'`,
+      [intent.id, JSON.stringify({ result: outcome })],
+    );
     await finishRun(client, claim.runId, 'completed', { result: outcome }, null);
-    await client.query("UPDATE jobs SET status='completed', lease_until=NULL, updated_at=now(), last_error=NULL WHERE id=$1", [claim.job.id]);
+    await client.query(
+      `UPDATE jobs SET status=CASE WHEN interval_seconds IS NULL THEN 'completed' ELSE 'queued' END,
+       next_run_at=CASE WHEN interval_seconds IS NULL THEN next_run_at ELSE now()+(interval_seconds * interval '1 second') END,
+       last_run_at=now(),last_scheduled_at=CASE WHEN interval_seconds IS NULL THEN last_scheduled_at ELSE now() END,
+       current_occurrence_key=NULL,attempts=CASE WHEN interval_seconds IS NULL THEN attempts ELSE 0 END,
+       lease_until=NULL,claimed_by=NULL,updated_at=now(),last_error=NULL WHERE id=$1`,
+      [claim.job.id],
+    );
     await client.query('COMMIT');
     await audit('job_completed', 'job', claim.job.id, { idempotency_key: claim.job.idempotency_key, outcome });
     return outcome;
   } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+}
+
+export async function cancelJob(jobId: string, actorId: string) {
+  const result = await pool.query(
+    `UPDATE jobs SET status='cancelled',cancelled_at=now(),lease_until=NULL,updated_at=now()
+     WHERE id=$1 AND status IN ('queued','paused','running') RETURNING id`,
+    [jobId],
+  );
+  if (!result.rowCount) throw new Error('job_not_cancellable');
+  await audit('job_cancelled', 'job', jobId, {}, actorId);
+}
+
+export async function rerunJob(jobId: string, actorId: string) {
+  const result = await pool.query(
+    `UPDATE jobs SET status='queued',attempts=0,current_occurrence_key=NULL,next_run_at=now(),last_error=NULL,
+     cancelled_at=NULL,updated_at=now() WHERE id=$1 AND status IN ('completed','dead_letter','cancelled','paused') RETURNING id`,
+    [jobId],
+  );
+  if (!result.rowCount) throw new Error('job_not_rerunnable');
+  await audit('job_rerun_queued', 'job', jobId, {}, actorId);
+}
+
+export async function pauseJob(jobId: string, actorId: string) {
+  const result = await pool.query(
+    `UPDATE jobs SET status='paused',paused_at=now(),lease_until=NULL,updated_at=now()
+     WHERE id=$1 AND status='queued' RETURNING id`,
+    [jobId],
+  );
+  if (!result.rowCount) throw new Error('job_not_pausable');
+  await audit('job_paused', 'job', jobId, {}, actorId);
 }
 
 export async function failJob(claim: ClaimedJob, error: unknown) {

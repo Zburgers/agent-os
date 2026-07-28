@@ -1,4 +1,5 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { pool } from './db.ts';
 
 const SESSION_TTL_SECONDS = 8 * 60 * 60;
@@ -10,6 +11,19 @@ function equals(left: string, right: string) {
 }
 
 export function ownerTokenMatches(supplied: string, ownerToken: string) { return equals(supplied, ownerToken); }
+export function runtimeTokensFromEnvironment() {
+  const tokens: string[] = [];
+  const direct = process.env.AGENT_RUNTIME_TOKEN?.trim();
+  if (direct) tokens.push(direct);
+  const path = process.env.AGENT_RUNTIME_TOKEN_FILE?.trim();
+  if (path) {
+    try {
+      const token = readFileSync(path, 'utf8').trim();
+      if (token && !tokens.includes(token)) tokens.push(token);
+    } catch {}
+  }
+  return tokens;
+}
 export function bearerToken(value: string | undefined) { return value?.replace(/^Bearer\s+/i, '') ?? ''; }
 export function basicOwnerToken(value: string | undefined) {
   const basic = value?.match(/^Basic\s+(.+)$/i);

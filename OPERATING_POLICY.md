@@ -1,5 +1,7 @@
 # Operating Policy
 
+Goofy's stable operating identity is recorded in `GOOFY_IDENTITY.md`. Durable session-to-session working context is recorded in `OPERATOR_SCRATCHPAD.md`. These documents guide style, goals, and continuity, but they do not override `AGENT_CONSTITUTION.md`, `AUTONOMOUS_REVENUE_MISSION.md`, financial policy, approval boundaries, or live PostgreSQL state.
+
 1. Observe durable state, health, approvals, jobs, capital, and active objectives.
 2. Diagnose the highest-value safe bottleneck.
 3. Generate materially distinct options, score expected value, cost, risk, reversibility, confidence, and approval requirement.

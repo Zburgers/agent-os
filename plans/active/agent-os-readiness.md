@@ -1,49 +1,124 @@
 # Agent OS Readiness Audit
 
-Last audited: 2026-07-28
-Scope: runtime rootless Compose deployment, PostgreSQL state, source code, and automated tests. A requirement is not complete solely because a table, route, document, or label exists.
+Last audited: 2026-07-29
+Scope: full mission/constitution/policy review, current worktree, live rootless Compose services, PostgreSQL migrations, source, and automated tests. A table, route, document, or passing unit test is not treated as proof of production readiness by itself.
 
-## Verification baseline
+## Executive decision
 
-- Rootless Compose services restarted; PostgreSQL health endpoint returned 200 and dashboard owner authentication returned 200.
-- `.env` is mode `0600`; `.env` is ignored by Git and not tracked. `.env.example` is tracked and contains only placeholders.
-- Existing automated suite passes, but it is unit-only and does not exercise most persistent behaviour.
-- No commercial activity, spending, outreach, payment collection, account creation, or public deployment is enabled.
+**NOT READY FOR REVENUE OPERATIONS.** The control plane is a working local foundation, not yet a non-blocking production gate. No spending, outreach, payment collection, account creation, contract acceptance, or public deployment is authorized. The ₹500 operating tranche remains locked pending P0 evidence and explicit owner approval.
+
+What is working now:
+
+- Rootless Compose app and PostgreSQL are healthy; `GET /healthz` returned `{"status":"ok","database":"ok","memory_provider":"postgres_scoped_fallback"}` on port 9999.
+- `npm test`: 19 passed, 1 intentional opt-in integration skip.
+- `npm run check`, `npm run build`, and `git diff --check`: passed.
+- `npm run test:integration`: passed against a disposable PostgreSQL database; migrations 001–005 applied and ticket, approval, ledger, jobs, health, incident, activity reads were exercised.
+- `npm run test:browser`: passed with authenticated session, CSRF parity, ticket creation, edit, comment, transition, and visible activity evidence.
+- The dashboard is PostgreSQL-backed, responsive in the tested work-board path, and auto-refreshes visible state.
+
+What still blocks revenue work:
+
+1. No durable always-on supervisor or restart-recovery proof for a running job; `src/worker.ts` is a one-shot worker.
+2. Financial policy is tested in a service/unit harness but is not yet proven as the only path for all real financial/payment effects; reversal, reconciliation, and backup/restore evidence are incomplete.
+3. Telegram is parser-only: no Bot API transport, webhook authentication, persistence, notifications, or command-to-control integration.
+4. Mem0 is not integrated; only a limited PostgreSQL fallback exists and lacks full metadata, mutation operations, provider health, and scope tests.
+5. Pause/kill are not centrally enforced at every side-effect boundary, and kill recovery semantics are incomplete.
+6. Backup defaults to `/backups`, there is no scheduled/health-recorded backup, and restore has not been tested in an isolated replacement database.
+7. A complete internal experiment cannot yet be created, executed, evaluated, and linked to a decision end-to-end.
+8. Entity CRUD and dashboard detail/control coverage are partial; the browser evidence currently covers the work board, not the full command centre.
 
 ## Definition of Agent OS Ready
 
-| Requirement | Status | Current evidence | Files | Tests | Missing work | Priority | Verification method |
-|---|---|---|---|---|---|---|---|
-| Survives a process restart | PARTIAL | Compose restarts services and PostgreSQL persists via bind mount; a manual restart restored health. Pending jobs, sessions, and worker continuity are not proven. | `compose.yaml`, `src/worker.ts` | None | Automated restart-recovery integration test, durable supervisor service. | P0 | Create queued/running work, restart app and worker, prove single completion and preserved state. |
-| Authentication works | PARTIAL | Owner token supports Bearer and browser Basic authentication; rate limiter is in memory. | `src/server.ts` | None | Short-lived signed sessions, logout, CSRF protection, secure cookie/TLS deployment policy, auth audit events. | P0 | Login, expiry, invalid token, CSRF, logout, and authorization integration tests. |
-| PostgreSQL migrations work | PARTIAL | Fresh migration bootstrap was repaired; startup invokes migration. Existing populated database migration only was exercised. | `src/migrate.ts`, `db/migrations/001_initial.sql` | None | Clean-database migration test and migration checksum/version discipline. | P0 | Start an empty PostgreSQL instance; migrate twice; verify schema and idempotency. |
-| Dashboard displays live data | PARTIAL | Command Centre is SQL-backed, responsive, mobile-navigable, and auto-refreshes visible tabs every 30 seconds. | `src/dashboard.ts`, `src/server.ts` | Unit-only | Seed controlled records; add browser/visual regression coverage and verify controls/formatters at real viewport sizes. | P0 | Assert visible metric/timeline values at desktop and mobile widths. |
-| Tasks and ventures can be created and updated | PARTIAL | Authenticated, validated CRUD API exists for planning entities; dashboard creates tasks and ventures. | `src/entities.ts`, `src/server.ts`, `src/dashboard.ts` | Unit-only | Add edit/list workflows for every entity and persistent integration tests. | P0 | Create and update through UI/API; verify durable state and audit records. |
-| Jobs execute and persist results | PARTIAL | Durable lifecycle claims jobs, records runs, recovers expired leases, retries and dead-letters safe internal jobs. | `src/jobs.ts`, `src/worker.ts`, `db/migrations/003_durable_job_lifecycle.sql` | Unit-only | Long-running supervisor, real safe handlers, durable logs, restart integration test. | P0 | Queue a safe internal job and prove durable run records after restart. |
-| Duplicate jobs do not duplicate external effects | PARTIAL | `job_effects` provides a unique internal-effect journal. | `src/jobs.ts`, `db/migrations/003_durable_job_lifecycle.sql` | Unit-only | External-provider outbox/receipt protocol and crash-boundary integration test. | P0 | Submit duplicate work and simulated handler retries; assert one effect record. |
-| Financial entries are append-only | PARTIAL | Ledger update/delete trigger exists. No financial write service verifies required evidence and no adjustment workflow exists. | `db/migrations/001_initial.sql` | None | Validated ledger service, immutable audit linkage, reversal workflow. | P0 | Insert entry, reject update/delete, create reversal, verify balances. |
-| Spending limits are automatically enforced | PARTIAL | Transactional ledger service gates approved expenses against released capital and all limits before append/audit mutation. | `src/finance.ts`, `db/migrations/004_financial_policy_state.sql` | `test/finance.test.ts` | Connect service to future charge path; add PostgreSQL integration coverage. | P0 | Attempt each limit breach through service; verify no ledger/effect mutation. |
-| Reserve cannot be spent accidentally | PARTIAL | Financial policy state locks the INR reserve and rejects an otherwise approved expense that would consume it. | `src/finance.ts`, `db/migrations/004_financial_policy_state.sql` | `test/finance.test.ts` | Add PostgreSQL integration coverage and owner-approved capital-release workflow. | P0 | Fund contribution/reserve and reject expense that reduces locked reserve. |
-| Approval requests work | PARTIAL | Request insertion is authenticated and idempotent. No approve/reject/modify/expiry actions or decision audit flow. | `src/server.ts`, schema | `test/approval-token.test.ts` | Expiry sweeper, immutable decisions, modification lineage, owner action UI. | P0 | Create, duplicate, expire, approve, reject, modify and audit each state. |
-| Telegram owner restrictions work | PARTIAL | Parser rejects an unlisted ID. No Bot API transport, webhook verification, persistence, or approval actions. | `src/telegram.ts` | `test/telegram.test.ts` | Configured integration, webhook validation, command execution, secret-safe notifications. | P0 | Simulate allowed and denied webhook commands and approval actions. |
-| Pause works | PARTIAL | Pure policy check and worker gate exist. Dashboard changes controls but does not enforce every side-effect path. | `src/policy.ts`, `src/worker.ts`, `src/server.ts` | `test/policy.test.ts` | Central policy gate used by jobs, financial writes, messages, deployment/account actions. | P0 | Pause then attempt every side-effect category; assert no effect. |
-| Kill works | PARTIAL | Pure policy check and dashboard control exist. System-wide enforcement and immediate worker cancellation are unverified. | `src/policy.ts`, `src/server.ts` | `test/policy.test.ts` | Global guard and tests for all side-effect boundaries. | P0 | Kill then exercise jobs, expenses, messages, deployments, payment and account actions. |
-| Mem0 retrieval is scoped and tested | FAIL | PostgreSQL text-search fallback scopes owner and key. Mem0 is not integrated, metadata is incomplete, and no scope tests exist. | `src/memory.ts`, schema | None | Mem0 adapter, secret screening, scoped add/search/update/delete, health and backup. | P0 | Cross-scope retrieval test and provider failure test. |
-| Secrets are not exposed | PARTIAL | `.env` permissions and Git exclusion verified; basic string redaction test exists. Runtime values can still enter arbitrary audit payloads, errors, tests, and HTTP Basic is cleartext on LAN. | `.gitignore`, `src/redaction.ts`, `src/server.ts` | `test/redaction.test.ts` | Structured redaction boundary, secret scanner, TLS/reverse-proxy policy, session controls. | P0 | Scan logs/audit outputs; inject canary secret; prove redaction and Git exclusion. |
-| Audit events are preserved | PARTIAL | Immutable database trigger exists and some actions emit events. CRUD, approvals, worker failure, auth, Telegram, finance and memory events are incomplete. | `db/migrations/001_initial.sql`, `src/db.ts` | None | Central audit service and coverage for every material action. | P0 | Exercise material workflows and reject audit update/delete. |
-| Backups exist | PARTIAL | `pg_dump` script exists, but default `/backups` violates home-data policy and no scheduler/health exists. | `scripts/backup.sh` | None | Home-scoped backup path, retention, metadata, health record. | P0 | Run backup into `/home/goofy`, verify readable dump and audit record. |
-| Restore has been tested | FAIL | Restore script exists; no controlled restoration test. | `scripts/restore.sh` | None | Isolated restore test and documented evidence. | P0 | Backup data, restore into replacement database, compare required state. |
-| Setup and operations documentation exists | PARTIAL | Governance files and runbook exist but contain stale port 999 reference and unverified procedures. | `RUNBOOK.md`, `DEPLOYMENT.md` | None | Correct runbook, recovery and credential handling procedures tied to tests. | P1 | Follow runbook from clean state and record evidence. |
-| Complete internal experiment can be created, executed, evaluated | FAIL | Experiment table only. No CRUD, scheduler handler, result workflow, decision linkage, or dashboard path. | schema, `src/worker.ts` | None | Internal safe experiment workflow with evaluation and audit trail. | P0 | Run a zero-cost internal experiment end-to-end and verify result/lesson/decision. |
+| Requirement | Status | Evidence now | Missing proof/work | Priority |
+|---|---|---|---|---|
+| Process restart and abandoned-run recovery | PARTIAL | Compose restart/health and durable schema exist | Always-on supervisor plus automated running-job restart test proving one completion | P0 |
+| Authentication and authorization | PARTIAL | Short-lived DB-backed owner sessions, Bearer/Basic auth, CSRF, logout route | Integration coverage for expiry/revocation/rate limits; TLS/secure production policy; complete security audit coverage | P0 |
+| PostgreSQL migrations | PARTIAL | Fresh disposable DB applied 001–005 successfully | Explicit second-run/idempotency and migration checksum discipline test | P0 |
+| Live dashboard data | PARTIAL | SQL-backed Command Centre and passing authenticated browser work-board flow | Full financial/approval/job/health UI workflows, desktop/mobile visual checks | P0 |
+| Tasks and ventures CRUD | PARTIAL | Authenticated create/update routes and durable ticket edit/comment/transition path | Complete validated CRUD/detail flows for all required entities with persistent audit integration tests | P0 |
+| Jobs persist and execute | PARTIAL | Always-on Compose supervisor, durable heartbeat, worker-attributed claims, bounded retry/dead-letter, graceful shutdown, abandoned-run recovery integration test | Scheduled handlers, pause/cancel/rerun controls, process-kill restart test | P0 |
+| Exactly-once side effects | PARTIAL | Internal journal plus durable effect intent states, provider idempotency keys, matching approval enforcement, and ambiguous-call reconciliation integration test | Route every producer through the boundary and add real provider crash-boundary tests | P0 |
+| Append-only financial ledger | PARTIAL | DB immutability trigger, transactional `LedgerService`, and verified opening entries: ₹5,000 capital, ₹2,000 fixed expense, ₹3,000 cash; capital is excluded from revenue | Required metadata enforcement in DB/service, reversal/adjustment and reconciliation workflow | P0 |
+| Spending and reserve enforcement | PARTIAL | Unit policy tests and transactional approved-expense gate | PostgreSQL integration and proof every charge path is gated; owner tranche-release workflow | P0 |
+| Approval lifecycle | PARTIAL | Durable request, deduplication, approve/reject/modify/comment/cancel/expiry service and integration coverage | Expiry job, dashboard detail/modify UX, short-lived token delivery and complete audit coverage | P0 |
+| Telegram owner controls | FAIL | Allowlist parser unit test only | Authenticated webhook/Bot API transport, command handlers, notifications, audit, kill/pause path | P0 |
+| Pause and kill | PARTIAL | Policy function and worker gate unit tests; dashboard control route | One central guard at every effect boundary plus immediate cancellation/recovery tests | P0 |
+| Scoped Mem0 | FAIL | PostgreSQL `owner_id/scope_key` text fallback only | Replaceable Mem0 adapter, scoped add/search/update/delete, secret screening, health/backup/retrieval tests | P0 |
+| Secret safety | PARTIAL | `.env` is ignored/0600 and redaction unit test passes | Structured audit redaction, canary scan, TLS/session hardening, dependency/security scan | P0 |
+| Audit preservation | PARTIAL | Immutable audit/approval/activity triggers and several transactional events | Central event policy and coverage for auth, CRUD, finance, jobs, memory, Telegram, and controls | P0 |
+| Backup existence | PARTIAL | `scripts/backup.sh` exists | Home-scoped default, retention, scheduler, health record, permissions and evidence | P0 |
+| Restore verification | FAIL | `scripts/restore.sh` exists | Isolated replacement-DB restore and state comparison test | P0 |
+| Operations documentation | PARTIAL | Governance documents, runbook, deployment record, active plans exist | Reconcile stale port wording and prove clean-state runbook/rollback procedures | P1 |
+| Complete internal experiment | FAIL | Experiment schema and partial CRUD fields exist | Zero-cost internal handler, evaluation/lesson/decision linkage, end-to-end test | P0 |
 
-## Required P0 sequence
+## P0 release sequence
 
-1. Replace static Basic-only browser authentication with short-lived server-side sessions, CSRF protection for mutations, logout, and durable security audit events. Keep Bearer support for automation.
-2. Build the Command Centre as a data-backed interface with a clear sidebar, metric hierarchy, states for no data/failure/loading, and authenticated APIs.
-3. Add validated, audited CRUD workflows for ventures, opportunities, objectives, tasks, experiments, and decisions.
-4. Implement transactional ledger, reserves, policy-gated expenses, approval lifecycle, durable jobs, activity/audit, and health endpoints.
-5. Add Telegram transport behind its allowlist, scoped Mem0 provider, backup/restore and restart recovery integration tests.
+1. Implement a durable supervisor and prove restart, lease recovery, bounded retries, dead-lettering, pause, and kill.
+2. Complete central side-effect policy enforcement and financial/approval integration so no real effect can bypass the gates.
+3. Implement Telegram transport and owner-only command/approval controls.
+4. Implement scoped Mem0 provider abstraction, metadata/safety checks, health, backup, and retrieval tests.
+5. Make backup/restore home-scoped, scheduled, and repeatably verified.
+6. Complete the zero-cost internal experiment loop and full dashboard workflows.
+7. Run the full release matrix, update this report with exact evidence, then request the owner’s explicit first-tranche approval. Do not unlock the tranche before that point.
 
-## Current release decision
+## Verification commands
 
-**NOT READY FOR REVENUE OPERATIONS.** The ₹500 operating tranche remains locked. No action may unlock or spend it without an explicit owner approval after all P0 requirements above are verified.
+```text
+npm test
+npm run check
+npm run build
+npm run test:integration
+npm run test:browser
+git diff --check
+docker compose ps
+curl -fsS http://127.0.0.1:9999/healthz
+```
+
+## Commercial gate
+
+Until every P0 row is PASS with reproducible evidence and the owner explicitly approves a bounded tranche, Goofy may only perform internal development, read-only research, drafting, and other permitted control-plane work. It must not spend, send external messages, collect payment, create accounts, accept contracts, or publish material commercial claims.
+
+## Production-hardening update — 2026-07-29
+
+The release remains **NOT READY FOR REVENUE OPERATIONS**, but the following previously missing evidence now passes:
+
+- `npm test`: 22 pass, one intentional opt-in integration skip.
+- `npm run check`, `npm run build`, `npm run test:integration`, and `npm run test:browser`: pass.
+- `npm audit --audit-level=high`: zero vulnerabilities.
+- `npm run test:restart`: actual supervisor SIGKILL/recreate, abandoned-run recovery, one completed run and one completed internal effect.
+- `npm run test:restore`: mode-restricted backup, SHA-256 manifest, isolated replacement database restore, immutable-trigger/control/opening-finance checks.
+- `npm run experiment:internal`: complete ₹0 internal experiment with linked objective, venture, task, job/run, effect, checksummed artifact, activity, result, lesson, and decision.
+- Live Compose app/PostgreSQL/supervisor are healthy. `commercial_lock=true`, `released_operating_minor=0`, required reserve is ₹2,000, and settled revenue remains ₹0.
+- Central effects now persist denied proposals and apply kill, pause, commercial lock, actor scope, approval scope, idempotency, and reconciliation controls in one locked transaction. Internal supervisor effects use this path.
+
+Still P0-blocking and therefore not marked PASS:
+
+1. Live owner-credentialed Telegram relay and Discord alert-only delivery receipts.
+2. Authenticated self-hosted Mem0 provider/restore evidence; the safe PostgreSQL scoped fallback is not Mem0.
+3. A real external provider crash-after-acceptance harness beyond the durable simulated reconciliation path.
+4. Private HTTPS/Tailscale and the requested routed React/Vite frontend with desktop/tablet/mobile visual suite.
+5. Credentialed Hermes-to-Agent-OS live command/MCP proof using Hermes' existing integration facilities.
+
+No tranche approval was created because the mechanical P0 matrix is not all PASS.
+
+## Hermes integration evidence — 2026-07-29
+
+- Hermes gateway is active and supervises the Agent OS stdio MCP process.
+- `hermes mcp test agent-os` connects and discovers all eight enabled tools.
+- `hermes hooks doctor` passes; the risky tool fixture is denied with
+  `commercial_lock`.
+- The native `/os` skill passes `quick_validate.py` and is enabled in both
+  Hermes and Codex through symlinks to the repository source.
+- `hermes memory status` reports the existing Mem0 plugin installed, available,
+  and active. No duplicate Mem0 or plugin infrastructure was created.
+- Agent OS and Hermes share only a mode-0600 credential; the API is loopback,
+  bot/provider credentials remain outside Agent OS, and PostgreSQL remains the
+  authority store.
+
+The Hermes MCP/hook/skill/provider wiring row is now PASS. Hermes currently
+reports Mem0 `mode: platform`, so the constitution's separate self-hosted Mem0
+deployment/restore requirement is not marked PASS. Revenue release is also
+blocked by private HTTPS, controlled channel delivery-receipt acceptance (the
+configured Telegram home chat currently reports `Chat not found`), a real
+external-provider crash-after-acceptance acceptance test, and the broader
+command-centre visual workflow matrix. Commercial lock remains on.

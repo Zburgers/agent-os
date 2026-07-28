@@ -6,12 +6,22 @@
   "scripts": {
     "test": "node --test --experimental-strip-types 'test/**/*.test.ts'",
     "test:watch": "node --test --watch --experimental-strip-types 'test/**/*.test.ts'",
+    "test:integration": "scripts/test-postgres-integration.sh",
+    "test:browser": "scripts/test-browser-workboard.sh",
+    "backup": "scripts/backup.sh",
+    "test:restore": "scripts/test-restore.sh",
+    "experiment:internal": "node --experimental-strip-types src/internal-experiment.ts",
+    "test:restart": "scripts/test-supervisor-restart.sh",
     "start": "node --experimental-strip-types src/server.ts",
     "migrate": "node --experimental-strip-types src/migrate.ts",
     "worker": "node --experimental-strip-types src/worker.ts",
-    "check": "node --check src/server.ts && node --check src/policy.ts && node --check src/telegram.ts"
+    "supervisor": "node --experimental-strip-types src/supervisor.ts",
+    "check": "find src -name '*.ts' -type f -exec node --check {} \\;",
+    "build": "npm run check"
   },
   "dependencies": {
+    "@google/jules": "^0.1.42",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "pg": "^8.16.3"
   }
 }

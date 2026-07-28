@@ -2,7 +2,7 @@ import { pool } from './db.ts';
 import { claimNextJob, executeInternalJob, failJob, recoverAbandonedJobs } from './jobs.ts';
 
 const recovered = await recoverAbandonedJobs();
-const claim = await claimNextJob();
+const claim = await claimNextJob(`one-shot-${process.pid}`);
 let executed = false;
 if (claim) {
   try { await executeInternalJob(claim); executed = true; }

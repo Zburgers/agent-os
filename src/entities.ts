@@ -2,7 +2,7 @@ import { audit, pool } from './db.ts';
 
 export type EntityName = 'ventures' | 'opportunities' | 'objectives' | 'tasks' | 'experiments' | 'decisions';
 const names = new Set<EntityName>(['ventures', 'opportunities', 'objectives', 'tasks', 'experiments', 'decisions']);
-const statuses = new Set(['backlog', 'ready', 'in_progress', 'waiting', 'owner_blocked', 'validation', 'completed', 'abandoned']);
+const statuses = new Set(['inbox', 'backlog', 'ready', 'in_progress', 'blocked', 'waiting_for_owner', 'validation', 'completed', 'abandoned']);
 
 function text(value: unknown, field: string, required = false) {
   if (value === undefined || value === null || value === '') { if (required) throw new Error(`missing_${field}`); return null; }

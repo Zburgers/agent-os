@@ -16,11 +16,14 @@ services:
     restart: unless-stopped
   app:
     build: .
+    user: "0:0"
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-goofy}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-goofy}
       OWNER_DASHBOARD_TOKEN: ${OWNER_DASHBOARD_TOKEN:?set OWNER_DASHBOARD_TOKEN in .env}
       PORT: 3000
       OWNER_TELEGRAM_IDS: ${OWNER_TELEGRAM_IDS:-}
+      AGENT_RUNTIME_TOKEN: ${AGENT_RUNTIME_TOKEN:-}
+      AGENT_RUNTIME_TOKEN_FILE: /run/secrets/agent_os_hermes_token
       MEM0_URL: ${MEM0_URL:-}
     depends_on:
       postgres:
@@ -29,10 +32,37 @@ services:
       # The dashboard is reachable only on the owner's private network.
       # PostgreSQL has no host port and remains on this Compose network.
       - "${AGENT_OS_BIND_ADDRESS:-0.0.0.0}:${AGENT_OS_PORT:-9999}:3000"
-    command: ["sh", "-c", "npm run migrate && npm start"]
+    command: ["sh", "-c", "export AGENT_RUNTIME_TOKEN=\"$$(cat /run/secrets/agent_os_hermes_token)\"; exec su-exec agent sh -c 'npm run migrate && npm start'"]
+    secrets:
+      - source: agent_os_hermes_token
+        target: agent_os_hermes_token
+        uid: "1003"
+        gid: "1003"
+        mode: 0400
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 3s
       retries: 10
     restart: unless-stopped
+  supervisor:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-goofy}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-goofy}
+      SUPERVISOR_POLL_MS: ${SUPERVISOR_POLL_MS:-1000}
+      SUPERVISOR_ID: compose-supervisor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    command: ["node", "--experimental-strip-types", "src/supervisor.ts"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "import('pg').then(async({default:p})=>{const c=new p.Client({connectionString:process.env.DATABASE_URL});await c.connect();const r=await c.query(\"select 1 from supervisor_heartbeats where worker_id='compose-supervisor' and status='running' and heartbeat_at>now()-interval '30 seconds'\");await c.end();process.exit(r.rowCount===1?0:1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+secrets:
+  agent_os_hermes_token:
+    file: /home/goofy/.hermes/agent-os-token

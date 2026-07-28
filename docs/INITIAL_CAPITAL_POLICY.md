@@ -3,7 +3,9 @@
 ## Capital
 
 - Codex subscription: fixed infrastructure expense, recorded separately.
-- Owner capital commitment: INR 3,000.
+- Owner capital contribution: INR 5,000. Capital is never revenue.
+- Historical Codex subscription: INR 2,000 settled fixed infrastructure expense.
+- Reconciled current cash: INR 3,000.
 - Initially spendable by Goofy: INR 0.
 - Locked reserve: INR 2,000.
 - First operating tranche: INR 500.
@@ -34,8 +36,9 @@ demand signal, such as:
 - A confirmed trial.
 - A paid preorder handled through an owner-approved payment system.
 
-The INR 2,000 reserve remains locked until the first settled customer
-payment unless the owner explicitly authorizes otherwise.
+The INR 2,000 reserve remains locked unless the owner explicitly authorizes
+an override. Releasing either tranche changes spending authority only; every
+expense still requires a separately scoped, unexpired approval.
 
 ## Prohibited credential access
 
