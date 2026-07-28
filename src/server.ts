@@ -1,19 +1,33 @@
 import { createServer } from 'node:http';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { audit, controls, pool } from './db.ts';
-import { basicOwnerToken, bearerToken, createOwnerSession, expiredSessionCookie, getOwnerSession, ownerTokenMatches, parseCookies, revokeOwnerSession, sessionCookie } from './auth.ts';
+import { basicOwnerToken, bearerToken, createOwnerSession, expiredSessionCookie, getOwnerSession, ownerTokenMatches, parseCookies, revokeOwnerSession, runtimeTokensFromEnvironment, sessionCookie } from './auth.ts';
 import { redactSecrets } from './redaction.ts';
 import { createEntity, isEntityName, listEntity, updateEntity } from './entities.ts';
-import { renderDashboard } from './dashboard.ts';
+import { renderControlPlane, type ControlPlanePage } from './control-plane.ts';
+import { ApprovalService } from './approvals.ts';
+import { ApprovalRequestService } from './approval-requests.ts';
+import { TicketService } from './tickets.ts';
+import { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, ticketDetail } from './records.ts';
+import { TelegramControlService } from './telegram-controls.ts';
+import { ScopedPostgresMemory } from './memory.ts';
+import { cancelJob, pauseJob, rerunJob } from './jobs.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
 const port = Number(process.env.PORT ?? 3000);
+const agentRuntimeTokens = runtimeTokensFromEnvironment();
 const attempts = new Map<string, { count: number; resetAt: number }>();
-type Auth = { kind: 'bearer' | 'basic' | 'session'; csrfToken?: string; sessionValue?: string } | null;
+const approvals = new ApprovalService(pool);
+const approvalRequests = new ApprovalRequestService(pool);
+const tickets = new TicketService(pool);
+const telegram = new TelegramControlService(pool, new Set((process.env.OWNER_TELEGRAM_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean)));
+const memory = new ScopedPostgresMemory();
+type Auth = { kind: 'bearer' | 'basic' | 'session' | 'agent'; csrfToken?: string; sessionValue?: string } | null;
 
 function constantEqual(left: string, right: string) { const a = Buffer.from(left); const b = Buffer.from(right); return a.length === b.length && timingSafeEqual(a, b); }
 async function authenticate(headers: import('node:http').IncomingHttpHeaders): Promise<Auth> {
+  if (agentRuntimeTokens.some((candidate) => ownerTokenMatches(bearerToken(headers.authorization), candidate))) return { kind: 'agent' };
   if (ownerTokenMatches(bearerToken(headers.authorization), token)) return { kind: 'bearer' };
   if (ownerTokenMatches(basicOwnerToken(headers.authorization), token)) return { kind: 'basic' };
   const sessionValue = parseCookies(headers.cookie).goofy_session;
@@ -22,8 +36,30 @@ async function authenticate(headers: import('node:http').IncomingHttpHeaders): P
 }
 function mutationAllowed(auth: Auth, req: import('node:http').IncomingMessage) {
   if (!auth) return false;
-  if (auth.kind === 'bearer') return true;
+  if (auth.kind === 'bearer' || auth.kind === 'agent') return true;
   return auth.kind === 'session' && constantEqual(req.headers['x-csrf-token'] ?? '', auth.csrfToken ?? '');
+}
+function actorFor(auth: Exclude<Auth, null>) { return auth.kind === "agent" ? { type: "agent" as const, id: "goofy-runtime" } : { type: "owner" as const, id: "owner" }; }
+function ownerAuth(auth: Auth) { return auth !== null && auth.kind !== 'agent'; }
+const guardedToolKinds = new Map<string, string>([
+  ['send_message','message'],['telegram_send','message'],['discord_send','message'],['email_send','message'],
+  ['deploy','deployment'],['purchase','purchase'],['payment','payment'],['browser_submit','account_change'],
+]);
+function inferredEffectKind(toolName: string, args: Record<string, unknown>) {
+  const exact = guardedToolKinds.get(toolName);
+  if (exact) return exact;
+  const lowered = toolName.toLowerCase();
+  if (/(message|telegram|discord|email).*(send|post)|^(send|post).*(message|email)/.test(lowered)) return 'message';
+  if (/deploy|publish/.test(lowered)) return 'deployment';
+  if (/purchase|buy|checkout/.test(lowered)) return 'purchase';
+  if (/payment|refund|invoice/.test(lowered)) return 'payment';
+  if (/browser/.test(lowered) && /(submit|click|type|upload|login)/.test(lowered)) return 'account_change';
+  if (/terminal|shell|exec/.test(lowered)) {
+    const command = String(args.command ?? args.cmd ?? '');
+    if (/\b(curl|wget)\b.*\s(-X|--request)\s*(POST|PUT|PATCH|DELETE)\b/i.test(command)) return 'account_change';
+    if (/\b(hermes\s+send|git\s+push|npm\s+publish|docker\s+(push|login)|stripe|razorpay)\b/i.test(command)) return 'deployment';
+  }
+  return null;
 }
 function rateAllowed(ip: string) {
   const now = Date.now(); const entry = attempts.get(ip);
@@ -52,7 +88,7 @@ async function overview() {
     pool.query(`SELECT id,requested_action,cost_minor,currency,risk,expires_at FROM approvals WHERE status='pending' AND expires_at > now() ORDER BY created_at DESC LIMIT 20`),
     pool.query(`SELECT status,count(*) FROM jobs GROUP BY status ORDER BY status`),
     pool.query(`SELECT occurred_at,event_type,entity_type,entity_id FROM audit_events ORDER BY id DESC LIMIT 20`),
-    pool.query("SELECT * FROM tasks WHERE status IN ('in_progress','ready','waiting','owner_blocked','validation') ORDER BY priority DESC, updated_at DESC LIMIT 10"),
+    pool.query("SELECT * FROM tasks WHERE status IN ('in_progress','ready','blocked','waiting_for_owner','validation') ORDER BY priority DESC, updated_at DESC LIMIT 10"),
     pool.query("SELECT * FROM objectives WHERE status='active' ORDER BY created_at DESC LIMIT 1"),
     pool.query("SELECT * FROM ventures ORDER BY created_at DESC LIMIT 1"),
   ]);
@@ -63,8 +99,17 @@ async function overview() {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`); const ip = req.socket.remoteAddress ?? 'unknown';
   try {
-    if (url.pathname === '/healthz') { await pool.query('SELECT 1'); return respond(res, 200, { status: 'ok', database: 'ok', memory_provider: process.env.MEM0_URL ? 'configured' : 'postgres_scoped_fallback' }); }
+    const versioned = url.pathname.startsWith('/api/v1/');
+    if (versioned) url.pathname = `/api/${url.pathname.slice('/api/v1/'.length)}`;
+    if (url.pathname === '/healthz') { await pool.query('SELECT 1'); return respond(res, 200, { status: 'ok', database: 'ok', memory_provider: await memory.health(), commercial_lock: (await controls() as any).commercial_lock ?? true }); }
     if (!rateAllowed(ip)) return respond(res, 429, { error: 'rate_limited' });
+    if (req.method === 'POST' && url.pathname === '/api/telegram/webhook') {
+      const configured = process.env.TELEGRAM_WEBHOOK_SECRET;
+      if (!configured || !constantEqual(String(req.headers['x-telegram-bot-api-secret-token'] ?? ''), configured)) return respond(res, 401, { error: 'authentication_required' });
+      const update = await body(req); const message = update.message as Record<string, any> | undefined;
+      if (!message?.from?.id || typeof message.text !== 'string') return respond(res, 202, { accepted: false });
+      return respond(res, 200, await telegram.handle(String(message.from.id), message.text));
+    }
     if (req.method === 'GET' && url.pathname === '/login') return respond(res, 200, loginPage(), 'text/html; charset=utf-8');
     if (req.method === 'POST' && url.pathname === '/api/session') {
       const input = await body(req); if (typeof input.token !== 'string' || !ownerTokenMatches(input.token, token)) return respond(res, 401, { error: 'authentication_required' });
@@ -72,15 +117,44 @@ const server = createServer(async (req, res) => {
       return respond(res, 201, { csrf_token: session.csrfToken, expires_in_seconds: session.maxAge }, undefined, { 'set-cookie': sessionCookie(session.value) });
     }
     const auth = await authenticate(req.headers);
-    if (!auth) { if (req.method === 'GET' && url.pathname === '/') return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
+    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/activity', '/approvals', '/finance', '/jobs', '/health'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
+    if (versioned && req.method !== 'GET' && !String(req.headers['idempotency-key'] ?? '').trim()) return respond(res, 400, { error: 'idempotency_key_required' });
     if (req.method === 'POST' && url.pathname === '/api/logout') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
       await revokeOwnerSession(auth.sessionValue); await audit('owner_logout', 'session', null, {}, 'owner'); return respond(res, 204, '', undefined, { 'set-cookie': expiredSessionCookie() });
     }
     if (req.method === 'GET' && url.pathname === '/api/session') return respond(res, 200, { session: auth.kind, csrf_token: auth.csrfToken ?? null });
-    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/api/overview')) { const data = await overview(); return respond(res, 200, url.pathname === '/' ? renderDashboard(data, auth.csrfToken) : data, url.pathname === '/' ? 'text/html; charset=utf-8' : undefined); }
+    if (req.method === 'POST' && url.pathname === '/api/guard') {
+      if (auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
+      const input = await body(req); const toolName = String(input.tool_name ?? '').slice(0, 200);
+      const args = input.args && typeof input.args === 'object' ? input.args as Record<string, unknown> : {};
+      const effectKind = inferredEffectKind(toolName, args);
+      const state = await controls();
+      let allowed = true; let policyCode: string | null = null;
+      if (state.killed) { allowed = false; policyCode = 'system_killed'; }
+      else if (state.paused && effectKind) { allowed = false; policyCode = 'system_paused'; }
+      else if (effectKind && state.commercial_lock) { allowed = false; policyCode = 'commercial_lock'; }
+      else if (effectKind) {
+        const effectId = typeof input.effect_id === 'string' ? input.effect_id : '';
+        const effect = await pool.query(
+          `SELECT id FROM effect_intents WHERE id=$1 AND effect_kind=$2 AND state IN ('authorized','executing')`,
+          [effectId,effectKind],
+        );
+        if (!effect.rowCount) { allowed = false; policyCode = 'effect_authorization_required'; }
+      }
+      await audit(allowed ? 'hermes_tool_guard_allowed' : 'hermes_tool_guard_denied', 'tool_call', null,
+        { tool_name: toolName, effect_kind: effectKind, policy_code: policyCode, correlation_id: input.correlation_id ?? null }, 'hermes');
+      return respond(res, 200, { allowed, policy_code: policyCode, effect_kind: effectKind });
+    }
+    if (req.method === 'GET' && url.pathname === '/api/overview') return respond(res, 200, await overview());
+    const pageByPath: Record<string, ControlPlanePage> = { '/': 'command', '/work': 'work', '/activity': 'activity', '/approvals': 'approvals', '/finance': 'finance', '/jobs': 'jobs', '/health': 'health' };
+    if (req.method === 'GET' && pageByPath[url.pathname]) {
+      const page = pageByPath[url.pathname];
+      return respond(res, 200, renderControlPlane(page, page === 'command' ? await overview() : {}, auth.csrfToken), 'text/html; charset=utf-8');
+    }
     if (req.method === 'POST' && url.pathname === '/api/controls') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
+      if (!ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
       const input = await body(req); const action = input.action;
       if (!['pause', 'resume', 'kill'].includes(String(action))) return respond(res, 400, { error: 'invalid_control_action' });
       const changes = action === 'pause' ? [true, 'owner'] : action === 'resume' ? [false, 'owner'] : [true, 'owner']; const column = action === 'kill' ? 'killed' : 'paused';
@@ -88,11 +162,39 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'POST' && url.pathname === '/api/approvals') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
-      const input = await body(req); const required = ['action_type','requested_action','reason','risk','recommendation','idempotency_key','expires_at'];
-      if (required.some((key) => typeof input[key] !== 'string') || !Number.isSafeInteger(input.cost_minor ?? 0)) return respond(res, 400, { error: 'invalid_approval_request' });
-      const expires = new Date(String(input.expires_at)); if (Number.isNaN(expires.valueOf()) || expires <= new Date()) return respond(res, 400, { error: 'invalid_expiry' });
-      const { rows } = await pool.query('INSERT INTO approvals(action_type,requested_action,reason,cost_minor,currency,risk,recommendation,idempotency_key,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(idempotency_key) DO UPDATE SET idempotency_key=EXCLUDED.idempotency_key RETURNING id,status', [input.action_type,input.requested_action,input.reason,input.cost_minor ?? 0,input.currency ?? 'INR',input.risk,input.recommendation,input.idempotency_key,expires]); await audit('approval_requested', 'approval', rows[0].id, { action_type: input.action_type }); return respond(res, 201, rows[0]);
+      const input = await body(req);
+      const record = await approvalRequests.request({ actionType: input.action_type as string, requestedAction: input.requested_action as string, reason: input.reason as string, risk: input.risk as string, recommendation: input.recommendation as string, idempotencyKey: input.idempotency_key as string, expiresAt: input.expires_at as string, costMinor: input.cost_minor as number | undefined, maximumExposureMinor: input.maximum_exposure_minor as number | undefined, currency: input.currency as string | undefined, alternatives: input.alternatives as string[] | undefined, evidence: input.evidence as unknown[] | undefined, defaultAction: input.default_action as string | undefined, objectiveId: input.objective_id as string | undefined, ventureId: input.venture_id as string | undefined, experimentId: input.experiment_id as string | undefined, ticketId: input.ticket_id as string | undefined, blocker: input.blocker as string | undefined }, actorFor(auth));
+      return respond(res, record.duplicate ? 200 : 201, record);
     }
+    if (req.method === "GET" && url.pathname === "/api/tickets") return respond(res, 200, await listTickets({ status: url.searchParams.get("status") ?? undefined, search: url.searchParams.get("search") ?? undefined, limit: Number(url.searchParams.get("limit") ?? 50), offset: Number(url.searchParams.get("offset") ?? 0) }));
+    const readPage = () => ({ status: url.searchParams.get("status") ?? undefined, search: url.searchParams.get("search") ?? undefined, eventType: url.searchParams.get("event_type") ?? undefined, source: url.searchParams.get("source") ?? undefined, dateFrom: url.searchParams.get("date_from") ?? undefined, dateTo: url.searchParams.get("date_to") ?? undefined, limit: Number(url.searchParams.get("limit") ?? 50), offset: Number(url.searchParams.get("offset") ?? 0) });
+    if (req.method === "GET" && url.pathname === "/api/approvals") return respond(res, 200, await listApprovals(readPage()));
+    if (req.method === "GET" && url.pathname === "/api/ledger") return respond(res, 200, await listLedgerEntries(readPage()));
+    const ledgerRead = url.pathname.match(/^\/api\/ledger\/([0-9a-f-]+)$/);
+    if (req.method === "GET" && ledgerRead) { const record = await ledgerDetail(ledgerRead[1]); return record ? respond(res, 200, record) : respond(res, 404, { error: "not_found" }); }
+    if (req.method === "GET" && url.pathname === "/api/jobs") return respond(res, 200, await listJobs(readPage()));
+    const jobRead = url.pathname.match(/^\/api\/jobs\/([0-9a-f-]+)$/);
+    if (req.method === "GET" && jobRead) { const record = await jobDetail(jobRead[1]); return record ? respond(res, 200, record) : respond(res, 404, { error: "not_found" }); }
+    const jobAction = url.pathname.match(/^\/api\/jobs\/([0-9a-f-]+)\/(cancel|pause|rerun)$/);
+    if (req.method === 'POST' && jobAction) {
+      if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
+      if (!ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
+      if (jobAction[2] === 'cancel') await cancelJob(jobAction[1], 'owner');
+      else if (jobAction[2] === 'pause') await pauseJob(jobAction[1], 'owner');
+      else await rerunJob(jobAction[1], 'owner');
+      return respond(res, 200, await jobDetail(jobAction[1]));
+    }
+    if (req.method === "GET" && url.pathname === "/api/activity") return respond(res, 200, await listActivity(readPage()));
+    if (req.method === "GET" && url.pathname === "/api/health-checks") return respond(res, 200, await listHealthChecks(readPage()));
+    if (req.method === "GET" && url.pathname === "/api/incidents") return respond(res, 200, await listIncidents(readPage()));
+    const ticketRead = url.pathname.match(/^\/api\/tickets\/([0-9a-f-]+)$/);
+    if (req.method === "GET" && ticketRead) { const record = await ticketDetail(ticketRead[1]); return record ? respond(res, 200, record) : respond(res, 404, { error: "not_found" }); }
+    const approvalRead = url.pathname.match(/^\/api\/approvals\/([0-9a-f-]+)$/);
+    if (req.method === "GET" && approvalRead) { const record = await approvalDetail(approvalRead[1]); return record ? respond(res, 200, record) : respond(res, 404, { error: "not_found" }); }
+    const ticketMatch = url.pathname.match(/^\/api\/tickets(?:\/([0-9a-f-]+)(?:\/(comments|dependencies))?)?$/);
+    if (ticketMatch) { const id = ticketMatch[1]; const resource = ticketMatch[2]; if (req.method === "POST" && !id) { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: "csrf_required" }); return respond(res, 201, await tickets.create(await body(req) as any, { type: actorFor(auth).type, id: actorFor(auth).id })); } if (req.method === "PATCH" && id && !resource) { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: "csrf_required" }); const input = await body(req); return respond(res, 200, input.status === undefined ? await tickets.update(id, input as any, { type: actorFor(auth).type, id: actorFor(auth).id }) : await tickets.transition(id, input.status as any, { type: actorFor(auth).type, id: actorFor(auth).id }, input as any)); } if (req.method === "POST" && id && resource === "comments") { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: "csrf_required" }); const input = await body(req); await tickets.comment(id, String(input.body ?? ""), { type: actorFor(auth).type, id: actorFor(auth).id }); return respond(res, 204, ""); } if (req.method === "POST" && id && resource === "dependencies") { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: "csrf_required" }); const input = await body(req); await tickets.addDependency(id, String(input.depends_on_ticket_id ?? ""), { type: actorFor(auth).type, id: actorFor(auth).id }); return respond(res, 204, ""); } }
+    const approvalAction = url.pathname.match(/^\/api\/approvals\/([0-9a-f-]+)\/(approve|reject|modify|comment|cancel)$/);
+    if (approvalAction && req.method === "POST") { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: "csrf_required" }); if (!ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' }); const input = await body(req); return respond(res, 200, await approvals.transition(approvalAction[1], approvalAction[2] as any, { type: actorFor(auth).type as any, id: actorFor(auth).id }, typeof input.note === "string" ? input.note : undefined, input.replacement as Record<string, unknown> | undefined)); }
     const entityMatch = url.pathname.match(/^\/api\/(ventures|opportunities|objectives|tasks|experiments|decisions)(?:\/([0-9a-f-]+))?$/);
     if (entityMatch && isEntityName(entityMatch[1])) {
       const entity = entityMatch[1]; const id = entityMatch[2];
