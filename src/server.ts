@@ -3,6 +3,7 @@ import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { audit, controls, pool } from './db.ts';
 import { basicOwnerToken, bearerToken, createOwnerSession, expiredSessionCookie, getOwnerSession, ownerTokenMatches, parseCookies, revokeOwnerSession, sessionCookie } from './auth.ts';
 import { redactSecrets } from './redaction.ts';
+import { createEntity, isEntityName, listEntity, updateEntity } from './entities.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -87,6 +88,13 @@ const server = createServer(async (req, res) => {
       if (required.some((key) => typeof input[key] !== 'string') || !Number.isSafeInteger(input.cost_minor ?? 0)) return respond(res, 400, { error: 'invalid_approval_request' });
       const expires = new Date(String(input.expires_at)); if (Number.isNaN(expires.valueOf()) || expires <= new Date()) return respond(res, 400, { error: 'invalid_expiry' });
       const { rows } = await pool.query('INSERT INTO approvals(action_type,requested_action,reason,cost_minor,currency,risk,recommendation,idempotency_key,expires_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(idempotency_key) DO UPDATE SET idempotency_key=EXCLUDED.idempotency_key RETURNING id,status', [input.action_type,input.requested_action,input.reason,input.cost_minor ?? 0,input.currency ?? 'INR',input.risk,input.recommendation,input.idempotency_key,expires]); await audit('approval_requested', 'approval', rows[0].id, { action_type: input.action_type }); return respond(res, 201, rows[0]);
+    }
+    const entityMatch = url.pathname.match(/^/api/(ventures|opportunities|objectives|tasks|experiments|decisions)(?:/([0-9a-f-]+))? );
+    if (entityMatch && isEntityName(entityMatch[1])) {
+      const entity = entityMatch[1]; const id = entityMatch[2];
+      if (req.method === 'GET' && !id) return respond(res, 200, await listEntity(entity));
+      if (req.method === 'POST' && !id) { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' }); return respond(res, 201, await createEntity(entity, await body(req))); }
+      if (req.method === 'PATCH' && id) { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' }); return respond(res, 200, await updateEntity(entity, id, await body(req))); }
     }
     return respond(res, 404, { error: 'not_found' });
   } catch (error) { const message = error instanceof Error ? error.message : 'unknown'; console.error('request_failed', redactSecrets(message, [token, process.env.DATABASE_URL ?? ''])); return respond(res, 500, { error: 'internal_error' }); }
