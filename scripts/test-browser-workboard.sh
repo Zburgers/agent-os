@@ -64,9 +64,14 @@ for (const route of ['/', '/work', '/activity', '/approvals', '/finance', '/jobs
   await call('Page.navigate', { url: baseUrl + route });
   const expected = route === '/' ? 'command' : route.slice(1);
   await until(`document.querySelector('main')?.dataset.page === '${expected}' && Boolean(document.querySelector('a[aria-current=page]'))`, 'route_' + expected);
+  if (!(await value('document.documentElement.scrollWidth <= document.documentElement.clientWidth'))) throw Error('horizontal_overflow:' + expected);
 }
 await call('Page.navigate', { url: baseUrl + '/work' });
 await until("Boolean(document.querySelector('#filters'))", 'work_loaded');
+await value('history.back()');
+await until("document.querySelector('main')?.dataset.page === 'health'", 'history_back');
+await value('history.forward()');
+await until("document.querySelector('main')?.dataset.page === 'work' && Boolean(document.querySelector('#filters'))", 'history_forward');
 const ticketId = await value("fetch('/api/tickets',{method:'POST',headers:{'content-type':'application/json','x-csrf-token':" + JSON.stringify(csrfToken) + "},body:JSON.stringify({title:'Browser work-board fixture',status:'ready',priority:4,acceptanceCriteria:'Browser persistence verification'})}).then(async response=>{if(!response.ok)throw Error('ticket '+response.status);return response.json()}).then(ticket=>ticket.id)");
 await value(`document.querySelector('#filters').dispatchEvent(new Event('submit',{cancelable:true}))`);
 await until(`Boolean(document.querySelector('[data-detail="tickets"][data-id="${ticketId}"]'))`, "ticket_listed");
