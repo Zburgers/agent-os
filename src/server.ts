@@ -4,6 +4,7 @@ import { audit, controls, pool } from './db.ts';
 import { basicOwnerToken, bearerToken, createOwnerSession, expiredSessionCookie, getOwnerSession, ownerTokenMatches, parseCookies, revokeOwnerSession, sessionCookie } from './auth.ts';
 import { redactSecrets } from './redaction.ts';
 import { createEntity, isEntityName, listEntity, updateEntity } from './entities.ts';
+import { renderDashboard } from './dashboard.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -44,16 +45,19 @@ function dashboard(data: Record<string, unknown>, csrfToken?: string) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Goofy Agent OS</title>${csrf}<style>body{font:14px system-ui;margin:0;background:#101417;color:#e6edf3}main{max-width:1200px;margin:auto;padding:32px}h1{margin:0 0 8px}p{color:#9fb0c0}pre{white-space:pre-wrap;background:#172027;border:1px solid #2e3b45;padding:18px;border-radius:8px;overflow:auto}</style></head><body><main><h1>Goofy Agent OS</h1><p>Live PostgreSQL-derived operational state. No synthetic metrics.</p><pre id="data"></pre></main><script>document.getElementById('data').textContent=JSON.stringify(${escaped},null,2)</script></body></html>`;
 }
 async function overview() {
-  const [control, financial, counts, approvals, jobs, recent] = await Promise.all([
+  const [control, financial, counts, approvals, jobs, recent, currentTask, currentObjective, currentVenture] = await Promise.all([
     controls(),
     pool.query(`SELECT COALESCE(SUM(net_minor) FILTER (WHERE entry_type='contribution'),0) AS contributions, COALESCE(SUM(net_minor) FILTER (WHERE entry_type='expense' AND payment_status='settled'),0) AS expenses, COALESCE(SUM(net_minor) FILTER (WHERE entry_type='revenue' AND payment_status='settled'),0) AS revenue, COALESCE(SUM(net_minor) FILTER (WHERE entry_type='refund' AND payment_status='settled'),0) AS refunds, COALESCE(SUM(fees_minor) FILTER (WHERE payment_status='settled'),0) AS fees FROM ledger_entries WHERE currency='INR'`),
     pool.query(`SELECT (SELECT count(*) FROM ventures) AS ventures, (SELECT count(*) FROM tasks WHERE status='in_progress') AS active_tasks, (SELECT count(*) FROM experiments) AS experiments, (SELECT count(*) FROM opportunities WHERE decision_status='under_consideration') AS opportunities, (SELECT count(*) FROM leads) AS leads, (SELECT count(*) FROM customers) AS customers, (SELECT count(*) FROM artifacts) AS artifacts, (SELECT count(*) FROM incidents WHERE status='open') AS incidents`),
     pool.query(`SELECT id,requested_action,cost_minor,currency,risk,expires_at FROM approvals WHERE status='pending' AND expires_at > now() ORDER BY created_at DESC LIMIT 20`),
     pool.query(`SELECT status,count(*) FROM jobs GROUP BY status ORDER BY status`),
     pool.query(`SELECT occurred_at,event_type,entity_type,entity_id FROM audit_events ORDER BY id DESC LIMIT 20`),
+    pool.query("SELECT * FROM tasks WHERE status IN ('in_progress','ready','waiting','owner_blocked','validation') ORDER BY priority DESC, updated_at DESC LIMIT 10"),
+    pool.query("SELECT * FROM objectives WHERE status='active' ORDER BY created_at DESC LIMIT 1"),
+    pool.query("SELECT * FROM ventures ORDER BY created_at DESC LIMIT 1"),
   ]);
   const f = financial.rows[0]; const profit = BigInt(f.revenue) - BigInt(f.refunds) - BigInt(f.fees) - BigInt(f.expenses);
-  return { controls: control, financial: { ...f, realized_net_profit_minor: profit.toString() }, entities: counts.rows[0], pending_approvals: approvals.rows, jobs: jobs.rows, activity: recent.rows };
+  return { controls: control, financial: { ...f, realized_net_profit_minor: profit.toString() }, entities: counts.rows[0], pending_approvals: approvals.rows, jobs: jobs.rows, activity: recent.rows, tasks: currentTask.rows, current_objective: currentObjective.rows[0] ?? null, current_venture: currentVenture.rows[0] ?? null, memory_provider: process.env.MEM0_URL ? 'Mem0 configured' : 'PostgreSQL scoped fallback' };
 }
 
 const server = createServer(async (req, res) => {
@@ -74,7 +78,7 @@ const server = createServer(async (req, res) => {
       await revokeOwnerSession(auth.sessionValue); await audit('owner_logout', 'session', null, {}, 'owner'); return respond(res, 204, '', undefined, { 'set-cookie': expiredSessionCookie() });
     }
     if (req.method === 'GET' && url.pathname === '/api/session') return respond(res, 200, { session: auth.kind, csrf_token: auth.csrfToken ?? null });
-    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/api/overview')) { const data = await overview(); return respond(res, 200, url.pathname === '/' ? dashboard(data, auth.csrfToken) : data, url.pathname === '/' ? 'text/html; charset=utf-8' : undefined); }
+    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/api/overview')) { const data = await overview(); return respond(res, 200, url.pathname === '/' ? renderDashboard(data, auth.csrfToken) : data, url.pathname === '/' ? 'text/html; charset=utf-8' : undefined); }
     if (req.method === 'POST' && url.pathname === '/api/controls') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
       const input = await body(req); const action = input.action;
