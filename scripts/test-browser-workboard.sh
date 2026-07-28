@@ -87,5 +87,12 @@ await value(`window.confirm=()=>true;document.querySelector('#ticketTransition [
 await until(`document.querySelector('#ticketTransition [name="status"]').value === 'validation' && document.querySelector('#detailBody').innerText.includes('Ticket Transitioned')`, "ticket_transitioned");
 const result = JSON.parse(await value(`JSON.stringify({title:document.querySelector('#ticketEdit [name="title"]').value,status:document.querySelector('#ticketTransition [name="status"]').value,comment:document.querySelector('#detailBody').innerText.includes('Browser comment persisted'),activity:document.querySelector('#detailBody').innerText.includes('Ticket Transitioned')})`));
 if (result.title !== 'Browser work-board edited' || result.status !== 'validation' || !result.comment || !result.activity) throw Error(JSON.stringify(result));
+const approvalId = await value(`fetch('/api/approvals',{method:'POST',headers:{'content-type':'application/json','x-csrf-token':${JSON.stringify(csrfToken)}},body:JSON.stringify({action_type:'expense',requested_action:'Browser approval fixture',reason:'Verify the routed approval action',risk:'low',recommendation:'Approve the browser fixture only',idempotency_key:'browser-approval-'+Date.now(),expires_at:new Date(Date.now()+86400000).toISOString(),cost_minor:0,maximum_exposure_minor:0,currency:'INR'})}).then(async response=>{if(!response.ok)throw Error('approval '+response.status);return response.json()}).then(record=>record.id)`);
+await call('Page.navigate', { url: baseUrl + '/approvals' });
+await until(`Boolean(document.querySelector('[data-detail="approvals"][data-id="${approvalId}"]'))`, 'approval_listed');
+await value(`document.querySelector('[data-detail="approvals"][data-id="${approvalId}"]').click()`);
+await until("Boolean(document.querySelector('[data-approval=approve]'))", 'approval_detail');
+await value("window.prompt=()=> 'Browser approval decision';document.querySelector('[data-approval=approve]').click()");
+await until(`fetch('/api/approvals/${approvalId}').then(response => response.json()).then(record => record.status === 'approved')`, 'approval_approved');
 console.log(JSON.stringify(result));
 ws.close();
