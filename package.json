@@ -1,0 +1,17 @@
+{
+  "name": "goofy-agent-os",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --experimental-strip-types 'test/**/*.test.ts'",
+    "test:watch": "node --test --watch --experimental-strip-types 'test/**/*.test.ts'",
+    "start": "node --experimental-strip-types src/server.ts",
+    "migrate": "node --experimental-strip-types src/migrate.ts",
+    "worker": "node --experimental-strip-types src/worker.ts",
+    "check": "node --check src/server.ts && node --check src/policy.ts && node --check src/telegram.ts"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
+  }
+}
