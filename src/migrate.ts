@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { closeDatabase, pool } from './db.ts';
 
 const migrationDir = new URL('../db/migrations/', import.meta.url);
+await pool.query('CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
 const files = (await readdir(migrationDir)).filter((file) => file.endsWith('.sql')).sort();
 for (const file of files) {
   const existing = await pool.query('SELECT 1 FROM schema_migrations WHERE version = $1', [file]);

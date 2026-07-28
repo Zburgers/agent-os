@@ -4,5 +4,6 @@ node_modules/
 !.env.example
 coverage/
 backups/
+data/
 *.log
 .DS_Store

@@ -6,7 +6,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-goofy}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # Persistent state stays in the Goofy workspace, never in the host daemon.
+      - ${GOOFY_DATA_DIR:-/home/goofy/agent-os/data}/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -25,12 +26,13 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "127.0.0.1:${AGENT_OS_PORT:-3000}:3000"
+      # The dashboard is reachable only on the owner's private network.
+      # PostgreSQL has no host port and remains on this Compose network.
+      - "${AGENT_OS_BIND_ADDRESS:-0.0.0.0}:${AGENT_OS_PORT:-9999}:3000"
+    command: ["sh", "-c", "npm run migrate && npm start"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 3s
       retries: 10
     restart: unless-stopped
-volumes:
-  postgres-data:
