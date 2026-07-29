@@ -1,9 +1,10 @@
-export type ControlPlanePage = 'command' | 'work' | 'commercial' | 'activity' | 'approvals' | 'finance' | 'jobs' | 'health';
+export type ControlPlanePage = 'command' | 'work' | 'commercial' | 'brief' | 'activity' | 'approvals' | 'finance' | 'jobs' | 'health';
 
 const routes: Record<ControlPlanePage, { href: string; label: string; description: string }> = {
   command: { href: '/', label: 'Command Centre', description: 'A concise operational overview of Goofy Agent OS.' },
   work: { href: '/work', label: 'Work', description: 'Search, inspect, update, comment on, and transition durable work items.' },
   commercial: { href: '/commercial', label: 'Commercial', description: 'Prospects, buyers, offers, outreach outcomes, follow-ups, and the next actions most likely to produce revenue.' },
+  brief: { href: '/daily-brief', label: 'Daily Brief', description: 'A print-ready owner deck built from the current operational and commercial record.' },
   activity: { href: '/activity', label: 'Activity', description: 'The complete operational activity stream, with readable event names and technical detail.' },
   approvals: { href: '/approvals', label: 'Approvals', description: 'Owner decisions requiring review, execution boundaries, and auditable decision history.' },
   finance: { href: '/finance', label: 'Finance', description: 'Authoritative PostgreSQL-backed financial position and transaction ledger.' },

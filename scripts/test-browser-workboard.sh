@@ -70,8 +70,16 @@ for (const viewport of [{width:1440,height:900,label:'desktop'},{width:1024,heig
     const capture = await call('Page.captureScreenshot', { format: 'png', fromSurface: true });
     if (!capture.data || capture.data.length < 1000) throw Error('empty_visual_capture:' + expected + ':' + viewport.label);
   }
+  await call('Page.navigate', { url: baseUrl + '/daily-brief' });
+  await until("document.querySelectorAll('.slide').length === 9 && [...document.images].every(image => image.complete && image.naturalWidth > 0)", 'daily_brief_' + viewport.label);
+  if (!(await value('document.documentElement.scrollWidth <= document.documentElement.clientWidth'))) throw Error('horizontal_overflow:daily_brief:' + viewport.label);
+  if (await value("document.body.innerText.includes('—') || document.body.innerText.includes('–')")) throw Error('banned_dash:daily_brief:' + viewport.label);
+  const dailyCapture = await call('Page.captureScreenshot', { format: 'png', fromSurface: true });
+  if (!dailyCapture.data || dailyCapture.data.length < 1000) throw Error('empty_visual_capture:daily_brief:' + viewport.label);
 }
 await call('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+await call('Page.navigate', { url: baseUrl + '/health' });
+await until("document.querySelector('main')?.dataset.page === 'health'", 'health_before_history');
 await call('Page.navigate', { url: baseUrl + '/work' });
 await until("Boolean(document.querySelector('#filters'))", 'work_loaded');
 await value('history.back()');

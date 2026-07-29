@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { audit, controls, pool } from './db.ts';
 import { basicOwnerToken, bearerToken, createOwnerSession, expiredSessionCookie, getOwnerSession, ownerTokenMatches, parseCookies, revokeOwnerSession, runtimeTokensFromEnvironment, sessionCookie } from './auth.ts';
 import { redactSecrets } from './redaction.ts';
@@ -18,6 +19,7 @@ import { applySystemControl } from './system-controls.ts';
 import { actorContext } from './actor.ts';
 import { authorizeEffect, claimAuthorizedEffect, recordExternalResult } from './effects.ts';
 import { CommercialOperationsService } from './commercial-operations.ts';
+import { buildDailyBriefData, renderDailyBrief } from './daily-brief.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -81,6 +83,10 @@ function loginRateAllowed(ip: string) {
 }
 function respond(res: import('node:http').ServerResponse, status: number, data: unknown, contentType = 'application/json; charset=utf-8', headers: Record<string, string> = {}) {
   res.writeHead(status, { 'content-type': contentType, 'cache-control': 'no-store', ...headers }); res.end(typeof data === 'string' ? data : JSON.stringify(data));
+}
+function respondBytes(res: import('node:http').ServerResponse, status: number, data: Uint8Array, contentType: string) {
+  res.writeHead(status, { 'content-type': contentType, 'cache-control': 'private, max-age=86400', 'content-length': String(data.byteLength) });
+  res.end(data);
 }
 async function body(req: import('node:http').IncomingMessage) {
   let raw = ''; for await (const chunk of req) { raw += chunk; if (raw.length > 32_768) throw new Error('body_too_large'); }
@@ -146,7 +152,7 @@ const server = createServer(async (req, res) => {
       return respond(res, 201, { csrf_token: session.csrfToken, expires_in_seconds: session.maxAge }, undefined, { 'set-cookie': sessionCookie(session.value) });
     }
     const auth = await authenticate(req.headers);
-    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/finance', '/jobs', '/health'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
+    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/finance', '/jobs', '/health', '/daily-brief'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
     if (versioned && req.method !== 'GET' && !String(req.headers['idempotency-key'] ?? '').trim()) return respond(res, 400, { error: 'idempotency_key_required' });
     if (req.method === 'POST' && url.pathname === '/api/logout') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
@@ -231,6 +237,14 @@ const server = createServer(async (req, res) => {
       return respond(res, 200, { allowed, policy_code: policyCode, effect_kind: effectKind });
     }
     if (req.method === 'GET' && url.pathname === '/api/overview') return respond(res, 200, await overview());
+    if (req.method === 'GET' && url.pathname === '/daily-brief') {
+      return respond(res, 200, renderDailyBrief(await buildDailyBriefData(pool)), 'text/html; charset=utf-8');
+    }
+    if (req.method === 'GET' && ['/assets/daily-brief-hero.png', '/assets/daily-brief-research.png'].includes(url.pathname)) {
+      const filename = url.pathname.endsWith('hero.png') ? 'daily-brief-hero.png' : 'daily-brief-research.png';
+      const image = await readFile(new URL(`../assets/${filename}`, import.meta.url));
+      return respondBytes(res, 200, image, 'image/png');
+    }
     const pageByPath: Record<string, ControlPlanePage> = { '/': 'command', '/work': 'work', '/commercial': 'commercial', '/activity': 'activity', '/approvals': 'approvals', '/finance': 'finance', '/jobs': 'jobs', '/health': 'health' };
     if (req.method === 'GET' && pageByPath[url.pathname]) {
       const page = pageByPath[url.pathname];

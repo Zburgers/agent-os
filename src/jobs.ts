@@ -3,8 +3,9 @@ import { audit, controls, pool } from './db.ts';
 import { evaluateAction } from './policy.ts';
 import { actorContext } from './actor.ts';
 import { authorizeEffect } from './effects.ts';
+import { buildDailyBriefData } from './daily-brief.ts';
 
-export type Job = { id: string; action_kind: 'job'; idempotency_key: string; current_occurrence_key: string; attempts: number; max_attempts: number; interval_seconds: number | null };
+export type Job = { id: string; action_kind: 'job'; payload: Record<string, unknown>; idempotency_key: string; current_occurrence_key: string; attempts: number; max_attempts: number; interval_seconds: number | null };
 export type ClaimedJob = { job: Job; runId: string };
 const retryDelaySeconds = 60;
 
@@ -48,7 +49,7 @@ export async function claimNextJob(workerId = 'one-shot-worker'): Promise<Claime
        UPDATE jobs SET status='running', attempts=attempts+1, lease_until=now()+interval '5 minutes',
        claimed_by=$1, heartbeat_at=now(), updated_at=now(),
        current_occurrence_key=COALESCE(current_occurrence_key,idempotency_key || ':' || to_char(next_run_at AT TIME ZONE 'UTC','YYYYMMDDHH24MISSUS'))
-       WHERE id IN (SELECT id FROM candidate) RETURNING id, action_kind, idempotency_key,current_occurrence_key,attempts,max_attempts,interval_seconds`,
+       WHERE id IN (SELECT id FROM candidate) RETURNING id, action_kind, payload, idempotency_key,current_occurrence_key,attempts,max_attempts,interval_seconds`,
       [workerId],
     );
     if (!claimed.rowCount) { await client.query('COMMIT'); return null; }
@@ -87,18 +88,25 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
       originPlatform: 'supervisor',
     }));
     if (intent.state === 'denied') throw new Error(intent.policyCode ?? 'effect_denied');
+    const dailyBrief = claim.job.payload?.kind === 'daily_owner_brief_snapshot'
+      ? await buildDailyBriefData(client)
+      : null;
+    const effectResult = dailyBrief
+      ? { report: 'daily_owner_brief', route: '/daily-brief', generated_at: dailyBrief.generatedAt, snapshot: dailyBrief }
+      : { result: 'internal_job_completed' };
     const effect = await client.query<{ id: string }>(
       `INSERT INTO job_effects(job_id,run_id,effect_key,effect_type,status,result) VALUES($1,$2,$3,'internal','completed',$4)
        ON CONFLICT (job_id,effect_key) DO NOTHING RETURNING id`,
-      [claim.job.id, claim.runId, claim.job.current_occurrence_key, JSON.stringify({ result: 'internal_job_completed' })],
+      [claim.job.id, claim.runId, claim.job.current_occurrence_key, JSON.stringify(effectResult)],
     );
     const outcome = effect.rowCount ? 'completed' : 'already_completed';
+    const runOutput = { result: outcome, ...effectResult };
     await client.query(
       `UPDATE effect_intents SET state='succeeded',receipt=$2,finished_at=now(),updated_at=now()
        WHERE id=$1 AND state='authorized'`,
-      [intent.id, JSON.stringify({ result: outcome })],
+      [intent.id, JSON.stringify(runOutput)],
     );
-    await finishRun(client, claim.runId, 'completed', { result: outcome }, null);
+    await finishRun(client, claim.runId, 'completed', runOutput, null);
     await client.query(
       `UPDATE jobs SET status=CASE WHEN interval_seconds IS NULL THEN 'completed' ELSE 'queued' END,
        next_run_at=CASE WHEN interval_seconds IS NULL THEN next_run_at ELSE now()+(interval_seconds * interval '1 second') END,
@@ -109,6 +117,7 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
     );
     await client.query('COMMIT');
     await audit('job_completed', 'job', claim.job.id, { idempotency_key: claim.job.idempotency_key, outcome });
+    if (dailyBrief) await audit('daily_owner_brief_generated', 'job', claim.job.id, { route: '/daily-brief', generated_at: dailyBrief.generatedAt });
     return outcome;
   } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
 }
