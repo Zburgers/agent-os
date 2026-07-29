@@ -18,6 +18,8 @@ const recurrences = new Set(['none','daily','weekly','monthly','quarterly']);
 const activityStatuses = new Set(['scheduled','due','completed','cancelled']);
 const activityTypes = new Set(['research','follow_up','reply_review','proposal','meeting','delivery','renewal','other']);
 const messageEvents = new Set(['drafted','authorized','sent','delivered','delivery_delayed','bounced','failed','suppressed','complained','opened','clicked','replied']);
+const contactChannels = new Set(['email','marketplace','community','social','referral','other']);
+const sensitiveEvidenceKey = /(?:authorization|cookie|credential|database_url|password|private[_-]?key|secret|token)/i;
 
 function bounded(value: number | undefined, fallback: number, maximum: number) {
   return Number.isSafeInteger(value) && Number(value) >= 0 ? Math.min(Number(value), maximum) : fallback;
@@ -70,6 +72,24 @@ function safeRows(rows: Record<string, unknown>[]) {
     delete safe.contact_endpoint;
     return safe;
   });
+}
+function evidenceSecrets() {
+  return Object.entries(process.env)
+    .filter(([key,value]) => Boolean(value) && sensitiveEvidenceKey.test(key))
+    .map(([,value]) => value as string);
+}
+function sanitizeEvidence(value: unknown, depth = 0): unknown {
+  if (depth > 6) return '[REDACTED:DEPTH_LIMIT]';
+  if (Array.isArray(value)) return value.slice(0, 50).map(item => sanitizeEvidence(item, depth + 1));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).slice(0, 100).map(([key,item]) => [
+      key,
+      sensitiveEvidenceKey.test(key) ? '[REDACTED]' : sanitizeEvidence(item, depth + 1),
+    ]));
+  }
+  if (typeof value === 'string') return redactSecrets(value.slice(0, 5000), evidenceSecrets());
+  if (typeof value === 'number' || typeof value === 'boolean' || value === null) return value;
+  return String(value ?? '').slice(0, 5000);
 }
 async function richAudit(client: PoolClient, actor: CommercialActor, eventType: string, entityType: string, entityId: string, payload: Record<string, unknown> = {}) {
   await client.query(
@@ -289,6 +309,8 @@ export class CommercialOperationsService {
     const score = input.qualification_score === undefined ? null : money(input.qualification_score,'qualification_score');
     if (score !== null && score > 100) throw new Error('invalid_qualification_score');
     const endpoint = cleanText(input.contact_endpoint,'contact_endpoint',500);
+    const contactChannel = cleanText(input.contact_channel,'contact_channel',40);
+    if (contactChannel && !contactChannels.has(contactChannel)) throw new Error('invalid_contact_channel');
     const client = await this.database.connect();
     try {
       await client.query('BEGIN');
@@ -302,7 +324,7 @@ export class CommercialOperationsService {
           optionalUuid(input.venture_id,'venture_id'),optionalUuid(input.product_id,'product_id'),
           cleanText(input.display_name,'display_name',300),cleanText(input.organization,'organization',300),
           cleanText(input.source_uri,'source_uri',2000),stage,score,money(input.estimated_value_minor,'estimated_value_minor'),
-          currency(input.currency),cleanText(input.contact_channel,'contact_channel',40),endpoint,
+          currency(input.currency),contactChannel,endpoint,
           cleanText(input.next_action,'next_action',1000),isoDate(input.next_action_at,'next_action_at'),actorId(actor)],
       );
       await richAudit(client,actor,'commercial_prospect_created','lead',rows[0].id,{ stage, contact_channel:rows[0].contact_channel, has_endpoint:Boolean(endpoint) });
@@ -422,7 +444,7 @@ export class CommercialOperationsService {
         if (!effect.rows[0]) throw new Error('executed_message_effect_required');
       }
       const preview=cleanText(input.content_preview,'content_preview',500);
-      const safePreview=preview ? redactSecrets(preview,[process.env.OWNER_TOKEN ?? '',process.env.DATABASE_URL ?? '']) : null;
+      const safePreview=preview ? redactSecrets(preview,evidenceSecrets()) : null;
       const {rows}=await client.query(
         `INSERT INTO commercial_messages(lead_id,customer_id,product_id,direction,channel,subject,content_preview,
           provider_reference,effect_intent_id,approval_id,occurred_at,recorded_by)
@@ -445,7 +467,7 @@ export class CommercialOperationsService {
       await client.query('BEGIN');
       const exists=await client.query('SELECT id FROM commercial_messages WHERE id=$1 FOR SHARE',[messageId]);
       if (!exists.rows[0]) throw new Error('not_found');
-      const evidence=input.evidence && typeof input.evidence==='object' ? input.evidence : {};
+      const evidence=input.evidence && typeof input.evidence==='object' ? sanitizeEvidence(input.evidence) : {};
       const {rows}=await client.query(
         `INSERT INTO commercial_message_events(message_id,event_type,provider_event_id,occurred_at,evidence,recorded_by)
          VALUES($1,$2,$3,COALESCE($4,now()),$5,$6)

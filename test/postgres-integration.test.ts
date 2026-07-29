@@ -265,7 +265,13 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   }, { type: 'agent', id: 'integration-agent' });
   await commercial.recordMessageEvent(outbound.id, {
     event_type: 'delivered', provider_event_id: 'integration-provider-event-1',
+    evidence: { api_token: 'must-not-persist', provider: { response: 'accepted' } },
   }, { type: 'worker', id: 'integration-webhook' });
+  const storedEventEvidence = (await pool.query<{ evidence: Record<string, unknown> }>(
+    "SELECT evidence FROM commercial_message_events WHERE provider_event_id='integration-provider-event-1'",
+  )).rows[0].evidence;
+  assert.equal(storedEventEvidence.api_token, '[REDACTED]');
+  assert.deepEqual(storedEventEvidence.provider, { response: 'accepted' });
   assert.equal((await commercial.recordMessageEvent(outbound.id, {
     event_type: 'delivered', provider_event_id: 'integration-provider-event-1',
   }, { type: 'worker', id: 'integration-webhook' }) as any).duplicate, true);
@@ -293,6 +299,13 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
       lead_id: prospect.id, direction: 'outbound', channel: 'email', subject: 'Unsafe bypass',
     }, { type: 'agent', id: 'integration-agent' }),
     /effect_linkage_required/,
+  );
+  await assert.rejects(
+    commercial.createProspect({
+      source: 'integration research', qualification: 'Invalid channel fixture',
+      contact_channel: 'carrier_pigeon',
+    }, { type: 'agent', id: 'integration-agent' }),
+    /invalid_contact_channel/,
   );
   await assert.rejects(pool.query('UPDATE commercial_messages SET subject=$2 WHERE id=$1', [outbound.id, 'changed']), /append-only table/);
   await assert.rejects(
