@@ -46,6 +46,118 @@ export interface MemoryProvider {
   health(): Promise<'ok' | 'degraded'>;
 }
 
+type Mem0Result = {
+  id?: string;
+  memory?: string;
+  metadata?: Record<string, unknown>;
+  user_id?: string;
+  agent_id?: string;
+};
+
+/**
+ * Contextual memory backed by Mem0 Cloud. PostgreSQL remains authoritative for
+ * business state, approvals, effects, and finance; this provider must never be
+ * used as an authorization or accounting source.
+ */
+export class Mem0CloudMemory implements MemoryProvider {
+  private readonly apiKey: string;
+  private readonly baseUrl: string;
+
+  constructor(apiKey: string, baseUrl = 'https://api.mem0.ai') {
+    this.apiKey = apiKey;
+    this.baseUrl = baseUrl;
+  }
+
+  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      ...init,
+      headers: { authorization: `Token ${this.apiKey}`, accept: 'application/json', ...init.headers },
+    });
+    if (!response.ok) throw new Error(`mem0_request_failed:${response.status}`);
+    return await response.json() as T;
+  }
+
+  private metadata(input: MemoryInput) {
+    return {
+      agent_id: input.agentId, venture_id: input.ventureId, project_id: input.projectId,
+      customer_id: input.customerId, experiment_id: input.experimentId, run_id: input.runId,
+      decision_id: input.decisionId, category: input.category, epistemic_type: input.epistemicType,
+      source_uri: input.sourceUri, confidence: input.confidence, sensitivity: input.sensitivity ?? 'internal',
+      verified_at: input.verifiedAt, review_at: input.reviewAt,
+    };
+  }
+
+  async add(input: MemoryInput) {
+    validateMemory(input);
+    const result = await this.request<{ event_id?: string }>('/v3/memories/add/', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: input.content }], user_id: input.ownerId, agent_id: input.scopeKey,
+        metadata: this.metadata(input),
+      }),
+    });
+    if (!result.event_id) throw new Error('mem0_missing_event_id');
+    // Mem0 Cloud extraction is asynchronous; this is its durable event identifier.
+    return result.event_id;
+  }
+
+  async search(ownerId: string, scopeKey: string, query: string) {
+    if (!ownerId.trim() || !scopeKey.trim() || !query.trim()) throw new Error('invalid_memory_search_scope');
+    const result = await this.request<{ results?: Mem0Result[] }>('/v3/memories/search/', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ query, filters: { user_id: ownerId, agent_id: scopeKey }, top_k: 20 }),
+    });
+    return (result.results ?? []).flatMap((record) => {
+      if (!record.id || !record.memory) return [];
+      return [{ id: record.id, content: record.memory, category: String(record.metadata?.category ?? 'memory') }];
+    });
+  }
+
+  private async assertScoped(id: string, ownerId: string, scopeKey: string) {
+    const record = await this.request<Mem0Result>(`/v1/memories/${encodeURIComponent(id)}/`);
+    const metadata = record.metadata ?? {};
+    const recordOwner = record.user_id ?? metadata.user_id;
+    const recordScope = record.agent_id ?? metadata.agent_id;
+    if (recordOwner !== ownerId || recordScope !== scopeKey) throw new Error('memory_not_found_or_scope_denied');
+  }
+
+  async update(id: string, ownerId: string, scopeKey: string, input: Partial<Pick<MemoryInput, 'content' | 'confidence' | 'reviewAt' | 'expiresAt'>>) {
+    if (input.content !== undefined) validateMemory({ ownerId, scopeKey, category: 'update', epistemicType: 'fact', content: input.content, confidence: input.confidence });
+    await this.assertScoped(id, ownerId, scopeKey);
+    await this.request(`/v1/memories/${encodeURIComponent(id)}/`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ...(input.content !== undefined ? { text: input.content } : {}),
+        metadata: { ...(input.confidence !== undefined ? { confidence: input.confidence } : {}), ...(input.reviewAt !== undefined ? { review_at: input.reviewAt } : {}) },
+        ...(input.expiresAt !== undefined ? { expiration_date: input.expiresAt } : {}),
+      }),
+    });
+  }
+
+  async delete(id: string, ownerId: string, scopeKey: string) {
+    await this.assertScoped(id, ownerId, scopeKey);
+    await this.request(`/v1/memories/${encodeURIComponent(id)}/`, { method: 'DELETE' });
+  }
+
+  async health() {
+    try {
+      // This is a read-only credential and connectivity probe. The v3 endpoint
+      // is the current Cloud API and avoids reading any owner memory records.
+      await this.request('/v3/memories/search/', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ query: 'health check', filters: { user_id: 'goofy-healthcheck', agent_id: 'health' }, top_k: 1 }),
+      });
+      return 'ok' as const;
+    } catch {
+      return 'degraded' as const;
+    }
+  }
+}
+
+export function createMemoryProvider(apiKey = process.env.MEM0_API_KEY): MemoryProvider {
+  return apiKey?.trim() ? new Mem0CloudMemory(apiKey.trim()) : new ScopedPostgresMemory();
+}
+
 export class ScopedPostgresMemory implements MemoryProvider {
   async add(input: MemoryInput) {
     validateMemory(input);

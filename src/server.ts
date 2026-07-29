@@ -10,7 +10,7 @@ import { ApprovalRequestService } from './approval-requests.ts';
 import { TicketService } from './tickets.ts';
 import { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, ticketDetail } from './records.ts';
 import { TelegramControlService } from './telegram-controls.ts';
-import { ScopedPostgresMemory } from './memory.ts';
+import { createMemoryProvider } from './memory.ts';
 import { cancelJob, pauseJob, rerunJob } from './jobs.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
@@ -22,7 +22,7 @@ const approvals = new ApprovalService(pool);
 const approvalRequests = new ApprovalRequestService(pool);
 const tickets = new TicketService(pool);
 const telegram = new TelegramControlService(pool, new Set((process.env.OWNER_TELEGRAM_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean)));
-const memory = new ScopedPostgresMemory();
+const memory = createMemoryProvider();
 type Auth = { kind: 'bearer' | 'basic' | 'session' | 'agent'; csrfToken?: string; sessionValue?: string } | null;
 
 function constantEqual(left: string, right: string) { const a = Buffer.from(left); const b = Buffer.from(right); return a.length === b.length && timingSafeEqual(a, b); }
@@ -93,7 +93,7 @@ async function overview() {
     pool.query("SELECT * FROM ventures ORDER BY created_at DESC LIMIT 1"),
   ]);
   const f = financial.rows[0]; const profit = BigInt(f.revenue) - BigInt(f.refunds) - BigInt(f.fees) - BigInt(f.expenses);
-  return { controls: control, financial: { ...f, realized_net_profit_minor: profit.toString() }, entities: counts.rows[0], pending_approvals: approvals.rows, jobs: jobs.rows, activity: recent.rows, tasks: currentTask.rows, current_objective: currentObjective.rows[0] ?? null, current_venture: currentVenture.rows[0] ?? null, memory_provider: process.env.MEM0_URL ? 'Mem0 configured' : 'PostgreSQL scoped fallback' };
+  return { controls: control, financial: { ...f, realized_net_profit_minor: profit.toString() }, entities: counts.rows[0], pending_approvals: approvals.rows, jobs: jobs.rows, activity: recent.rows, tasks: currentTask.rows, current_objective: currentObjective.rows[0] ?? null, current_venture: currentVenture.rows[0] ?? null, memory_provider: process.env.MEM0_API_KEY ? 'Mem0 Cloud' : 'PostgreSQL scoped fallback' };
 }
 
 const server = createServer(async (req, res) => {

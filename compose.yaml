@@ -24,7 +24,8 @@ services:
       OWNER_TELEGRAM_IDS: ${OWNER_TELEGRAM_IDS:-}
       AGENT_RUNTIME_TOKEN: ${AGENT_RUNTIME_TOKEN:-}
       AGENT_RUNTIME_TOKEN_FILE: /run/secrets/agent_os_hermes_token
-      MEM0_URL: ${MEM0_URL:-}
+      # Mem0 Cloud is contextual memory only; PostgreSQL remains authoritative.
+      MEM0_API_KEY: ${MEM0_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
