@@ -18,14 +18,17 @@
     "worker": "node --experimental-strip-types src/worker.ts",
     "supervisor": "node --experimental-strip-types src/supervisor.ts",
     "check": "find src -name '*.ts' -type f -exec node --check {} \\;",
-    "build": "npm run check"
+    "build": "npm run check && npm run build:wallet-client",
+    "build:wallet-client": "esbuild src/wallet-client.ts --bundle --platform=browser --format=esm --external:/assets/metamask-connect.js --outfile=public/wallet-client.js && esbuild node_modules/@metamask/connect-evm/dist/browser/es/connect-evm.mjs --bundle --platform=browser --format=esm --outfile=public/metamask-connect.js"
   },
   "dependencies": {
     "@google/jules": "^0.1.42",
+    "@metamask/connect-evm": "^2.1.1",
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "ethers": "^6.17.0",
     "pg": "^8.16.3"
   },
   "devDependencies": {
-    "ethers": "^6.17.0"
+    "esbuild": "^0.25.0"
   }
 }

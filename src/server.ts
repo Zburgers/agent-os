@@ -20,6 +20,9 @@ import { actorContext } from './actor.ts';
 import { authorizeEffect, claimAuthorizedEffect, recordExternalResult } from './effects.ts';
 import { CommercialOperationsService } from './commercial-operations.ts';
 import { buildDailyBriefData, renderDailyBrief } from './daily-brief.ts';
+import { WalletService } from './wallet.ts';
+import { renderWalletPage } from './wallet-page.ts';
+import { PayPalService } from './paypal.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -33,6 +36,8 @@ const tickets = new TicketService(pool);
 const commercial = new CommercialOperationsService(pool);
 const telegram = new TelegramControlService(pool, new Set((process.env.OWNER_TELEGRAM_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean)));
 const memory = new HybridContextualMemory();
+const wallet = new WalletService(pool);
+const paypal = new PayPalService(pool);
 type Auth = { kind: 'bearer' | 'basic' | 'session' | 'agent'; csrfToken?: string; sessionValue?: string } | null;
 
 function constantEqual(left: string, right: string) { const a = Buffer.from(left); const b = Buffer.from(right); return a.length === b.length && timingSafeEqual(a, b); }
@@ -91,6 +96,10 @@ function respondBytes(res: import('node:http').ServerResponse, status: number, d
 async function body(req: import('node:http').IncomingMessage) {
   let raw = ''; for await (const chunk of req) { raw += chunk; if (raw.length > 32_768) throw new Error('body_too_large'); }
   return raw ? JSON.parse(raw) as Record<string, unknown> : {};
+}
+async function rawBody(req: import('node:http').IncomingMessage) {
+  let raw = ''; for await (const chunk of req) { raw += chunk; if (raw.length > 262_144) throw new Error('body_too_large'); }
+  return raw;
 }
 function loginPage() {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sign in · Goofy Agent OS</title><style>body{font:15px system-ui;margin:0;min-height:100vh;display:grid;place-items:center;background:#101417;color:#e6edf3}main{width:min(420px,calc(100% - 32px));padding:28px;border:1px solid #2e3b45;border-radius:12px;background:#172027}h1{margin:0 0 8px;font-size:22px}p,label{color:#9fb0c0}label{display:block;margin:22px 0 7px}input,button{box-sizing:border-box;width:100%;border-radius:7px;padding:11px;font:inherit}input{background:#101417;border:1px solid #40515e;color:#e6edf3}button{margin-top:16px;border:0;background:#55b892;color:#08261b;font-weight:700;cursor:pointer}#error{min-height:20px;color:#ff9c9c;margin:12px 0 0}</style></head><body><main><h1>Goofy Agent OS</h1><p>Enter the owner dashboard token to start a private session.</p><form id="login"><label for="token">Owner dashboard token</label><input id="token" name="token" type="password" autocomplete="current-password" required><button>Sign in</button><p id="error" role="alert"></p></form></main><script>document.getElementById('login').addEventListener('submit',async e=>{e.preventDefault();const token=document.getElementById('token').value;const r=await fetch('/api/session',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token})});if(r.ok)location.assign('/');else document.getElementById('error').textContent='Sign-in failed. Check the token and try again.'})</script></body></html>`;
@@ -151,8 +160,11 @@ const server = createServer(async (req, res) => {
       const session = await createOwnerSession(ip); await audit('owner_login', 'session', null, { method: 'token' }, 'owner');
       return respond(res, 201, { csrf_token: session.csrfToken, expires_in_seconds: session.maxAge }, undefined, { 'set-cookie': sessionCookie(session.value) });
     }
+    if (req.method === 'POST' && url.pathname === '/webhooks/paypal') {
+      const raw = await rawBody(req); return respond(res, 200, await paypal.handleWebhook(req.headers, raw));
+    }
     const auth = await authenticate(req.headers);
-    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/finance', '/jobs', '/health', '/daily-brief'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
+    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/finance', '/jobs', '/health', '/daily-brief', '/wallet'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
     if (versioned && req.method !== 'GET' && !String(req.headers['idempotency-key'] ?? '').trim()) return respond(res, 400, { error: 'idempotency_key_required' });
     if (req.method === 'POST' && url.pathname === '/api/logout') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
@@ -237,6 +249,17 @@ const server = createServer(async (req, res) => {
       return respond(res, 200, { allowed, policy_code: policyCode, effect_kind: effectKind });
     }
     if (req.method === 'GET' && url.pathname === '/api/overview') return respond(res, 200, await overview());
+    if (req.method === 'GET' && ['/assets/wallet-client.js','/assets/metamask-connect.js'].includes(url.pathname)) return respond(res, 200, await readFile(new URL(`../public/${url.pathname.split('/').pop()}`, import.meta.url)), 'text/javascript; charset=utf-8');
+    if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID), 'text/html; charset=utf-8');
+    if (req.method === 'GET' && url.pathname === '/api/wallet/status') return respond(res, 200, await wallet.status());
+    if (req.method === 'GET' && url.pathname === '/api/paypal/status') return respond(res, 200, paypal.status());
+    if (req.method === 'POST' && url.pathname === '/api/paypal/orders') { if(auth.kind!=='agent') return respond(res,403,{error:'agent_scope_required'}); return respond(res,201,await paypal.createOrder(await body(req))); }
+    if (req.method === 'POST' && url.pathname === '/api/wallet/link-nonce') { if (!mutationAllowed(auth,req) || !ownerAuth(auth)) return respond(res,403,{error:'owner_authority_required'}); return respond(res,201,await wallet.nonce()); }
+    if (req.method === 'POST' && url.pathname === '/api/wallet/link') { if (!mutationAllowed(auth,req) || !ownerAuth(auth)) return respond(res,403,{error:'owner_authority_required'}); const input=await body(req); if(input.chain_id !== '0x1') return respond(res,400,{error:'ethereum_mainnet_required'}); return respond(res,201,await wallet.link(input)); }
+    if (req.method === 'POST' && url.pathname === '/api/wallet/revoke') { if (!mutationAllowed(auth,req) || !ownerAuth(auth)) return respond(res,403,{error:'owner_authority_required'}); return respond(res,200,await wallet.revoke()); }
+    if (req.method === 'POST' && url.pathname === '/api/wallet/intents') { if(auth.kind!=='agent') return respond(res,403,{error:'agent_scope_required'}); return respond(res,201,await wallet.create(await body(req))); }
+    const walletPrepare=url.pathname.match(/^\/api\/wallet\/intents\/([0-9a-f-]+)\/prepare$/); if(req.method==='POST'&&walletPrepare) { if(!mutationAllowed(auth,req)||!ownerAuth(auth)) return respond(res,403,{error:'owner_authority_required'}); return respond(res,200,await wallet.prepare(walletPrepare[1])); }
+    const walletResult=url.pathname.match(/^\/api\/wallet\/intents\/([0-9a-f-]+)\/result$/); if(req.method==='POST'&&walletResult) { if(!mutationAllowed(auth,req)||!ownerAuth(auth)) return respond(res,403,{error:'owner_authority_required'}); return respond(res,200,await wallet.result(walletResult[1],await body(req))); }
     if (req.method === 'GET' && url.pathname === '/daily-brief') {
       return respond(res, 200, renderDailyBrief(await buildDailyBriefData(pool)), 'text/html; charset=utf-8');
     }

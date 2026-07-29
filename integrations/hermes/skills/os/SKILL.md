@@ -32,6 +32,41 @@ denied tool guard. Every external message, expense, deployment, payment,
 purchase, or account change requires a matching Agent OS effect authorization.
 Commercial lock, pause, and kill fail closed.
 
+## Ethereum wallet workflow
+
+Wallet addresses are operational metadata, never credentials. Never request,
+store, display, or use a seed phrase, private key, recovery data, browser
+session, or unrestricted signing permission. A wallet connection is not
+spending authorization.
+
+Use the wallet flow in this strict order: inspect read-only wallet status;
+create an immutable Mainnet transaction draft; wait for the owner's durable
+approval; the owner submits the exact envelope in the authenticated dashboard
+and separately confirms in MetaMask; reconcile only by its returned hash. The
+MCP may create a draft but may never link a wallet, approve, sign, submit, or
+retry a transaction. Raw contract calldata remains a draft and requires the
+owner's explicit dashboard warning acknowledgement.
+
+## PayPal and public callbacks
+
+PayPal credentials are runtime secrets: never read them into chat, PostgreSQL,
+Mem0, logs, Markdown, MCP output, or browser code. `PAYPAL_CLIENT_ID` may be
+used only for PayPal's intended browser integration if added later; keep
+`PAYPAL_SECRET` server-only. Before a Live payment is treated as settled,
+require a verified webhook using `PAYPAL_WEBHOOK_ID`, preserve the original raw
+request body for signature verification, deduplicate the provider event ID,
+and reconcile the result into PostgreSQL. Creating an order remains a payment
+effect and requires the existing approval/effect authorization; credentials do
+not authorize orders, captures, refunds, payouts, or spending.
+
+The dashboard stays tailnet-private at port 8443. The only permitted public
+Tailscale Funnel route is `/webhooks/paypal` on port 443. Never Funnel the
+dashboard, wallet, APIs, database, or an unauthenticated catch-all proxy. Check
+`tailscale funnel status` and independently verify a valid publicly trusted
+certificate and callback reachability before recording a PayPal webhook as
+ready. A tailnet-local curl can resolve to a private path and is not proof of
+public delivery.
+
 Treat approval, tranche release, effect authorization, and commercial-lock
 release as distinct durable transitions. An approved request alone does not
 prove that capital was released, an effect was authorized, or the commercial

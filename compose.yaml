@@ -27,6 +27,14 @@ services:
       AGENT_RUNTIME_TOKEN_FILE: /run/secrets/agent_os_hermes_token
       # Mem0 Cloud is contextual memory only; PostgreSQL remains authoritative.
       MEM0_API_KEY: ${MEM0_API_KEY:-}
+      # Public, origin-restricted browser project ID and server-only RPC are
+      # deliberately separate. Neither is persisted by the application.
+      INFURA_PROJECT_ID: ${INFURA_PROJECT_ID:-}
+      ETHEREUM_RPC_URL: ${ETHEREUM_RPC_URL:-}
+      PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
+      PAYPAL_SECRET: ${PAYPAL_SECRET:-}
+      PAYPAL_ENVIRONMENT: ${PAYPAL_ENVIRONMENT:-sandbox}
+      PAYPAL_WEBHOOK_ID: ${PAYPAL_WEBHOOK_ID:-}
     depends_on:
       postgres:
         condition: service_healthy

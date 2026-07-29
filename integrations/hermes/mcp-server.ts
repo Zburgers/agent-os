@@ -23,7 +23,9 @@ for (const [name,path,description] of [
   ['agent_os_approvals','approvals','List approval requests and decisions.'],
   ['agent_os_jobs','jobs','List durable jobs and runs.'],
   ['agent_os_activity','activity','List audit-backed activity.'],
+  ['agent_os_wallet_status','wallet/status','Read linked public wallet status and transaction drafts; never exposes credentials.'],
 ] as const) server.tool(name, description, {}, async () => text(await request(path)));
+server.tool('agent_os_create_wallet_draft', 'Create an immutable Ethereum Mainnet transaction draft and its approval request. It cannot link, approve, sign, or submit a wallet transaction.', { purpose:z.string(),to:z.string(),value_wei:z.string(),data:z.string().optional(),idempotency_key:z.string(),venture_id:z.string().uuid().optional(),experiment_id:z.string().uuid().optional(),task_id:z.string().uuid().optional() }, async (args) => text(await request('wallet/intents','POST',args)));
 server.tool('agent_os_create_approval', 'Create a precise approval request; never decides it.', {
   action_type:z.string(),requested_action:z.string(),reason:z.string(),risk:z.string(),recommendation:z.string(),
   idempotency_key:z.string(),expires_at:z.string(),cost_minor:z.number().int().nonnegative().optional(),
