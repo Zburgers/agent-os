@@ -1,0 +1,41 @@
+{
+  "observed_at": "2026-07-29T11:55:31.378Z",
+  "mode": "read_only_no_signer",
+  "chain_id": 8453,
+  "block_number": 49268386,
+  "gas_price_gwei": 0.006,
+  "eth_usd_spot": 1912.11,
+  "prize_pool": "0x45b2010d8a4f08b53c9fa7544c51dfd9733732cb",
+  "claimer": "0xcdce635b774de77cdf791647601dba64a75547ba",
+  "prize_pool_contract_present": true,
+  "claimer_contract_present": true,
+  "prize_token": "0x4200000000000000000000000000000000000006",
+  "onchain_last_awarded_draw": 803,
+  "latest_published_draw": 769,
+  "published_draw_lag": 34,
+  "winners_repository_archived": true,
+  "winners_repository_pushed_at": "2026-06-25T07:30:35Z",
+  "data_stale": true,
+  "vault_files": 85,
+  "vaults_with_prize_candidates": 5,
+  "winner_accounts": 174,
+  "prize_candidates": 1340,
+  "current_winner_rows": 456,
+  "current_prize_indices": 5326,
+  "highest_value_tiers_checked": [
+    2,
+    3
+  ],
+  "highest_value_prizes_checked": 6,
+  "highest_value_prizes_unclaimed": 0,
+  "current_data_error": null,
+  "actionable_profit_observations": 0,
+  "limitation": "The public winner dataset is archived or does not match the live awarded draw. Historical candidates are non-actionable; no claimed-state, fee, gas, or profit inference is permitted.",
+  "sources": {
+    "deployments": "https://dev.pooltogether.com/protocol/deployments/base/",
+    "winners": "https://github.com/GenerationSoftware/pt-v5-winners/tree/main/winners/vaultAccounts/8453/0x45b2010d8a4f08b53c9fa7544c51dfd9733732cb/draw/769",
+    "current_winners": "https://poolexplorer.xyz/8453-0x45b2010d8a4f08b53c9fa7544c51dfd9733732cb-draw803",
+    "rpc": "https://mainnet.base.org",
+    "eth_usd": "https://api.coinbase.com/v2/prices/ETH-USD/spot"
+  }
+}
