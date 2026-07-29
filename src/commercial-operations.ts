@@ -80,7 +80,8 @@ async function richAudit(client: PoolClient, actor: CommercialActor, eventType: 
 }
 
 export class CommercialOperationsService {
-  constructor(private database: Database) {}
+  private database: Database;
+  constructor(database: Database) { this.database = database; }
 
   async overview() {
     const [funnel, messageMetrics, customerMetrics, activityMetrics, products, pipelineValue] = await Promise.all([
@@ -367,10 +368,17 @@ export class CommercialOperationsService {
     const client=await this.database.connect();
     try {
       await client.query('BEGIN');
-      const current=await client.query<{ recurrence:string; lead_id:string|null; customer_id:string|null; product_id:string|null; activity_type:string; title:string; detail:string|null; due_at:Date|null }>(
+      const current=await client.query<{ status:string; recurrence:string; lead_id:string|null; customer_id:string|null; product_id:string|null; activity_type:string; title:string; detail:string|null; due_at:Date|null }>(
         'SELECT * FROM commercial_activities WHERE id=$1 FOR UPDATE',[id],
       );
       if (!current.rows[0]) throw new Error('not_found');
+      if (current.rows[0].status === status) {
+        const child = status === 'completed'
+          ? await client.query<{id:string}>('SELECT id FROM commercial_activities WHERE parent_activity_id=$1 ORDER BY created_at ASC LIMIT 1',[id])
+          : { rows: [] };
+        await client.query('COMMIT');
+        return { ...current.rows[0], id, next_activity_id: child.rows[0]?.id ?? null, duplicate: true };
+      }
       const completedAt=status==='completed' ? new Date().toISOString() : null;
       const { rows }=await client.query(
         `UPDATE commercial_activities SET status=$2,completed_at=$3,updated_at=now(),updated_by=$4 WHERE id=$1 RETURNING *`,

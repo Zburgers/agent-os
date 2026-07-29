@@ -140,6 +140,25 @@ CREATE INDEX IF NOT EXISTS commercial_activities_due_idx
 CREATE INDEX IF NOT EXISTS commercial_products_status_idx
   ON commercial_products(status, updated_at DESC);
 
+CREATE OR REPLACE FUNCTION validate_commercial_message() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.direction = 'outbound' AND NOT EXISTS (
+    SELECT 1 FROM effect_intents effect
+    WHERE effect.id = NEW.effect_intent_id
+      AND effect.approval_id = NEW.approval_id
+      AND effect.effect_kind = 'message'
+      AND effect.state IN ('succeeded','reconciliation_required')
+  ) THEN
+    RAISE EXCEPTION 'executed message effect required';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS commercial_messages_validate_insert ON commercial_messages;
+CREATE TRIGGER commercial_messages_validate_insert
+  BEFORE INSERT ON commercial_messages
+  FOR EACH ROW EXECUTE FUNCTION validate_commercial_message();
+
 DROP TRIGGER IF EXISTS commercial_messages_immutable ON commercial_messages;
 CREATE TRIGGER commercial_messages_immutable
   BEFORE UPDATE OR DELETE ON commercial_messages

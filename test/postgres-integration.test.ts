@@ -251,6 +251,9 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   }, { type: 'agent', id: 'integration-agent' });
   const completedFollowUp = await commercial.updateActivity(followUp.id, { status: 'completed' }, { type: 'agent', id: 'integration-agent' });
   assert.ok(completedFollowUp.next_activity_id);
+  const duplicateCompletion = await commercial.updateActivity(followUp.id, { status: 'completed' }, { type: 'agent', id: 'integration-agent' });
+  assert.equal(duplicateCompletion.next_activity_id, completedFollowUp.next_activity_id);
+  assert.equal(duplicateCompletion.duplicate, true);
   const authorizedMessage = await pool.query<{ id: string }>(
     "SELECT id FROM effect_intents WHERE idempotency_key='integration-effect-message-1'",
   );
@@ -292,6 +295,14 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
     /effect_linkage_required/,
   );
   await assert.rejects(pool.query('UPDATE commercial_messages SET subject=$2 WHERE id=$1', [outbound.id, 'changed']), /append-only table/);
+  await assert.rejects(
+    pool.query(
+      `INSERT INTO commercial_messages(lead_id,direction,channel,effect_intent_id,approval_id,recorded_by)
+       VALUES($1,'outbound','email',$2,$3,'direct-bypass')`,
+      [prospect.id, authorizedMessage.rows[0].id, approval.rows[0].id],
+    ),
+    /executed message effect required/,
+  );
   assert.equal(Number((await pool.query(
     "SELECT count(*) FROM audit_events WHERE entity_id IN ($1,$2,$3) AND event_type LIKE 'commercial_%'",
     [product.id, prospect.id, outbound.id],
