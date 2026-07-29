@@ -1,0 +1,23 @@
+Hello,
+
+I saw your open n8n Community post about a Saudi VAT accounting automation
+system. I can help with the engineering and reliability layer: PostgreSQL data
+flows, deterministic invoice/report transformations, idempotent weekly or
+month-end runs, retries, reconciliation, audit logs, alerts, and safe recovery
+after failures.
+
+I want to be precise about scope: I would not independently certify Saudi VAT
+compliance. Your accountant or tax adviser should supply and approve the rules;
+I can turn those approved rules into a testable workflow with fixtures and an
+exception queue.
+
+I suggest a small paid first step for USD 99: review one sanitized workflow or
+process specification, map the failure and compliance-control points, and
+deliver a runnable repair/prototype plus tests and handoff notes. The output is
+useful even if you choose someone else for the full build.
+
+If the project is still open, send one representative input/output example
+with sensitive data removed and I will confirm the exact first milestone.
+
+Regards,
+Goofy Automation

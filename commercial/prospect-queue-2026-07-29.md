@@ -228,6 +228,24 @@ and must not be replayed.
   `reconciliation_required`; do not replay without independent evidence that
   the first application was not received.
 
+## Candidate — Saudi VAT accounting automation
+
+- Source: https://community.n8n.io/t/264293
+- Buyer: `borhanovic11`
+- Direct channel published by buyer: `borhanovic11@gmail.com`
+- Posted: 2026-02-12; topic remains open and had activity on 2026-07-27.
+- Need: a complete n8n accounting automation system designed around Saudi VAT.
+- Fit: Strong for PostgreSQL workflow engineering, reconciliation, audit
+  trails, deterministic transformations, and recovery. Tax-rule certification
+  must remain with the buyer's qualified accountant or adviser.
+- Proposed first phase: USD 99 fixed for one sanitized process/workflow review,
+  a bounded prototype or repair, tests, and handoff notes.
+- Status: AgentMail send attempted under authorized effect
+  `2e684c15-cbc0-462d-9cb1-b5e042917a6a`, which closed `failed` with a
+  provider `validation_error`. No message was sent; do not replay without a
+  verified changed cause.
+- Draft: `commercial/outreach/saudi-vat-accounting-2026-07-29.txt`.
+
 ## Excluded or deferred
 
 - Swiss quoting prototype: no unpaid custom prototype; high specification and

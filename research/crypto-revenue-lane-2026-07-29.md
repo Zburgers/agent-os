@@ -117,3 +117,27 @@ The signer-free observer in `scripts/observe-pooltogether-base.mjs` completed at
 
 Exact evidence:
 `evidence/pooltogether-base-observation-2026-07-29.json`.
+
+### Correction: archived winner feed is stale
+
+The first observation used `GenerationSoftware/pt-v5-winners`. A subsequent
+on-chain check found that the Base PrizePool's last awarded draw was 803 while
+the repository ended at draw 769. GitHub also marks the repository archived,
+with its last push on 2026-06-25. The 1,340 historical candidates in the first
+observation are therefore non-actionable and must not be treated as a revenue
+signal.
+
+A current PoolTime/PoolExplorer response for draw 803 contained 5,326 prize
+indices across 456 winner rows. The six highest-value prizes (tiers 2 and 3)
+were checked individually with the PrizePool's `wasClaimed` view and all six
+were already claimed. Current immediately observable profit is therefore zero.
+This is evidence of a competitive operator market, not a reason to fund a
+wallet.
+
+Operational rule: the monitor now fails closed whenever its published draw
+does not exactly match the on-chain awarded draw or its repository is archived.
+No signer or funding request will be made until repeated, independently
+verified, unclaimed rewards exceed conservative gas and failure costs.
+
+Exact correction evidence:
+`evidence/pooltogether-base-observation-correction-2026-07-29.json`.

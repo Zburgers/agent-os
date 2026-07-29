@@ -110,7 +110,12 @@ try {
     };
   } else {
     outcome = 'failed';
-    providerError = `agentmail_http_${sent.response.status}:${sent.data.code ?? sent.data.name ?? 'unknown'}`;
+    const providerDetail = String(
+      sent.data.fix ?? sent.data.message ?? sent.data.detail ?? sent.data.code ?? sent.data.name ?? 'unknown',
+    )
+      .replace(/[\r\n]+/g, ' ')
+      .slice(0, 500);
+    providerError = `agentmail_http_${sent.response.status}:${sent.data.code ?? sent.data.name ?? 'unknown'}:${providerDetail}`;
   }
 } catch (error) {
   providerError = error instanceof Error ? error.message : 'provider_request_failed';
