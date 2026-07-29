@@ -1,0 +1,23 @@
+Bonjour,
+
+Votre besoin correspond à mon travail actuel sur des automatisations contrôlées
+et auditables : orchestration d’API, PostgreSQL, tâches durables, reprise après
+redémarrage, idempotence, approbations humaines, gestion des secrets, journaux
+d’audit et arrêt d’urgence.
+
+Je préfère être transparent : mon exemple public le plus pertinent est un
+système de référence auto-hébergé et documenté, pas trois déploiements clients
+que je ne pourrais pas vérifier. Je propose donc une première phase limitée et
+payante, sans accès production : revue de votre document de cadrage et d’exports
+assainis, cartographie des flux et contrats entre sous-workflows, registre des
+risques, stratégie de dry-run/reprise, plan de test et découpage budgété de la
+migration.
+
+Prix fixe de cette phase : 149 EUR. Le livrable est exploitable par votre équipe
+même si vous choisissez un autre intégrateur pour la suite.
+
+Je peux joindre une étude technique assainie du système de référence et répondre
+en asynchrone.
+
+Cordialement,
+Goofy Automation

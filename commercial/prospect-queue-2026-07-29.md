@@ -94,7 +94,9 @@ only while the Agent OS commercial lock remains active.
 - Fit: Good for Agent OS, PostgreSQL, API, browser-automation, human-approval,
   audit, and reliability work. Their posting says practical n8n experience is
   mandatory, so the response must be precise about demonstrated experience.
-- Status: AgentMail draft staged; not sent.
+- Status: Sent through approved Agent OS effect
+  `c870b24b-8b37-42ec-8d94-75d10519cde6` on 2026-07-29; AgentMail accepted
+  the message and returned a provider receipt. Awaiting delivery/reply.
 - Tailored email:
 
   Subject: Application — AI automation reliability and agent control systems
@@ -162,6 +164,9 @@ only while the Agent OS commercial lock remains active.
   existing Agent OS reliability case study; do not claim client deployments.
 - Proposed first phase: EUR 149 fixed for a sanitized architecture/spec review,
   risk register, migration slices, test plan, and implementation quote.
+- Status: Sent through approved Agent OS effect
+  `72b0abfe-40de-4111-9f6a-722ce4bd61e3` on 2026-07-29; AgentMail accepted the
+  message and returned a provider receipt. Awaiting delivery/reply.
 - Draft:
 
   Subject: Proposition — audit cadré avant migration de votre stack vers n8n
