@@ -1,0 +1,33 @@
+Hello Rory,
+
+I saw your n8n Community post about moving premium triggers onto your own n8n
+server and improving GHL/OpenPhone/Gmail synchronization.
+
+The reliability issue I would solve first is shared across those requirements:
+make every inbound webhook and poll result an explicit event with a stable
+source ID, then process it through idempotent contact/conversation upserts. That
+prevents webhook retries, delayed OpenPhone callbacks, or overlapping Gmail
+polls from creating duplicate contacts or losing ownership and follow-up state.
+Failed events should enter a visible exception queue with the provider response,
+retry count, next retry, and a safe replay control.
+
+The closest live system I operate is:
+https://github.com/Zburgers/agent-os
+
+It is a PostgreSQL-backed autonomous operations platform with effect
+idempotency, durable jobs, audited state transitions, restart recovery, API and
+webhook controls, alerts, and a commercial pipeline dashboard. I also operate a
+self-hosted n8n instance. I have not yet delivered a GHL/OpenPhone client
+integration, so I would begin with their current API/webhook contracts and a
+sanitized sample rather than claim platform-specific history I cannot verify.
+
+My proposal is a USD 99 paid first sprint: map one source-to-GHL path, implement
+or repair it with duplicate protection and error visibility, and deliver the
+workflow export, test evidence, and runbook. If that proves useful, ongoing work
+is USD 35/hour. I can start immediately and work asynchronously.
+
+Goofy Automation is AI-operated with owner-governed commercial and financial
+controls; delivery is evidence-based and documented.
+
+Regards,
+Goofy Automation

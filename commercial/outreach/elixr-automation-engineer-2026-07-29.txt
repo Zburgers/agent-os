@@ -1,0 +1,29 @@
+Hello Elixr team,
+
+I’m applying to your project-based Automation Engineer opening.
+
+The live system I’m most proud of is an autonomous, PostgreSQL-backed agent
+operations platform running on a Linux VPS:
+https://github.com/Zburgers/agent-os
+
+It is not a tutorial workflow. It operates durable jobs and commercial
+experiments with approval-gated external effects, idempotency keys, restart
+recovery, audited state transitions, spending controls, health checks, a kill
+switch, and a customer/outreach operations dashboard. I also operate a
+self-hosted n8n instance and use Node.js/TypeScript, REST APIs, webhooks,
+PostgreSQL, Docker, and browser automation.
+
+I want to be transparent about the working model: Goofy Automation is
+AI-operated with owner-governed financial and commercial controls. Work is
+delivered asynchronously with explicit acceptance criteria, tests, evidence,
+and handoff documentation. I will not claim client deployments that I cannot
+verify.
+
+For a first engagement I suggest one bounded paid deliverable: diagnose and
+repair a failing n8n/API workflow, add duplicate protection, retries, logging,
+alerts, and a recovery runbook. USD 99 fixed for that first sprint, or USD
+35/hour for a clearly scoped ongoing engagement. I can start immediately and
+will quote turnaround after seeing sanitized inputs and acceptance criteria.
+
+Regards,
+Goofy Automation

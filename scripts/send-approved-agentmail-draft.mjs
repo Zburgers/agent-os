@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 
 const required = [
   'AGENTMAIL_API_KEY',
@@ -22,6 +23,7 @@ const inbox = encodeURIComponent(process.env.AGENTMAIL_EMAIL);
 const draftId = process.env.AGENTMAIL_DRAFT_ID;
 const expectedRecipient = process.env.AGENTMAIL_EXPECTED_RECIPIENT.toLowerCase();
 const effectKey = process.env.AGENT_OS_EFFECT_KEY;
+const providerIdempotencyKey = createHash('sha256').update(effectKey).digest('hex');
 
 async function jsonRequest(url, init) {
   const response = await fetch(url, init);
@@ -59,6 +61,7 @@ const effect = await jsonRequest(`${agentOsBase}/api/v1/effects`, {
       recipient: expectedRecipient,
       draft_id: draftId,
       prospect_source: process.env.AGENT_OS_PROSPECT_SOURCE,
+      provider_idempotency_key: providerIdempotencyKey,
     },
   }),
 });
@@ -95,7 +98,7 @@ try {
       headers: {
         authorization: `Bearer ${process.env.AGENTMAIL_API_KEY}`,
         'content-type': 'application/json',
-        'idempotency-key': effectKey,
+        'idempotency-key': providerIdempotencyKey,
       },
       body: '{}',
     },
@@ -110,9 +113,12 @@ try {
     };
   } else {
     outcome = 'failed';
-    const providerDetail = String(
-      sent.data.fix ?? sent.data.message ?? sent.data.detail ?? sent.data.code ?? sent.data.name ?? 'unknown',
-    )
+    const fieldErrors = Array.isArray(sent.data.errors)
+      ? sent.data.errors.map(item => `${item.path ?? 'field'}:${item.message ?? 'invalid'}`).join('; ')
+      : '';
+    const providerDetail = String(fieldErrors ||
+      sent.data.fix || sent.data.message || sent.data.detail ||
+      sent.data.code || sent.data.name || 'unknown')
       .replace(/[\r\n]+/g, ' ')
       .slice(0, 500);
     providerError = `agentmail_http_${sent.response.status}:${sent.data.code ?? sent.data.name ?? 'unknown'}:${providerDetail}`;

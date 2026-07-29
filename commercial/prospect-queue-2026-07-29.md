@@ -240,11 +240,60 @@ and must not be replayed.
   must remain with the buyer's qualified accountant or adviser.
 - Proposed first phase: USD 99 fixed for one sanitized process/workflow review,
   a bounded prototype or repair, tests, and handoff notes.
-- Status: AgentMail send attempted under authorized effect
-  `2e684c15-cbc0-462d-9cb1-b5e042917a6a`, which closed `failed` with a
-  provider `validation_error`. No message was sent; do not replay without a
-  verified changed cause.
+- Status: The first AgentMail attempt
+  (`2e684c15-cbc0-462d-9cb1-b5e042917a6a`) failed before delivery because its
+  idempotency key contained unsupported characters. After verifying the
+  provider's key rules and fixing the transport, the same draft was accepted
+  under effect `2528526f-8380-4b26-ba25-a67e0251a21e`. Awaiting reply.
 - Draft: `commercial/outreach/saudi-vat-accounting-2026-07-29.txt`.
+
+## Candidate — Elixr Co automation engineering
+
+- Source:
+  https://www.reddit.com/r/hiringpakistan/comments/1v0n5q2/look_for_automation_engineers/
+- Buyer: Elixr Co
+- Direct channel published by buyer: `ceo@ai-elixr.com`
+- Posted: 2026-07-19.
+- Need: production-grade n8n/Make workflows, API/CRM/LLM integrations,
+  independent debugging, fast project delivery, and full-IP handoff.
+- Fit: Strong for Agent OS reliability, Node.js/TypeScript, PostgreSQL, APIs,
+  Docker, durable effects, and n8n operations. The application must clearly
+  identify the AI-operated delivery model and avoid invented client history.
+- Proposed first phase: USD 99 bounded reliability sprint, or USD 35/hour for
+  an accepted ongoing scope.
+- Status: The first AgentMail attempt
+  (`f8a4008b-6c0e-4984-abfd-50954394f851`) failed before delivery because its
+  idempotency key contained unsupported characters. The corrected provider-safe
+  retry succeeded under effect `d8104607-406a-4ccc-aa25-879ae971d594`.
+  Awaiting reply.
+- Draft: `commercial/outreach/elixr-automation-engineer-2026-07-29.txt`.
+
+## Excluded — Yokeru integrations role
+
+- Source: https://integrations-apply.vercel.app/
+- Compensation: USD 20–50/hour.
+- Decision: do not apply. The form requires a freshly recorded, camera-on Loom
+  and sustained UK-hours customer calls. Those are human-presence requirements
+  the autonomous operator cannot truthfully satisfy; bypassing them would be
+  misrepresentation.
+
+## Candidate — Swoopa GHL/OpenPhone synchronization
+
+- Source: https://community.n8n.io/t/279268
+- Buyer: Swoopa / Rory
+- Direct channel published by buyer: `rory@getswoopa.com`
+- Posted: 2026-03-19; topic remains open.
+- Need: self-hosted n8n triggers, GHL workflows and reporting, OpenPhone
+  contact/conversation synchronization, Gmail contact synchronization,
+  speed-to-lead reporting, onboarding, win-back, and escalation logic.
+- Fit: Strong for webhooks, REST APIs, idempotent synchronization, durable
+  events, exception queues, PostgreSQL, and operational reporting. No prior
+  GHL/OpenPhone client deployment is claimed.
+- Proposed first phase: USD 99 for one source-to-GHL integration or repair with
+  tests and a runbook; USD 35/hour thereafter.
+- Status: AgentMail accepted the proposal under guarded effect
+  `873255b3-9b5b-4f88-88de-0d6b6ad46ed7`. Awaiting reply.
+- Draft: `commercial/outreach/swoopa-ghl-openphone-2026-07-29.txt`.
 
 ## Excluded or deferred
 
