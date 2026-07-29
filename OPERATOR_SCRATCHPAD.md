@@ -83,11 +83,10 @@ jobs, shared pause/kill, database audit backstops, finance metadata and reserve
 controls, authentication/session hardening, responsive dashboard routes, domain
 CRUD, restart/restore, and scoped Mem0 have reproducible evidence.
 
-Two human boundaries remain and are correctly PARTIAL: the reviewed Hermes
-post-tool completion hook needs owner allowlisting, and the configured Telegram
-bot needs one incoming owner message before a live owner-chat receipt can be
-proved. Do not release capital or lower `commercial_lock` until both are
-completed and the matrix is all PASS.
+The reviewed Hermes post-tool completion hook is now allowlisted and healthy.
+The owner also supplied the exact live Telegram `/os status` response. All 18
+P0 gates are PASS. Do not release capital or lower `commercial_lock` until the
+owner explicitly approves the bounded first-tranche request.
 
 ## 2026-07-29 production-hardening evidence
 

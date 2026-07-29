@@ -47,8 +47,8 @@ hermes gateway status
 
 The risky fixture must return a block with `commercial_lock`. Do not test
 channel delivery by sending a real message while the commercial lock is active.
-The post-tool hook must also be owner-allowlisted before the external-effect
-gate can pass.
+The post-tool hook is owner-allowlisted. `hermes hooks doctor` verifies both
+Agent OS hooks are unchanged, executable, allowlisted, and healthy.
 
 ## Upstream contracts researched
 

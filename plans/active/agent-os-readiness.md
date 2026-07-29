@@ -37,11 +37,11 @@ What still blocks revenue work:
 | Live dashboard data | PASS | Authenticated SQL-backed seven-route owner console; browser acceptance loads every route and captures desktop, tablet, and mobile renderings without overflow; approval and work-board mutations persist | Continue browser acceptance after UI changes. | P0 |
 | Tasks and ventures CRUD | PASS | Validated ticket create/edit/comment/transition plus venture create/update are persisted with immutable application and DB-backstop audit evidence in disposable PostgreSQL/browser tests | Extend the same contract when new domain mutations are added. | P0 |
 | Jobs persist and execute | PASS | Durable supervisor, occurrence keys, leases, bounded retries/dead-letter, scheduling, pause/cancel/rerun functions, SIGKILL/recreate recovery, and exactly one recovered internal effect | Continue restart and integration acceptance after supervisor changes. | P0 |
-| Exactly-once side effects | PARTIAL | Effect authorization API, one-time execution claim, post-result endpoint, provider idempotency, and real HTTP crash/reconciliation acceptance pass. Hermes post-tool completion hook is installed and `hooks doctor` validates it, but the new hook is not owner-allowlisted yet. | Owner must allowlist the reviewed post-tool hook; then rerun Hermes hook acceptance. | P0 |
+| Exactly-once side effects | PASS | Effect authorization API, one-time execution claim, post-result endpoint, provider idempotency, and real HTTP crash/reconciliation acceptance pass. `hermes hooks doctor` verifies the pre/post hooks are allowlisted, unchanged, executable, and healthy. | Continue crash and hook acceptance after effect-boundary changes. | P0 |
 | Append-only financial ledger | PASS | Immutable ledger and audit triggers, DB arithmetic/metadata/reversal-link enforcement, transactional service, reversals, reconciliation fields, and verified opening entries; capital remains excluded from revenue | Continue finance negative integration tests after schema changes. | P0 |
 | Spending and reserve enforcement | PASS | Commercial lock, pause/kill, approval, released-tranche, per-charge/day/experiment limits, and reserve preservation execute transactionally; direct incomplete expense inserts are rejected by PostgreSQL | No tranche may be released without all P0 PASS plus owner approval. | P0 |
 | Approval lifecycle | PASS | Durable request, deduplication, transition/audit history, expiry, and browser approval workflow pass. The supervisor expires pending approvals every minute; authenticated dashboard approval actions are verified in `npm run test:browser`. | Continue running the browser and unit lifecycle suites after approval changes. | P0 |
-| Telegram owner controls | PARTIAL | Hermes Telegram gateway is connected; Agent OS has owner allowlist, authenticated webhook handler, all required read commands, confirmation-gated pause/resume/kill, shared transactional controls, and immutable command audits. Disposable PostgreSQL acceptance passes. | No owner chat has been observed (`channel_directory.telegram=[]`), so live owner-channel command/delivery evidence requires the owner to message the configured bot once. | P0 |
+| Telegram owner controls | PASS | Hermes Telegram gateway is connected; Agent OS has owner allowlist, authenticated commands, confirmation-gated pause/resume/kill, shared transactional controls, and immutable command audits. The owner received the live SQL-backed `/os status` response on Telegram and supplied its exact operational output. | Re-run a live read-only status check after gateway or owner-allowlist changes. | P0 |
 | Pause and kill | PASS | Dashboard and Telegram share one locked transaction; pause/kill stop queued and in-flight jobs, invalidate leases, finish active runs, cancel unstarted effects, audit atomically, and block every new effect. Kill cannot be resumed through ordinary controls. | Continue negative integration acceptance after control changes. | P0 |
 | Scoped memory | PASS | `npm run test:mem0` passed on 2026-07-29 using the configured Mem0 Cloud credential and a disposable owner/scope: asynchronous add event completion, scoped retrieval, cross-owner/cross-scope update/delete denial, update/delete cleanup, PostgreSQL provider-ID provenance, and immutable audit evidence. The hybrid unit, integration-migration, backup, restore, and temporary-provider recovery tests also pass. This is the existing scoped-memory P0 gate, not a new one. | Re-run `npm run test:mem0` after provider credential, API, scope, or runtime changes. | P0 |
 | Secret safety | PASS | `.env` is ignored and mode 0600; secret redaction and memory canary rejection pass; tracked-file secret scan is clean; private HTTPS and secure cookies are configured; `npm audit --audit-level=high` reports zero vulnerabilities | Repeat scans after dependency, auth, or logging changes. | P0 |
@@ -97,12 +97,11 @@ Still P0-blocking and therefore not marked PASS:
 2. The requested routed React/Vite frontend with desktop/tablet/mobile visual suite.
 3. Credentialed Hermes-to-Agent-OS live command/MCP proof using Hermes' existing integration facilities.
 
-No tranche approval was created because two mechanical P0 rows remain PARTIAL:
-owner allowlisting of the reviewed Hermes post-tool completion hook, and one
-live incoming owner Telegram message so the configured gateway can prove the
-owner-chat command/delivery path. Both are human trust/channel establishment
-boundaries; all repository-side implementations and disposable acceptance
-paths are complete. Commercial lock and released authority remain unchanged.
+All 18 mechanical P0 rows are now PASS. The reviewed Hermes completion hook is
+allowlisted and healthy, and the owner supplied the exact live Telegram
+Agent OS status response. The first bounded operating-tranche request may now
+be created, but commercial lock and released authority remain unchanged until
+the owner explicitly approves that request.
 
 ## Hermes integration evidence — 2026-07-29
 
