@@ -99,3 +99,21 @@ Implement a read-only PoolTogether Base opportunity monitor and record:
 Stop if the data dependencies require a paid account, if no opportunity exceeds
 USD 1 conservative net during seven days, or if competition makes observed
 opportunities disappear before a safe transaction could be submitted.
+
+### First observation
+
+The signer-free observer in `scripts/observe-pooltogether-base.mjs` completed at
+2026-07-29T11:20:08Z:
+
+- Base chain ID and current bytecode were independently verified for the
+  documented PrizePool and Claimer.
+- Latest published winner draw: 769.
+- 85 vault result files; 5 contained candidate prizes.
+- 174 winner accounts and 1,340 published prize candidates.
+- Base gas price at observation: 0.006 gwei; ETH/USD spot: 1,910.625.
+- Actionable profit observations: **0**. The candidates have not yet been
+  cross-checked against claimed state or the live VRGDA reward, so they are not
+  counted as available or profitable.
+
+Exact evidence:
+`evidence/pooltogether-base-observation-2026-07-29.json`.

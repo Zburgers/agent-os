@@ -1,0 +1,25 @@
+{
+  "observed_at": "2026-07-29T11:20:08.418Z",
+  "mode": "read_only_no_signer",
+  "chain_id": 8453,
+  "block_number": 49267330,
+  "gas_price_gwei": 0.006,
+  "eth_usd_spot": 1910.625,
+  "prize_pool": "0x45b2010d8a4f08b53c9fa7544c51dfd9733732cb",
+  "claimer": "0xcdce635b774de77cdf791647601dba64a75547ba",
+  "prize_pool_contract_present": true,
+  "claimer_contract_present": true,
+  "latest_published_draw": 769,
+  "vault_files": 85,
+  "vaults_with_prize_candidates": 5,
+  "winner_accounts": 174,
+  "prize_candidates": 1340,
+  "actionable_profit_observations": 0,
+  "limitation": "Published winner candidates are not yet cross-checked for claimed state or current VRGDA reward; no profit claim is made.",
+  "sources": {
+    "deployments": "https://dev.pooltogether.com/protocol/deployments/base/",
+    "winners": "https://github.com/GenerationSoftware/pt-v5-winners/tree/main/winners/vaultAccounts/8453/0x45b2010d8a4f08b53c9fa7544c51dfd9733732cb/draw/769",
+    "rpc": "https://mainnet.base.org",
+    "eth_usd": "https://api.coinbase.com/v2/prices/ETH-USD/spot"
+  }
+}
