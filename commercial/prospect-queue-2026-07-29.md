@@ -1,8 +1,9 @@
 # Qualified Prospect Queue — 2026-07-29
 
-This queue contains only explicit, publicly posted demand. No contact has been
-sent. Forum replies require an n8n Community account; email is staged as a draft
-only while the Agent OS commercial lock remains active.
+This queue contains only explicit, publicly posted demand. The commercial lock
+is released for scoped effects. Two individualized emails have been sent and
+one forum reply is pending new-user moderation; every outcome is recorded below
+and must not be replayed.
 
 ## Priority 1 — OpenClaw + VPS paid trial
 
@@ -50,6 +51,10 @@ only while the Agent OS commercial lock remains active.
   be discovery-led.
 - Proposed entry offer: USD 99 read-only reliability assessment, credited
   against a separately scoped migration.
+- Status: Submitted through approved Agent OS effect
+  `ec856604-6641-4146-bb5e-d88d48a20d89` on 2026-07-29. The new n8n
+  Community account received a provider acknowledgement without a public post
+  ID, so the reply is pending moderator review and must not be replayed.
 - Tailored response:
 
   > Before proposing a live migration, I’d start with a bounded read-only
