@@ -137,7 +137,7 @@ function clientScript() {
     $('ticketEdit')?.addEventListener('submit', async event => { event.preventDefault(); const form = new FormData(event.target); await api('/api/tickets/' + record.id, { method:'PATCH', body:JSON.stringify({ title:form.get('title'), priority:Number(form.get('priority')), description:form.get('description') }) }); await openDetail(kind, record.id); loadWork(); });
     $('ticketTransition')?.addEventListener('submit', async event => { event.preventDefault(); const form = new FormData(event.target); const status = form.get('status'); if (!confirm('Change this ticket status to ' + status + '?')) return; await api('/api/tickets/' + record.id, { method:'PATCH', body:JSON.stringify({ status, blocker:form.get('blocker') }) }); await openDetail(kind, record.id); loadWork(); });
     $('ticketComment')?.addEventListener('submit', async event => { event.preventDefault(); const form = new FormData(event.target); await api('/api/tickets/' + record.id + '/comments', { method:'POST', body:JSON.stringify({ body:form.get('body') }) }); await openDetail(kind, record.id); });
-    document.querySelectorAll('[data-approval]').forEach(button => button.onclick = () => approvalAction(button.dataset.id, button.dataset.approval));
+    document.querySelectorAll('[data-approval]').forEach(button => button.onclick = () => approvalAction(button.dataset.id, button.dataset.approval).catch(error => message(error.message, true)));
     document.querySelectorAll('[data-job]').forEach(button => button.onclick = () => jobAction(button.dataset.id, button.dataset.job));
   }
 
@@ -181,7 +181,7 @@ function clientScript() {
       const records = await api('/api/approvals?' + params());
       state.total = records.total;
       content.innerHTML = filterForm('<label>Status<select name="status"><option value="">All statuses</option>' + ['pending','modified','approved','rejected','expired','cancelled'].map(status => '<option value="' + status + '">' + label(status) + '</option>').join('') + '</select></label>') + table(['Requested action','Why / risk','Exposure','Related records','Status'], records.items.map(approval => '<tr><td><button class="link" data-detail="approvals" data-id="' + escape(approval.id) + '">' + escape(approval.requested_action) + '</button></td><td>' + escape(approval.reason) + '<span class="record-meta">' + escape(label(approval.risk)) + '</span></td><td>' + money(approval.maximum_exposure_minor || approval.cost_minor) + ' ' + escape(approval.currency || 'INR') + '</td><td>' + escape(approval.venture_name || 'No venture') + '<span class="record-meta">' + escape(approval.ticket_title || 'No work item') + '</span></td><td>' + badge(approval.status) + '<div class="actions">' + approvalButtons(approval) + '</div></td></tr>'), 'No approvals match this filter.') + pagination(loadApprovals);
-      bindFilters(loadApprovals); bindPagination(loadApprovals); bindDetails(); document.querySelectorAll('[data-approval]').forEach(button => button.onclick = () => approvalAction(button.dataset.id, button.dataset.approval));
+      bindFilters(loadApprovals); bindPagination(loadApprovals); bindDetails(); document.querySelectorAll('[data-approval]').forEach(button => button.onclick = () => approvalAction(button.dataset.id, button.dataset.approval).catch(error => message(error.message, true)));
     } catch (error) { content.innerHTML = empty(error.message); }
   }
 

@@ -50,7 +50,7 @@ ws.onmessage = event => { const message = JSON.parse(event.data); const handler 
 await call('Runtime.enable');
 await call('Page.addScriptToEvaluateOnNewDocument', { source: "window.__goofyErrors=[];window.addEventListener('error',event=>window.__goofyErrors.push(String(event.message)));window.addEventListener('unhandledrejection',event=>window.__goofyErrors.push(String(event.reason)))" });
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
-const until = async (expression, description) => { for (let attempt = 0; attempt < 30; attempt += 1) { if (await value(expression)) return; await wait(250); } throw Error("timed_out:" + description + ":" + await value("JSON.stringify({errors:window.__goofyErrors || [],content:document.querySelector('#pageContent')?.innerText || ''})")); };
+const until = async (expression, description) => { for (let attempt = 0; attempt < 30; attempt += 1) { if (await value(expression)) return; await wait(250); } throw Error("timed_out:" + description + ":" + await value("JSON.stringify({errors:window.__goofyErrors || [],banner:document.querySelector('#banner')?.innerText || '',content:document.querySelector('#pageContent')?.innerText || ''})")); };
 const value = async expression => { const evaluated = await call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }); if (evaluated.exceptionDetails) throw Error(evaluated.exceptionDetails.exception?.description ?? evaluated.exceptionDetails.text); return evaluated.result.value; };
 await wait(500);
 const token = JSON.stringify(process.env.GOOFY_BROWSER_TOKEN);
