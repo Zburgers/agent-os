@@ -8,9 +8,13 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   const { TicketService } = await import('../src/tickets.ts');
   const { ApprovalService, ApprovalTransitionError } = await import('../src/approvals.ts');
   const { ApprovalRequestService } = await import('../src/approval-requests.ts');
-  const { authorizeEffect, markExternalExecuting, recordExternalResult, EffectPolicyError } = await import('../src/effects.ts');
+  const { authorizeEffect, claimAuthorizedEffect, recordExternalResult, EffectPolicyError } = await import('../src/effects.ts');
   const { actorContext } = await import('../src/actor.ts');
   const { claimNextJob, executeInternalJob, recoverAbandonedJobs } = await import('../src/jobs.ts');
+  const { applySystemControl } = await import('../src/system-controls.ts');
+  const { TelegramControlService } = await import('../src/telegram-controls.ts');
+  const { createOwnerSession, getOwnerSession, revokeOwnerSession } = await import('../src/auth.ts');
+  const { createEntity, updateEntity } = await import('../src/entities.ts');
   const { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, ticketDetail } = await import('../src/records.ts');
 
   const objective = await pool.query<{ id: string }>("INSERT INTO objectives(statement,status) VALUES('integration fixture','active') RETURNING id");
@@ -138,7 +142,8 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
     const authorized = await authorizeEffect(ambiguousClient, {
       idempotencyKey: 'integration-effect-message-1', kind: 'message', approvalId: messageApproval.rows[0].id,
     }, actorContext({ actorType: 'worker', actorId: 'integration-supervisor', credentialScope: 'effects:message', originPlatform: 'relay' }));
-    await markExternalExecuting(ambiguousClient, authorized.id);
+    assert.equal(await claimAuthorizedEffect(ambiguousClient, authorized.id, 'message'), true);
+    assert.equal(await claimAuthorizedEffect(ambiguousClient, authorized.id, 'message'), false);
     assert.equal(await recordExternalResult(ambiguousClient, authorized.id, { outcome: 'ambiguous', error: 'timeout_after_call' }), 'reconciliation_required');
     await ambiguousClient.query('UPDATE system_controls SET commercial_lock=true WHERE singleton=true');
     await ambiguousClient.query('COMMIT');
@@ -158,4 +163,81 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
 
   const activityPage = await listActivity({ search: 'ticket', limit: 10, offset: 0 });
   assert.equal(activityPage.total >= 3, true);
+
+  const venture = await createEntity('ventures', {
+    name: 'P0 domain CRUD fixture', thesis: 'prove create and update', target_user: 'owner',
+    problem: 'unverified domain workflow', offer: 'durable records', revenue_model: 'internal',
+    distribution_strategy: 'none',
+  }, 'integration-owner');
+  const updatedVenture = await updateEntity('ventures', venture.id, { next_milestone: 'verified' }, 'integration-owner');
+  assert.equal(updatedVenture.next_milestone, 'verified');
+  assert.equal((await pool.query("SELECT count(*) FROM audit_events WHERE entity_id=$1 AND event_type IN ('ventures_created','ventures_updated')", [venture.id])).rows[0].count, '2');
+
+  // Direct database writes still receive an immutable audit backstop.
+  const directVenture = await pool.query<{ id: string }>(
+    `INSERT INTO ventures(name,thesis,target_user,problem,offer,revenue_model,distribution_strategy)
+     VALUES('P0 audit fixture','test','test','test','test','test','test') RETURNING id`,
+  );
+  assert.equal((await pool.query(
+    "SELECT count(*) FROM audit_events WHERE event_type='ventures_insert' AND entity_id=$1",
+    [directVenture.rows[0].id],
+  )).rows[0].count, '1');
+  await assert.rejects(pool.query('UPDATE audit_events SET payload=$1 WHERE entity_id=$2', ['{}', directVenture.rows[0].id]), /append-only table/);
+
+  // PostgreSQL rejects charge records that bypass required commercial metadata.
+  await assert.rejects(
+    pool.query(
+      `INSERT INTO ledger_entries(transaction_id,entry_type,currency,gross_minor,net_minor,counterparty,payment_status,idempotency_key)
+       VALUES('invalid-expense-bypass','expense','INR',1,1,'fixture','settled','invalid-expense-bypass')`,
+    ),
+    /expense metadata required/,
+  );
+
+  const ownerSession = await createOwnerSession('127.0.0.1');
+  assert.ok(await getOwnerSession(ownerSession.value));
+  await revokeOwnerSession(ownerSession.value);
+  assert.equal(await getOwnerSession(ownerSession.value), null);
+  assert.equal(Number((await pool.query(
+    "SELECT count(*) FROM audit_events WHERE entity_type='owner_sessions' AND event_type IN ('owner_sessions_insert','owner_sessions_update')",
+  )).rows[0].count) >= 2, true);
+
+  // Telegram uses the same transactional pause/kill boundary as the dashboard.
+  const controlJob = await pool.query<{ id: string }>(
+    "INSERT INTO jobs(name,purpose,idempotency_key,status) VALUES('control fixture','pause immediately','control-fixture','queued') RETURNING id",
+  );
+  const telegram = new TelegramControlService(pool, new Set(['42']));
+  assert.equal((await telegram.handle('41', '/pause confirm') as any).reason, 'unauthorized_user');
+  assert.equal(Array.isArray((await telegram.handle('42', '/balance') as any).finance), true);
+  assert.equal((await telegram.handle('42', '/pause') as any).confirmation_required, true);
+  assert.equal((await telegram.handle('42', '/pause confirm') as any).controls.paused, true);
+  assert.equal((await pool.query('SELECT status FROM jobs WHERE id=$1', [controlJob.rows[0].id])).rows[0].status, 'paused');
+  assert.equal((await telegram.handle('42', '/resume confirm') as any).controls.paused, false);
+
+  const killJob = await pool.query<{ id: string }>(
+    "INSERT INTO jobs(name,purpose,idempotency_key,status) VALUES('kill fixture','kill immediately','kill-fixture','queued') RETURNING id",
+  );
+  const killClient = await pool.connect();
+  let cancellableEffect = '';
+  try {
+    await killClient.query('BEGIN');
+    await killClient.query('UPDATE system_controls SET commercial_lock=false WHERE singleton=true');
+    const approval = await killClient.query<{ id: string }>(
+      `INSERT INTO approvals(action_type,requested_action,reason,risk,recommendation,idempotency_key,status,expires_at,decided_at,decided_by)
+       VALUES('message','cancel on kill','P0 fixture','none','test','kill-effect-approval','approved',now()+interval '1 hour',now(),'integration-owner') RETURNING id`,
+    );
+    const intent = await authorizeEffect(killClient, { idempotencyKey: 'kill-effect', kind: 'message', approvalId: approval.rows[0].id },
+      actorContext({ actorType: 'worker', actorId: 'integration-supervisor', credentialScope: 'effects:message', originPlatform: 'integration' }));
+    cancellableEffect = intent.id;
+    await killClient.query('UPDATE system_controls SET commercial_lock=true WHERE singleton=true');
+    await killClient.query('COMMIT');
+  } catch (error) {
+    await killClient.query('ROLLBACK'); throw error;
+  } finally {
+    killClient.release();
+  }
+  const killed = await applySystemControl(pool, 'kill', 'owner', 'integration-owner') as any;
+  assert.equal(killed.killed, true); assert.equal(killed.paused, true);
+  assert.equal((await pool.query('SELECT state FROM effect_intents WHERE id=$1', [cancellableEffect])).rows[0].state, 'cancelled');
+  assert.equal((await pool.query('SELECT status FROM jobs WHERE id=$1', [killJob.rows[0].id])).rows[0].status, 'paused');
+  assert.equal((await pool.query("SELECT count(*) FROM audit_events WHERE event_type='control_kill'")).rows[0].count, '1');
 });

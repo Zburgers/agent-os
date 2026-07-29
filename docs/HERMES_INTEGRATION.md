@@ -16,11 +16,14 @@ The MCP server exposes read-only status/tasks/approvals/jobs/activity tools and
 scoped proposal/decision/experiment mutations. It cannot approve requests,
 release money, resume after kill, or bypass the effect boundary.
 
-The shell hook guards terminal, browser, messaging, deployment, purchase, and
-payment tool calls. Risky calls are rejected while commercial lock, pause, or
+The pre-tool hook guards terminal, browser, messaging, deployment, purchase,
+and payment calls. Risky calls are rejected while commercial lock, pause, or
 kill is active. After a future unlock, an external call must carry an
-authorized Agent OS effect ID of the matching kind. The hook fails closed when
-the control plane cannot be reached.
+authorized Agent OS effect ID of the matching kind; the guard atomically
+consumes it by moving it to `executing`. The post-tool hook reports only a
+redacted outcome, tool name, and duration to close the durable effect. Both
+hooks fail closed or leave a visible reconcilable state when Agent OS is
+unavailable.
 
 Hermes remains responsible for Telegram/Discord transport and durable gateway
 operation. Agent OS remains authoritative for owner identity, approval,
@@ -44,6 +47,8 @@ hermes gateway status
 
 The risky fixture must return a block with `commercial_lock`. Do not test
 channel delivery by sending a real message while the commercial lock is active.
+The post-tool hook must also be owner-allowlisted before the external-effect
+gate can pass.
 
 ## Upstream contracts researched
 

@@ -85,6 +85,15 @@ export async function markExternalExecuting(client: PoolClient, effectId: string
   if (!result.rowCount) throw new EffectPolicyError('invalid_effect_state');
 }
 
+export async function claimAuthorizedEffect(client: PoolClient, effectId: string, kind: EffectKind) {
+  const claimed = await client.query(
+    `UPDATE effect_intents SET state='executing',executing_at=now(),updated_at=now()
+     WHERE id=$1 AND effect_kind=$2 AND state='authorized' RETURNING id`,
+    [effectId, kind],
+  );
+  return claimed.rowCount === 1;
+}
+
 export async function recordExternalResult(
   client: PoolClient,
   effectId: string,

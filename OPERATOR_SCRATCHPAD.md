@@ -76,6 +76,19 @@ visual matrix.
 
 Provision the missing owner-managed integration credentials/services, then run live channel, Mem0 scope/restore, and provider crash-boundary tests. Complete the routed frontend before moving every P0 readiness gate to PASS. Do not request or release the tranche meanwhile.
 
+## 2026-07-29 P0 enforcement update
+
+All repository-side gates now pass their current acceptance suites. Durable
+jobs, shared pause/kill, database audit backstops, finance metadata and reserve
+controls, authentication/session hardening, responsive dashboard routes, domain
+CRUD, restart/restore, and scoped Mem0 have reproducible evidence.
+
+Two human boundaries remain and are correctly PARTIAL: the reviewed Hermes
+post-tool completion hook needs owner allowlisting, and the configured Telegram
+bot needs one incoming owner message before a live owner-chat receipt can be
+proved. Do not release capital or lower `commercial_lock` until both are
+completed and the matrix is all PASS.
+
 ## 2026-07-29 production-hardening evidence
 
 - Migration 008 adds commercial lock, scoped credential metadata, durable denied effects, channel outbox, memory metadata, recurring-job fields, finance reservations/rates, backup evidence, and readiness gates.

@@ -20,7 +20,7 @@ trap cleanup EXIT INT TERM
 docker compose build app >/dev/null
 docker compose exec -T postgres sh -c "dropdb --if-exists -U \"\$POSTGRES_USER\" '$test_database' && createdb -U \"\$POSTGRES_USER\" '$test_database'"
 docker compose run --rm --no-deps -e OWNER_DASHBOARD_TOKEN="$test_token" app sh -c "DATABASE_URL=\"\${DATABASE_URL%/*}/$test_database\" npm run migrate" >/dev/null
-docker compose run -d --name "$test_container" --no-deps -p "$test_port:3000" -e OWNER_DASHBOARD_TOKEN="$test_token" app sh -c "export DATABASE_URL=\"\${DATABASE_URL%/*}/$test_database\"; exec npm start" >/dev/null
+docker compose run -d --name "$test_container" --no-deps -p "$test_port:3000" -e OWNER_DASHBOARD_TOKEN="$test_token" -e SESSION_COOKIE_SECURE=false app sh -c "export DATABASE_URL=\"\${DATABASE_URL%/*}/$test_database\"; exec npm start" >/dev/null
 
 for attempt in $(seq 1 20); do
   curl --silent --fail "http://127.0.0.1:$test_port/healthz" >/dev/null && break
@@ -50,7 +50,7 @@ ws.onmessage = event => { const message = JSON.parse(event.data); const handler 
 await call('Runtime.enable');
 await call('Page.addScriptToEvaluateOnNewDocument', { source: "window.__goofyErrors=[];window.addEventListener('error',event=>window.__goofyErrors.push(String(event.message)));window.addEventListener('unhandledrejection',event=>window.__goofyErrors.push(String(event.reason)))" });
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
-const until = async (expression, description) => { for (let attempt = 0; attempt < 30; attempt += 1) { if (await value(expression)) return; await wait(250); } throw Error("timed_out:" + description + ":" + await value("JSON.stringify({errors:window.__goofyErrors || [],banner:document.querySelector('#banner')?.innerText || '',content:document.querySelector('#pageContent')?.innerText || ''})")); };
+const until = async (expression, description) => { for (let attempt = 0; attempt < 60; attempt += 1) { if (await value(expression)) return; await wait(250); } throw Error("timed_out:" + description + ":" + await value("JSON.stringify({errors:window.__goofyErrors || [],banner:document.querySelector('#banner')?.innerText || '',content:document.querySelector('#pageContent')?.innerText || ''})")); };
 const value = async expression => { const evaluated = await call('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true }); if (evaluated.exceptionDetails) throw Error(evaluated.exceptionDetails.exception?.description ?? evaluated.exceptionDetails.text); return evaluated.result.value; };
 await wait(500);
 const token = JSON.stringify(process.env.GOOFY_BROWSER_TOKEN);
@@ -60,12 +60,18 @@ await call('Page.navigate', { url: baseUrl + '/' });
 const csrfToken = await value(`fetch('/api/session').then(async response => { if (!response.ok) throw Error('session ' + response.status); const session = await response.json(); if (session.session !== 'session' || !session.csrf_token) throw Error('dashboard_not_authenticated:' + document.title); return session.csrf_token; })`);
 const pageCsrf = await value("document.querySelector('meta[name=csrf-token]')?.content || ''");
 if (pageCsrf !== csrfToken) throw Error("dashboard_csrf_mismatch:" + pageCsrf.length);
-for (const route of ['/', '/work', '/activity', '/approvals', '/finance', '/jobs', '/health']) {
-  await call('Page.navigate', { url: baseUrl + route });
-  const expected = route === '/' ? 'command' : route.slice(1);
-  await until(`document.querySelector('main')?.dataset.page === '${expected}' && Boolean(document.querySelector('a[aria-current=page]'))`, 'route_' + expected);
-  if (!(await value('document.documentElement.scrollWidth <= document.documentElement.clientWidth'))) throw Error('horizontal_overflow:' + expected);
+for (const viewport of [{width:1440,height:900,label:'desktop'},{width:1024,height:768,label:'tablet'},{width:390,height:844,label:'mobile'}]) {
+  await call('Emulation.setDeviceMetricsOverride', { width: viewport.width, height: viewport.height, deviceScaleFactor: 1, mobile: viewport.width < 600 });
+  for (const route of ['/', '/work', '/activity', '/approvals', '/finance', '/jobs', '/health']) {
+    await call('Page.navigate', { url: baseUrl + route });
+    const expected = route === '/' ? 'command' : route.slice(1);
+    await until(`document.querySelector('main')?.dataset.page === '${expected}' && Boolean(document.querySelector('a[aria-current=page]'))`, 'route_' + expected + '_' + viewport.label);
+    if (!(await value('document.documentElement.scrollWidth <= document.documentElement.clientWidth'))) throw Error('horizontal_overflow:' + expected + ':' + viewport.label);
+    const capture = await call('Page.captureScreenshot', { format: 'png', fromSurface: true });
+    if (!capture.data || capture.data.length < 1000) throw Error('empty_visual_capture:' + expected + ':' + viewport.label);
+  }
 }
+await call('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
 await call('Page.navigate', { url: baseUrl + '/work' });
 await until("Boolean(document.querySelector('#filters'))", 'work_loaded');
 await value('history.back()');

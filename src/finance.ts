@@ -34,7 +34,7 @@ export function evaluateExpense(request: ExpenseRequest): { allowed: boolean; re
 
 type LedgerKind = 'contribution' | 'expense' | 'revenue' | 'refund' | 'fee' | 'tax_reserve' | 'adjustment' | 'reversal' | 'reservation';
 type LedgerStatus = 'pending' | 'settled' | 'failed' | 'reversed';
-export type LedgerEntryInput = { transactionId: string; entryType: LedgerKind; currency: string; grossMinor: number; feesMinor?: number; taxMinor?: number; netMinor: number; counterparty: string; ventureId?: string; experimentId?: string; paymentStatus: LedgerStatus; evidenceUri?: string; idempotencyKey: string };
+export type LedgerEntryInput = { transactionId: string; entryType: LedgerKind; currency: string; grossMinor: number; feesMinor?: number; taxMinor?: number; netMinor: number; counterparty: string; ventureId?: string; experimentId?: string; paymentStatus: LedgerStatus; evidenceUri?: string; providerReference?: string; idempotencyKey: string };
 export type ExpenseJustification = { category: string; objective: string; expectedResult: string; evidenceUri: string; alternatives: string[]; worstCaseLoss: string; successCondition: string; stopCondition: string; expectedPayback: string; confidence: number };
 export type ExpensePolicy = { singleLimitMinor: number; dailyLimitMinor: number; experimentLimitMinor: number };
 type Result<T = Record<string, unknown>> = { rows: T[] };
@@ -60,11 +60,21 @@ export class LedgerService {
       await client.query('BEGIN');
       const prior = await client.query<{ id: string }>('SELECT id FROM ledger_entries WHERE idempotency_key=$1 FOR SHARE', [entry.idempotencyKey]);
       if (prior.rows[0]) { await client.query('COMMIT'); return { id: prior.rows[0].id, duplicate: true }; }
-      const controls = await client.query<{ paused: boolean; killed: boolean }>('SELECT paused,killed FROM system_controls WHERE singleton=true FOR SHARE');
+      const controls = await client.query<{ paused: boolean; killed: boolean; commercial_lock: boolean }>('SELECT paused,killed,commercial_lock FROM system_controls WHERE singleton=true FOR SHARE');
       if (controls.rows[0]?.killed) throw new FinancialPolicyError('system_killed');
       if (controls.rows[0]?.paused) throw new FinancialPolicyError('system_paused');
+      if (entry.entryType === 'expense' && controls.rows[0]?.commercial_lock) throw new FinancialPolicyError('commercial_lock');
       if (entry.entryType === 'expense') await this.authorizeExpense(client, entry, options.approvalId!);
-      const inserted = await client.query<{ id: string }>('INSERT INTO ledger_entries(transaction_id,entry_type,currency,gross_minor,fees_minor,tax_minor,net_minor,counterparty,venture_id,experiment_id,payment_status,evidence_uri,idempotency_key) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING id', [entry.transactionId,entry.entryType,entry.currency,entry.grossMinor,fees,tax,entry.netMinor,entry.counterparty,entry.ventureId ?? null,entry.experimentId ?? null,entry.paymentStatus,entry.evidenceUri ?? null,entry.idempotencyKey]);
+      const inserted = await client.query<{ id: string }>(
+        `INSERT INTO ledger_entries(transaction_id,entry_type,currency,gross_minor,fees_minor,tax_minor,net_minor,counterparty,
+         venture_id,experiment_id,payment_status,evidence_uri,provider_reference,idempotency_key,category,approval_id,
+         original_amount_minor,reconciliation_status)
+         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
+        [entry.transactionId,entry.entryType,entry.currency,entry.grossMinor,fees,tax,entry.netMinor,entry.counterparty,
+         entry.ventureId ?? null,entry.experimentId ?? null,entry.paymentStatus,entry.evidenceUri ?? null,
+         entry.providerReference ?? null,entry.idempotencyKey,options.justification?.category ?? null,options.approvalId ?? null,
+         entry.grossMinor,entry.paymentStatus === 'settled' ? 'reconciled' : 'unreconciled'],
+      );
       await client.query('INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload) VALUES($1,$2,$3,$4,$5,$6)', ['agent', options.actorId ?? 'system', 'ledger_entry_appended', 'ledger_entry', inserted.rows[0].id, JSON.stringify({ transaction_id: entry.transactionId, idempotency_key: entry.idempotencyKey })]);
       await client.query('COMMIT'); return { id: inserted.rows[0].id, duplicate: false };
     } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }

@@ -1,5 +1,5 @@
 import { createServer } from 'node:http';
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { audit, controls, pool } from './db.ts';
 import { basicOwnerToken, bearerToken, createOwnerSession, expiredSessionCookie, getOwnerSession, ownerTokenMatches, parseCookies, revokeOwnerSession, runtimeTokensFromEnvironment, sessionCookie } from './auth.ts';
 import { redactSecrets } from './redaction.ts';
@@ -13,12 +13,16 @@ import { TelegramControlService } from './telegram-controls.ts';
 import { HybridContextualMemory } from './memory.ts';
 import { cancelJob, pauseJob, rerunJob } from './jobs.ts';
 import { buildOverviewResponse, type OverviewCounts } from './overview-contract.ts';
+import { applySystemControl } from './system-controls.ts';
+import { actorContext } from './actor.ts';
+import { authorizeEffect, claimAuthorizedEffect, recordExternalResult } from './effects.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
 const port = Number(process.env.PORT ?? 3000);
 const agentRuntimeTokens = runtimeTokensFromEnvironment();
 const attempts = new Map<string, { count: number; resetAt: number }>();
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
 const approvals = new ApprovalService(pool);
 const approvalRequests = new ApprovalRequestService(pool);
 const tickets = new TicketService(pool);
@@ -65,7 +69,12 @@ function inferredEffectKind(toolName: string, args: Record<string, unknown>) {
 function rateAllowed(ip: string) {
   const now = Date.now(); const entry = attempts.get(ip);
   if (!entry || entry.resetAt <= now) { attempts.set(ip, { count: 1, resetAt: now + 60_000 }); return true; }
-  entry.count += 1; return entry.count <= 60;
+  entry.count += 1; return entry.count <= 300;
+}
+function loginRateAllowed(ip: string) {
+  const now = Date.now(); const entry = loginAttempts.get(ip);
+  if (!entry || entry.resetAt <= now) { loginAttempts.set(ip, { count: 1, resetAt: now + 60_000 }); return true; }
+  entry.count += 1; return entry.count <= 10;
 }
 function respond(res: import('node:http').ServerResponse, status: number, data: unknown, contentType = 'application/json; charset=utf-8', headers: Record<string, string> = {}) {
   res.writeHead(status, { 'content-type': contentType, 'cache-control': 'no-store', ...headers }); res.end(typeof data === 'string' ? data : JSON.stringify(data));
@@ -124,7 +133,12 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/login') return respond(res, 200, loginPage(), 'text/html; charset=utf-8');
     if (req.method === 'POST' && url.pathname === '/api/session') {
-      const input = await body(req); if (typeof input.token !== 'string' || !ownerTokenMatches(input.token, token)) return respond(res, 401, { error: 'authentication_required' });
+      if (!loginRateAllowed(ip)) return respond(res, 429, { error: 'rate_limited' });
+      const input = await body(req);
+      if (typeof input.token !== 'string' || !ownerTokenMatches(input.token, token)) {
+        await audit('owner_login_rejected', 'session', null, { reason: 'invalid_credential' }, 'anonymous');
+        return respond(res, 401, { error: 'authentication_required' });
+      }
       const session = await createOwnerSession(ip); await audit('owner_login', 'session', null, { method: 'token' }, 'owner');
       return respond(res, 201, { csrf_token: session.csrfToken, expires_in_seconds: session.maxAge }, undefined, { 'set-cookie': sessionCookie(session.value) });
     }
@@ -136,6 +150,54 @@ const server = createServer(async (req, res) => {
       await revokeOwnerSession(auth.sessionValue); await audit('owner_logout', 'session', null, {}, 'owner'); return respond(res, 204, '', undefined, { 'set-cookie': expiredSessionCookie() });
     }
     if (req.method === 'GET' && url.pathname === '/api/session') return respond(res, 200, { session: auth.kind, csrf_token: auth.csrfToken ?? null });
+    if (req.method === 'POST' && url.pathname === '/api/effects') {
+      if (auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
+      const input = await body(req);
+      const kind = String(input.kind ?? '');
+      if (!['message','expense','deployment','payment','account_change','purchase'].includes(kind)) return respond(res, 400, { error: 'invalid_effect_kind' });
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const effect = await authorizeEffect(client, {
+          idempotencyKey: String(req.headers['idempotency-key']),
+          kind: kind as 'message' | 'expense' | 'deployment' | 'payment' | 'account_change' | 'purchase',
+          approvalId: typeof input.approval_id === 'string' ? input.approval_id : undefined,
+          payload: input.context && typeof input.context === 'object' ? input.context as Record<string, unknown> : {},
+        }, actorContext({ actorType: 'agent', actorId: 'goofy-runtime', credentialScope: `effects:${kind}`, originPlatform: 'api' }));
+        await client.query('COMMIT');
+        return respond(res, effect.state === 'denied' ? 403 : 201, effect);
+      } catch (error) {
+        await client.query('ROLLBACK'); throw error;
+      } finally {
+        client.release();
+      }
+    }
+    const effectResult = url.pathname.match(/^\/api\/effects\/([0-9a-f-]+)\/result$/);
+    if (req.method === 'POST' && effectResult) {
+      if (auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
+      const input = await body(req); const outcome = String(input.outcome ?? '');
+      if (!['succeeded','failed','ambiguous'].includes(outcome)) return respond(res, 400, { error: 'invalid_effect_outcome' });
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const state = await recordExternalResult(client, effectResult[1], {
+          outcome: outcome as 'succeeded' | 'failed' | 'ambiguous',
+          receipt: input.receipt && typeof input.receipt === 'object' ? input.receipt as Record<string, unknown> : undefined,
+          error: typeof input.error === 'string' ? redactSecrets(input.error, [token, process.env.DATABASE_URL ?? '']) : undefined,
+        });
+        await client.query(
+          `INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload)
+           VALUES('agent','goofy-runtime','external_effect_result','effect_intent',$1,$2)`,
+          [effectResult[1], JSON.stringify({ state })],
+        );
+        await client.query('COMMIT');
+        return respond(res, 200, { id: effectResult[1], state });
+      } catch (error) {
+        await client.query('ROLLBACK'); throw error;
+      } finally {
+        client.release();
+      }
+    }
     if (req.method === 'POST' && url.pathname === '/api/guard') {
       if (auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
       const input = await body(req); const toolName = String(input.tool_name ?? '').slice(0, 200);
@@ -148,11 +210,18 @@ const server = createServer(async (req, res) => {
       else if (effectKind && state.commercial_lock) { allowed = false; policyCode = 'commercial_lock'; }
       else if (effectKind) {
         const effectId = typeof input.effect_id === 'string' ? input.effect_id : '';
-        const effect = await pool.query(
-          `SELECT id FROM effect_intents WHERE id=$1 AND effect_kind=$2 AND state IN ('authorized','executing')`,
-          [effectId,effectKind],
-        );
-        if (!effect.rowCount) { allowed = false; policyCode = 'effect_authorization_required'; }
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+          if (!await claimAuthorizedEffect(client, effectId, effectKind as any)) {
+            allowed = false; policyCode = 'effect_authorization_required_or_consumed';
+          }
+          await client.query('COMMIT');
+        } catch (error) {
+          await client.query('ROLLBACK'); throw error;
+        } finally {
+          client.release();
+        }
       }
       await audit(allowed ? 'hermes_tool_guard_allowed' : 'hermes_tool_guard_denied', 'tool_call', null,
         { tool_name: toolName, effect_kind: effectKind, policy_code: policyCode, correlation_id: input.correlation_id ?? null }, 'hermes');
@@ -169,8 +238,7 @@ const server = createServer(async (req, res) => {
       if (!ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
       const input = await body(req); const action = input.action;
       if (!['pause', 'resume', 'kill'].includes(String(action))) return respond(res, 400, { error: 'invalid_control_action' });
-      const changes = action === 'pause' ? [true, 'owner'] : action === 'resume' ? [false, 'owner'] : [true, 'owner']; const column = action === 'kill' ? 'killed' : 'paused';
-      await pool.query(`UPDATE system_controls SET ${column}=$1,updated_at=now(),updated_by=$2 WHERE singleton=true`, changes); await audit(`control_${action}`, 'system_controls', null, { correlation_id: randomUUID() }, 'owner'); return respond(res, 200, await controls());
+      return respond(res, 200, await applySystemControl(pool, action as 'pause' | 'resume' | 'kill', 'owner', 'owner'));
     }
     if (req.method === 'POST' && url.pathname === '/api/approvals') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
