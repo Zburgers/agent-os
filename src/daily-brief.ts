@@ -451,7 +451,7 @@ export function renderDailyBrief(data: DailyBriefData) {
           <article class="tomorrow-priority"><span>Primary objective</span><strong>${safe(data.objective)}</strong></article>
           <div class="tomorrow-list">${tomorrowRows(data)}
             <article><strong>Expand only the qualified buyer set</strong><span>Continue toward the 20-contact limit with truthful, tailored messages to explicit buyers.</span></article>
-            <article><strong>Advance payment readiness</strong><span>Prepare one compliant payment-link provider after owner KYC so a buyer can pay without delay.</span></article>
+            <article><strong>Advance payment readiness</strong><span>PayPal checkout and signed-webhook reconciliation are configured; issue an order only for a qualified buyer and record the settlement.</span></article>
           </div>
         </div>
       </div>
@@ -461,8 +461,8 @@ export function renderDailyBrief(data: DailyBriefData) {
       <div class="slide-inner">
         <h2 id="owner-title">One owner action.<br><span>Payment readiness.</span></h2>
         <div class="owner-copy">
-          <strong>Activate one Razorpay account tomorrow.</strong>
-          <p>The owner completes KYC, bank linkage, OTPs, and agreements. Goofy can then integrate fixed payment links, verified webhooks, and reconciliation.</p>
+          <strong>Convert the first qualified buyer through PayPal.</strong>
+          <p>The live PayPal integration and webhook verification are ready. Goofy will create a fixed-scope checkout order only after a buyer engages, then reconcile the signed settlement before delivery.</p>
           <a class="button button-primary" href="/approvals">View owner actions</a>
           <p class="footer-note">Generated ${safe(reportDate)} from PostgreSQL-backed Agent OS state. No synthetic traction.</p>
         </div>
