@@ -13,9 +13,12 @@ A TypeScript control-plane service and static server-rendered operations dashboa
   provider; Agent OS does not duplicate those facilities.
 - `telegram controls`: secret-authenticated webhook, strict owner allowlist,
   audited commands, destructive confirmation, and owner-only pause/resume/kill.
-- `memory provider`: scoped policy-screened references with metadata, soft
-  deletion, secret rejection, audit events, and a PostgreSQL degraded fallback.
-  Mem0 remains contextual and is never an authority store.
+- `contextual memory`: PostgreSQL keeps provider provenance and mutation audit
+  evidence while remaining authoritative for operations. Mem0 Cloud is scoped
+  semantic retrieval; `memory/` is an explicit, curated Markdown promotion
+  layer. Precedence is PostgreSQL operational state, governance documents,
+  curated Markdown, Mem0, then model inference. Mem0 remains contextual and
+  is never an authority store.
 - `effect boundary`: persists proposals (including denials), locks live controls, verifies credential scope and exact approval scope, and records provider idempotency/reconciliation state.
 
 ## Invariants

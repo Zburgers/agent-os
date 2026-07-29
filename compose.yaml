@@ -32,7 +32,7 @@ services:
     ports:
       # The dashboard is reachable only on the owner's private network.
       # PostgreSQL has no host port and remains on this Compose network.
-      - "${AGENT_OS_BIND_ADDRESS:-0.0.0.0}:${AGENT_OS_PORT:-9999}:3000"
+      - "${AGENT_OS_BIND_ADDRESS:-127.0.0.1}:${AGENT_OS_PORT:-9999}:3000"
     command: ["sh", "-c", "export AGENT_RUNTIME_TOKEN=\"$$(cat /run/secrets/agent_os_hermes_token)\"; exec su-exec agent sh -c 'npm run migrate && npm start'"]
     secrets:
       - source: agent_os_hermes_token

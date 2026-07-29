@@ -1,0 +1,9 @@
+[Unit]
+Description=Goofy Agent OS verified PostgreSQL and curated-memory backup
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/goofy/agent-os
+ExecStart=/home/goofy/agent-os/scripts/backup.sh
+UMask=0077

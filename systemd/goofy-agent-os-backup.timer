@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Goofy Agent OS verified backup
+
+[Timer]
+OnCalendar=*-*-* 03:17:00
+Persistent=true
+Unit=goofy-agent-os-backup.service
+
+[Install]
+WantedBy=timers.target

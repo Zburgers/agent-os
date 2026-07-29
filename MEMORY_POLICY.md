@@ -1,7 +1,7 @@
 # Memory Policy
 
-PostgreSQL is authoritative for business state. A replaceable Mem0 provider stores only scoped contextual memory.
+PostgreSQL is authoritative for money, approvals, permissions, tasks, jobs, effects, audit records, readiness gates, and control state. Mem0 Cloud is scoped semantic contextual retrieval only. `memory/` contains explicitly promoted, curated, human-readable provider-independent knowledge; it is not an automatic mirror of Mem0.
 
 All memory uses owner_id and applicable agent_id, venture_id, project_id, customer_id, experiment_id, run_id, and decision_id. Each important item carries category, source, verification date, confidence, sensitivity, epistemic type, expiry/review date, and related entity.
 
-Before persistence: assess future value, evidence, type (fact/inference/hypothesis/instruction/lesson), duplication, staleness, and privacy risk. Hypotheses are labelled. Never persist secrets, payment credentials, OTPs, private keys, auth cookies, or unnecessary personal data. Perform scoped retrieval tests, backups, stale-claim reviews, duplicate merging, and audit logging.
+Before either persistence path: assess future value, evidence, type (fact/inference/hypothesis/instruction/lesson), duplication, staleness, and privacy risk. Hypotheses are labelled. Never persist secrets, payment credentials, OTPs, private keys, auth cookies, or unnecessary personal data. Automated memory code may write only under `memory/`; it must never modify constitutional, financial, approval, or security policy documents, including `GOOFY_IDENTITY.md` and `OPERATOR_SCRATCHPAD.md`. Curated records require frontmatter for ID, category, scope, related PostgreSQL IDs, source, confidence, epistemic type, sensitivity, verification, and review/expiry. Perform scoped retrieval tests, backups, stale-claim reviews, duplicate merging, and audit logging.

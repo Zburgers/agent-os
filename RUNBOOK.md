@@ -30,9 +30,10 @@ Only the authenticated dashboard is published. PostgreSQL has no host port and i
 - Versioned clients use `/api/v1` and supply `Idempotency-Key` for every mutation. Compatibility `/api` routes remain during migration.
 
 ## Backup and restore
-- `scripts/backup.sh` creates a mode-0600 custom PostgreSQL dump plus SHA-256 manifest under `/home/goofy/agent-os/backups` by default. Memory references are included because the current safe fallback is PostgreSQL-backed.
-- `RESTORE_TARGET_DB=goofy_restore_verify scripts/restore.sh <manifest>` verifies the checksum and refuses the configured production database.
+- `scripts/backup.sh` creates mode-0600 PostgreSQL and curated-Markdown archives plus independent SHA-256 values in a mode-0600 manifest under `/home/goofy/agent-os/backups` by default.
+- `RESTORE_TARGET_DB=goofy_restore_verify scripts/restore.sh <manifest>` verifies both checksums, restores Markdown to an isolated directory, and refuses the configured production database.
 - `npm run test:restore` performs a complete isolated replacement-database restore and invariant check, then removes its temporary database and backup directory.
+- `systemd/goofy-agent-os-backup.timer` runs the same checked backup daily as the `goofy` user. Enable it with `systemctl --user enable --now goofy-agent-os-backup.timer`; every successful run writes `backup_runs` and `system_health_checks` evidence in PostgreSQL.
 
 ## Recovery
 On startup run abandoned-job recovery, then claim only jobs permitted by live controls. Failed jobs stop at their retry cap and become dead-letter records. Investigate via audit and job-run tables.

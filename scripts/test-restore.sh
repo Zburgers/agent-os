@@ -10,4 +10,8 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 manifest="$(BACKUP_DIR="$test_dir" BACKUP_RETENTION=1 scripts/backup.sh)"
-RESTORE_TARGET_DB="$target" scripts/restore.sh "$manifest"
+RESTORE_TARGET_DB="$target" RESTORE_MEMORY_DIR="$test_dir/restored" scripts/restore.sh "$manifest"
+test -d "$test_dir/restored/memory"
+test "$(stat -c '%a' "$test_dir/restored/memory")" = 700
+grep -q '^ledger_entries_count=' "$manifest"
+grep -q '^audit_events_count=' "$manifest"

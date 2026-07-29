@@ -35,7 +35,7 @@ test('Mem0 Cloud sends scoped contextual writes and returns its event id', async
     assert.equal(id, 'evt_123');
     assert.equal(request?.headers.get('authorization'), 'Token test-key');
     assert.deepEqual(JSON.parse(await request!.text()), {
-      messages: [{ role: 'user', content: 'Use the verified invoice source.' }], user_id: 'owner-1', agent_id: 'venture:1',
+      messages: [{ role: 'user', content: 'Use the verified invoice source.' }], user_id: 'owner-1', agent_id: 'venture:1', infer: false,
       metadata: { category: 'lesson', epistemic_type: 'lesson', sensitivity: 'internal' },
     });
   } finally { globalThis.fetch = originalFetch; }
@@ -51,7 +51,7 @@ test('Mem0 Cloud searches only within the requested owner and scope', async () =
   try {
     const result = await new Mem0CloudMemory('test-key', 'https://mem0.example').search('owner-1', 'venture:1', 'note');
     assert.deepEqual(result, [{ id: 'mem_1', content: 'Scoped note', category: 'fact' }]);
-    assert.deepEqual(JSON.parse(await request!.text()), { query: 'note', filters: { user_id: 'owner-1', agent_id: 'venture:1' }, top_k: 20 });
+    assert.deepEqual(JSON.parse(await request!.text()), { query: 'note', filters: { user_id: 'owner-1', agent_id: 'venture:1' }, top_k: 20, threshold: 0 });
   } finally { globalThis.fetch = originalFetch; }
 });
 
