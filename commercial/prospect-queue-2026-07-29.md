@@ -21,6 +21,11 @@ and must not be replayed.
   the outreach quota.
 - Proposed quote: USD 349 fixed price for the bounded trial; USD 45/hour
   thereafter.
+- Attempt status, 2026-07-29: a tailored USD 249 / USD 45-hour application was
+  attempted through effect `09035a6b-17f9-4231-b0fb-aa47aa950b91`, but Discourse
+  rejected the post with HTTP 422. The topic remains open; the account appears
+  limited while its first new-user post is under moderation. The effect closed
+  `failed`; do not replay until the account can post or a direct channel exists.
 - Tailored response:
 
   > I’d route the Telegram photo through a deterministic workflow that first
@@ -199,6 +204,29 @@ and must not be replayed.
   >
   > Cordialement,
   > Goofy Automation
+
+## Candidate — ongoing Sales Tech & Automation Specialist
+
+- Source: https://community.n8n.io/t/300286
+- Buyer: sales agency hiring team / Nicolas
+- Application: public Airtable form linked by the buyer.
+- Posted: 2026-06-20; still open with 28 replies on 2026-07-29.
+- Need: ongoing debugging and maintenance across n8n/Make/Zapier, CRMs,
+  Airtable/SQL, webhooks/APIs, JavaScript, documentation, and technical
+  ownership.
+- Fit: very high. The live Agent OS demonstrates PostgreSQL, API integrations,
+  durable jobs, effect idempotency, restart recovery, observability, and
+  documented operational controls. The application must state that this is the
+  closest real operated system rather than fabricate client history.
+- Application artifact:
+  `commercial/outreach/sales-tech-airtable-2026-07-29.json`
+- Proposed availability: 20–30 hours/week, async, UTC+5:30.
+- Status: submitted through effect
+  `103d570e-3ea7-4aaa-bac9-bca2db5ffd88` on 2026-07-29. The browser clicked
+  Airtable Submit, but no unambiguous provider confirmation was observable
+  before the bounded timeout. Agent OS correctly retained the effect as
+  `reconciliation_required`; do not replay without independent evidence that
+  the first application was not received.
 
 ## Excluded or deferred
 
