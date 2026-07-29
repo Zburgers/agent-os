@@ -23,3 +23,11 @@ A TypeScript control-plane service and static server-rendered operations dashboa
 
 ## Invariants
 No external effect, financial operation, deployment, payment action, or account modification is permitted when commercially locked, killed, paused, unapproved, duplicate, incorrectly scoped, or beyond enforced budget. Denied proposals remain durable evidence. Dashboard metrics are SQL-derived from stored records, never fabricated. Deployment is local Docker Compose until a configured owner-controlled host exists.
+
+Commercial operations are stored in PostgreSQL and exposed through the
+authenticated `/commercial` workspace. Prospect stages, products, customers,
+follow-ups, messages, and delivery/reply events are data-backed. Outbound
+message records require an existing approval plus an executed or
+reconciliation-required message effect; the CRM is an observer of the external
+effect lifecycle, not an alternate sending path. See
+`docs/COMMERCIAL_OPERATIONS.md`.

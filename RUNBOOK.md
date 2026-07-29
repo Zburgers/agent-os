@@ -2,6 +2,19 @@
 
 Before operational work, read `AGENT_CONSTITUTION.md`, `AUTONOMOUS_REVENUE_MISSION.md`, `GOOFY_IDENTITY.md`, `OPERATOR_SCRATCHPAD.md`, and the active readiness/completion plans under `plans/active/`. The identity and scratchpad files preserve the owner's preferred autonomous-operator posture across sessions; they do not authorize spending, outreach, signups, contracts, or other side effects.
 
+## Commercial operations
+
+Use `/commercial` to inspect the revenue funnel, products, outreach state,
+buyers, and due/recurring follow-ups. Record discovered records as `potential`;
+promote them only after documented qualification. Do not treat pipeline value
+or a `won` stage as settled revenue.
+
+Record an outbound message only after the normal approval/effect/guard/provider
+result lifecycle completes. Append provider delivery and reply events with their
+unique provider event IDs. Never store full message bodies or secrets in
+commercial previews or event evidence. Full operating details and API routes
+are in `docs/COMMERCIAL_OPERATIONS.md`.
+
 For AgentMail email operations, read `docs/AGENTMAIL.md` and then the current upstream docs index at https://docs.agentmail.to/llms.txt. Do not expose the API key or use email sending to bypass approval/external-message policy.
 
 ## Local deployment

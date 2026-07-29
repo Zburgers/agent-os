@@ -89,7 +89,9 @@ export class CommercialOperationsService {
         array_position(ARRAY['potential','qualified','contacted','engaged','proposal','negotiation','won','lost','disqualified'],pipeline_stage)`),
       this.database.query(`SELECT
         count(*) FILTER(WHERE m.direction='outbound')::int AS sent,
-        count(*) FILTER(WHERE latest.event_type='delivered')::int AS delivered,
+        count(*) FILTER(WHERE EXISTS(
+          SELECT 1 FROM commercial_message_events delivered WHERE delivered.message_id=m.id AND delivered.event_type='delivered'
+        ))::int AS delivered,
         count(*) FILTER(WHERE latest.event_type IN ('bounced','failed','suppressed','complained'))::int AS failed,
         count(*) FILTER(WHERE latest.event_type='replied' OR EXISTS(
           SELECT 1 FROM commercial_message_events reply WHERE reply.message_id=m.id AND reply.event_type='replied'
@@ -213,6 +215,28 @@ export class CommercialOperationsService {
          AND ($2::text IS NULL OR COALESCE(m.subject,'') ILIKE '%'||$2||'%'
            OR COALESCE(l.display_name,c.display_name,l.organization,'') ILIKE '%'||$2||'%')
        ORDER BY m.occurred_at DESC LIMIT $3 OFFSET $4`, [status, search, limit, offset],
+    );
+    return { items: rows, limit, offset, total: Number(rows[0]?.total_count ?? 0) };
+  }
+
+  async listCustomers(page: CommercialPage = {}) {
+    const limit = bounded(page.limit, 50, 100); const offset = bounded(page.offset, 0, 1_000_000);
+    const search = cleanText(page.search, 'search', 200); const status = cleanText(page.status, 'status', 40);
+    if (status && !['active','inactive','churned'].includes(status)) throw new Error('invalid_status');
+    const { rows } = await this.database.query(
+      `SELECT c.id,c.external_ref,c.display_name,c.lifecycle_status,c.next_action,c.next_action_at,
+        c.created_at,c.updated_at,v.name AS venture_name,l.organization AS source_organization,
+        COALESCE(SUM(pay.amount_minor) FILTER(WHERE pay.status='settled'),0)::text AS settled_revenue_minor,
+        COALESCE(MAX(pay.currency),'INR') AS currency,count(*) OVER() AS total_count
+       FROM customers c LEFT JOIN ventures v ON v.id=c.venture_id
+       LEFT JOIN leads l ON l.id=c.source_lead_id LEFT JOIN invoices i ON i.customer_id=c.id
+       LEFT JOIN payments pay ON pay.invoice_id=i.id
+       WHERE ($1::text IS NULL OR c.lifecycle_status=$1)
+         AND ($2::text IS NULL OR c.display_name ILIKE '%'||$2||'%'
+           OR COALESCE(l.organization,'') ILIKE '%'||$2||'%')
+       GROUP BY c.id,v.name,l.organization
+       ORDER BY CASE c.lifecycle_status WHEN 'active' THEN 0 ELSE 1 END,c.next_action_at ASC NULLS LAST,c.updated_at DESC
+       LIMIT $3 OFFSET $4`, [status, search, limit, offset],
     );
     return { items: rows, limit, offset, total: Number(rows[0]?.total_count ?? 0) };
   }

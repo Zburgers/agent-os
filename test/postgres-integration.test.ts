@@ -15,6 +15,7 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   const { TelegramControlService } = await import('../src/telegram-controls.ts');
   const { createOwnerSession, getOwnerSession, revokeOwnerSession } = await import('../src/auth.ts');
   const { createEntity, updateEntity } = await import('../src/entities.ts');
+  const { CommercialOperationsService } = await import('../src/commercial-operations.ts');
   const { LedgerService, releaseOperatingTranche } = await import('../src/finance.ts');
   const { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, ticketDetail } = await import('../src/records.ts');
 
@@ -228,6 +229,73 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
     "SELECT state,provider_idempotency_key FROM effect_intents WHERE idempotency_key='integration-effect-message-1'",
   );
   assert.deepEqual(ambiguous.rows[0], { state: 'reconciliation_required', provider_idempotency_key: 'integration-effect-message-1' });
+
+  const commercial = new CommercialOperationsService(pool);
+  const product = await commercial.createProduct({
+    name: 'Integration conversion audit', description: 'Fixed-scope reliability and conversion review',
+    target_customer: 'Small ecommerce operators', status: 'active', pricing_model: 'one_time',
+    price_minor: 250000, currency: 'INR',
+  }, { type: 'agent', id: 'integration-agent' });
+  const prospect = await commercial.createProspect({
+    source: 'integration research', qualification: 'Public buyer with a verified conversion problem',
+    display_name: 'Integration Prospect', organization: 'Fixture Commerce', pipeline_stage: 'qualified',
+    qualification_score: 84, estimated_value_minor: 250000, currency: 'INR',
+    contact_channel: 'email', contact_endpoint: 'buyer@example.test', product_id: product.id,
+    next_action: 'Review a tailored outline', next_action_at: '2099-01-01T00:00:00.000Z',
+  }, { type: 'agent', id: 'integration-agent' });
+  assert.equal(prospect.contact_endpoint, undefined);
+  assert.equal(prospect.contact_endpoint_masked, 'bu***@example.test');
+  const followUp = await commercial.createActivity({
+    lead_id: prospect.id, product_id: product.id, activity_type: 'follow_up',
+    title: 'Review reply', status: 'scheduled', due_at: '2099-01-02T00:00:00.000Z', recurrence: 'weekly',
+  }, { type: 'agent', id: 'integration-agent' });
+  const completedFollowUp = await commercial.updateActivity(followUp.id, { status: 'completed' }, { type: 'agent', id: 'integration-agent' });
+  assert.ok(completedFollowUp.next_activity_id);
+  const authorizedMessage = await pool.query<{ id: string }>(
+    "SELECT id FROM effect_intents WHERE idempotency_key='integration-effect-message-1'",
+  );
+  const outbound = await commercial.recordMessage({
+    lead_id: prospect.id, product_id: product.id, direction: 'outbound', channel: 'email',
+    subject: 'Tailored reliability outline', content_preview: 'A short, redacted preview',
+    provider_reference: 'integration-provider-message-1', effect_intent_id: authorizedMessage.rows[0].id,
+    approval_id: messageApproval.rows[0].id,
+  }, { type: 'agent', id: 'integration-agent' });
+  await commercial.recordMessageEvent(outbound.id, {
+    event_type: 'delivered', provider_event_id: 'integration-provider-event-1',
+  }, { type: 'worker', id: 'integration-webhook' });
+  assert.equal((await commercial.recordMessageEvent(outbound.id, {
+    event_type: 'delivered', provider_event_id: 'integration-provider-event-1',
+  }, { type: 'worker', id: 'integration-webhook' }) as any).duplicate, true);
+  await commercial.recordMessageEvent(outbound.id, {
+    event_type: 'replied', provider_event_id: 'integration-provider-event-2',
+  }, { type: 'worker', id: 'integration-inbox' });
+  const prospectPage = await commercial.listProspects({ stage: 'qualified', search: 'Fixture Commerce' });
+  assert.equal(prospectPage.total, 1);
+  assert.equal(prospectPage.items[0].contact_endpoint, undefined);
+  const productPage = await commercial.listProducts({ status: 'active', search: 'conversion audit' });
+  assert.equal(productPage.total, 1);
+  const messagePage = await commercial.listMessages({ status: 'replied', search: 'Integration Prospect' });
+  assert.equal(messagePage.total, 1);
+  assert.equal(messagePage.items[0].effect_intent_id, authorizedMessage.rows[0].id);
+  const commercialActivitiesPage = await commercial.listActivities({ status: 'scheduled', search: 'Review reply' });
+  assert.equal(commercialActivitiesPage.total, 1);
+  const commercialOverview = await commercial.overview();
+  assert.equal(commercialOverview.messages.sent, 1);
+  assert.equal(commercialOverview.messages.replied, 1);
+  assert.equal(commercialOverview.activities.recurring, 1);
+  const commercialDetail = await commercial.prospectDetail(prospect.id);
+  assert.equal(commercialDetail?.messages[0].latest_status, 'replied');
+  await assert.rejects(
+    commercial.recordMessage({
+      lead_id: prospect.id, direction: 'outbound', channel: 'email', subject: 'Unsafe bypass',
+    }, { type: 'agent', id: 'integration-agent' }),
+    /effect_linkage_required/,
+  );
+  await assert.rejects(pool.query('UPDATE commercial_messages SET subject=$2 WHERE id=$1', [outbound.id, 'changed']), /append-only table/);
+  assert.equal(Number((await pool.query(
+    "SELECT count(*) FROM audit_events WHERE entity_id IN ($1,$2,$3) AND event_type LIKE 'commercial_%'",
+    [product.id, prospect.id, outbound.id],
+  )).rows[0].count) >= 3, true);
 
   await pool.query("INSERT INTO system_health_checks(component,status,detail) VALUES('integration-db','ok','fresh migration verified')");
   const healthPage = await listHealthChecks({ status: 'ok', search: 'integration-db', limit: 5, offset: 0 });

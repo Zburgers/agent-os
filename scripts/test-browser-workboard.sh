@@ -62,7 +62,7 @@ const pageCsrf = await value("document.querySelector('meta[name=csrf-token]')?.c
 if (pageCsrf !== csrfToken) throw Error("dashboard_csrf_mismatch:" + pageCsrf.length);
 for (const viewport of [{width:1440,height:900,label:'desktop'},{width:1024,height:768,label:'tablet'},{width:390,height:844,label:'mobile'}]) {
   await call('Emulation.setDeviceMetricsOverride', { width: viewport.width, height: viewport.height, deviceScaleFactor: 1, mobile: viewport.width < 600 });
-  for (const route of ['/', '/work', '/activity', '/approvals', '/finance', '/jobs', '/health']) {
+  for (const route of ['/', '/work', '/commercial', '/activity', '/approvals', '/finance', '/jobs', '/health']) {
     await call('Page.navigate', { url: baseUrl + route });
     const expected = route === '/' ? 'command' : route.slice(1);
     await until(`document.querySelector('main')?.dataset.page === '${expected}' && Boolean(document.querySelector('a[aria-current=page]'))`, 'route_' + expected + '_' + viewport.label);
@@ -100,5 +100,14 @@ await value(`document.querySelector('[data-detail="approvals"][data-id="${approv
 await until("Boolean(document.querySelector('[data-approval=approve]'))", 'approval_detail');
 await value("window.prompt=()=> 'Browser approval decision';document.querySelector('[data-approval=approve]').click()");
 await until(`fetch('/api/approvals/${approvalId}').then(response => response.json()).then(record => record.status === 'approved')`, 'approval_approved');
+const productId = await value(`fetch('/api/commercial/products',{method:'POST',headers:{'content-type':'application/json','x-csrf-token':${JSON.stringify(csrfToken)}},body:JSON.stringify({name:'Browser conversion audit',description:'A fixed-scope conversion reliability review',target_customer:'Small ecommerce teams',status:'active',pricing_model:'one_time',price_minor:250000,currency:'INR'})}).then(async response=>{if(!response.ok)throw Error('product '+response.status);return response.json()}).then(record=>record.id)`);
+const prospectId = await value(`fetch('/api/commercial/prospects',{method:'POST',headers:{'content-type':'application/json','x-csrf-token':${JSON.stringify(csrfToken)}},body:JSON.stringify({source:'browser acceptance test',qualification:'Public buyer with a visible conversion problem',display_name:'Browser Prospect',organization:'Fixture Commerce',pipeline_stage:'qualified',qualification_score:82,estimated_value_minor:250000,currency:'INR',contact_channel:'email',contact_endpoint:'buyer@example.test',product_id:${JSON.stringify(productId)},next_action:'Send approved tailored audit outline',next_action_at:new Date(Date.now()+86400000).toISOString()})}).then(async response=>{if(!response.ok)throw Error('prospect '+response.status);return response.json()}).then(record=>record.id)`);
+await value(`fetch('/api/commercial/activities',{method:'POST',headers:{'content-type':'application/json','x-csrf-token':${JSON.stringify(csrfToken)}},body:JSON.stringify({lead_id:${JSON.stringify(prospectId)},product_id:${JSON.stringify(productId)},activity_type:'follow_up',title:'Review reply and next step',status:'scheduled',due_at:new Date(Date.now()+172800000).toISOString(),recurrence:'weekly'})}).then(response=>{if(!response.ok)throw Error('activity '+response.status);return response.status})`);
+await call('Page.navigate', { url: baseUrl + '/commercial' });
+await until(`Boolean(document.querySelector('[data-detail="commercial/prospects"][data-id="${prospectId}"]'))`, 'commercial_prospect_listed');
+const commercialText = await value(`document.querySelector('#pageContent').innerText`);
+for (const expected of ['Browser Prospect','Browser conversion audit','Review reply and next step','Revenue funnel','Products, offers, and pricing']) if (!commercialText.includes(expected)) throw Error('commercial_missing:'+expected);
+await value(`document.querySelector('[data-detail="commercial/prospects"][data-id="${prospectId}"]').click()`);
+await until(`document.querySelector('#detailBody').innerText.includes('Send approved tailored audit outline')`, 'commercial_prospect_detail');
 console.log(JSON.stringify(result));
 ws.close();

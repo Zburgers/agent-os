@@ -17,6 +17,7 @@ import { buildOverviewResponse, type OverviewCounts } from './overview-contract.
 import { applySystemControl } from './system-controls.ts';
 import { actorContext } from './actor.ts';
 import { authorizeEffect, claimAuthorizedEffect, recordExternalResult } from './effects.ts';
+import { CommercialOperationsService } from './commercial-operations.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -27,6 +28,7 @@ const loginAttempts = new Map<string, { count: number; resetAt: number }>();
 const approvals = new ApprovalService(pool);
 const approvalRequests = new ApprovalRequestService(pool);
 const tickets = new TicketService(pool);
+const commercial = new CommercialOperationsService(pool);
 const telegram = new TelegramControlService(pool, new Set((process.env.OWNER_TELEGRAM_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean)));
 const memory = new HybridContextualMemory();
 type Auth = { kind: 'bearer' | 'basic' | 'session' | 'agent'; csrfToken?: string; sessionValue?: string } | null;
@@ -144,7 +146,7 @@ const server = createServer(async (req, res) => {
       return respond(res, 201, { csrf_token: session.csrfToken, expires_in_seconds: session.maxAge }, undefined, { 'set-cookie': sessionCookie(session.value) });
     }
     const auth = await authenticate(req.headers);
-    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/activity', '/approvals', '/finance', '/jobs', '/health'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
+    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/finance', '/jobs', '/health'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
     if (versioned && req.method !== 'GET' && !String(req.headers['idempotency-key'] ?? '').trim()) return respond(res, 400, { error: 'idempotency_key_required' });
     if (req.method === 'POST' && url.pathname === '/api/logout') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
@@ -229,7 +231,7 @@ const server = createServer(async (req, res) => {
       return respond(res, 200, { allowed, policy_code: policyCode, effect_kind: effectKind });
     }
     if (req.method === 'GET' && url.pathname === '/api/overview') return respond(res, 200, await overview());
-    const pageByPath: Record<string, ControlPlanePage> = { '/': 'command', '/work': 'work', '/activity': 'activity', '/approvals': 'approvals', '/finance': 'finance', '/jobs': 'jobs', '/health': 'health' };
+    const pageByPath: Record<string, ControlPlanePage> = { '/': 'command', '/work': 'work', '/commercial': 'commercial', '/activity': 'activity', '/approvals': 'approvals', '/finance': 'finance', '/jobs': 'jobs', '/health': 'health' };
     if (req.method === 'GET' && pageByPath[url.pathname]) {
       const page = pageByPath[url.pathname];
       return respond(res, 200, renderControlPlane(page, page === 'command' ? await overview() : {}, auth.csrfToken), 'text/html; charset=utf-8');
@@ -268,6 +270,54 @@ const server = createServer(async (req, res) => {
     if (req.method === "GET" && url.pathname === "/api/activity") return respond(res, 200, await listActivity(readPage()));
     if (req.method === "GET" && url.pathname === "/api/health-checks") return respond(res, 200, await listHealthChecks(readPage()));
     if (req.method === "GET" && url.pathname === "/api/incidents") return respond(res, 200, await listIncidents(readPage()));
+    const commercialPage = () => ({
+      status: url.searchParams.get('status') ?? undefined,
+      stage: url.searchParams.get('stage') ?? undefined,
+      search: url.searchParams.get('search') ?? undefined,
+      limit: Number(url.searchParams.get('limit') ?? 50),
+      offset: Number(url.searchParams.get('offset') ?? 0),
+    });
+    if (req.method === 'GET' && url.pathname === '/api/commercial/overview') return respond(res, 200, await commercial.overview());
+    if (req.method === 'GET' && url.pathname === '/api/commercial/prospects') return respond(res, 200, await commercial.listProspects(commercialPage()));
+    if (req.method === 'GET' && url.pathname === '/api/commercial/products') return respond(res, 200, await commercial.listProducts(commercialPage()));
+    if (req.method === 'GET' && url.pathname === '/api/commercial/customers') return respond(res, 200, await commercial.listCustomers(commercialPage()));
+    if (req.method === 'GET' && url.pathname === '/api/commercial/messages') return respond(res, 200, await commercial.listMessages(commercialPage()));
+    if (req.method === 'GET' && url.pathname === '/api/commercial/activities') return respond(res, 200, await commercial.listActivities(commercialPage()));
+    const prospectRead = url.pathname.match(/^\/api\/commercial\/prospects\/([0-9a-f-]+)$/);
+    if (req.method === 'GET' && prospectRead) {
+      const record = await commercial.prospectDetail(prospectRead[1]);
+      return record ? respond(res, 200, record) : respond(res, 404, { error: 'not_found' });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/products') {
+      if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
+      return respond(res, 201, await commercial.createProduct(await body(req), actorFor(auth)));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/prospects') {
+      if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
+      return respond(res, 201, await commercial.createProspect(await body(req), actorFor(auth)));
+    }
+    if (req.method === 'PATCH' && prospectRead) {
+      if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
+      return respond(res, 200, await commercial.updateProspect(prospectRead[1], await body(req), actorFor(auth)));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/activities') {
+      if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
+      return respond(res, 201, await commercial.createActivity(await body(req), actorFor(auth)));
+    }
+    const activityWrite = url.pathname.match(/^\/api\/commercial\/activities\/([0-9a-f-]+)$/);
+    if (req.method === 'PATCH' && activityWrite) {
+      if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
+      return respond(res, 200, await commercial.updateActivity(activityWrite[1], await body(req), actorFor(auth)));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/commercial/messages') {
+      if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
+      return respond(res, 201, await commercial.recordMessage(await body(req), actorFor(auth)));
+    }
+    const messageEvent = url.pathname.match(/^\/api\/commercial\/messages\/([0-9a-f-]+)\/events$/);
+    if (req.method === 'POST' && messageEvent) {
+      if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
+      return respond(res, 201, await commercial.recordMessageEvent(messageEvent[1], await body(req), actorFor(auth)));
+    }
     const ticketRead = url.pathname.match(/^\/api\/tickets\/([0-9a-f-]+)$/);
     if (req.method === "GET" && ticketRead) { const record = await ticketDetail(ticketRead[1]); return record ? respond(res, 200, record) : respond(res, 404, { error: "not_found" }); }
     const approvalRead = url.pathname.match(/^\/api\/approvals\/([0-9a-f-]+)$/);
