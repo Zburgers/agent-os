@@ -1,11 +1,14 @@
 # Goofy Agent OS Completion Plan
 
-Last updated: 2026-07-28
+Last updated: 2026-07-29 16:03 IST
 
 ## Operating constraints
 
 - PostgreSQL is authoritative for money, permissions, approvals, tasks, jobs, audit, and operational state. Mem0 is contextual only.
-- Commercial lock remains enabled. No spending, outreach, payment collection, account creation, or contract acceptance is permitted until P0 readiness evidence passes and the owner approves a tranche.
+- Commercial lock was released on 2026-07-29 after all 18 P0 gates passed and
+  the owner approved one ₹500 tranche. External actions remain constrained by
+  scoped approvals, one-time effect claims, reserve/spend policy, pause/kill,
+  provider idempotency, and immutable audit records.
 - All owner and agent actions use the same audited backend. No autonomous operational work is allowed without a durable objective, ticket, experiment, job, or incident.
 
 ## Baseline evidence
@@ -27,8 +30,8 @@ Last updated: 2026-07-28
 | 6 | Durable jobs and autonomous supervisor | Partial | Scheduler/worker claims and recovers durable runs; retry/dead-letter/pause/cancel/rerun/idempotency enforced; supervisor selects bounded evidence-backed work and resumes after restart without chat state. | Restart/retry/idempotency integration tests | `src/jobs.ts`, `src/worker.ts`, migrations | Job, recovery, duplicate-effect, policy tests | Milestones 1, 3–5 | One-shot internal worker exists; no supervisor/handlers. | Add schedules, run records, job controls, and handlers. |
 | 7 | Memory, health, controls, backups, and security | Partial | Scoped Mem0 adapter with safe fallback/metadata/health; server-enforced pause/kill at every effect boundary; health views; backup scheduler and proven isolated restore; audit and redaction coverage. | Memory/health/backup/restore/security integration tests | `src/memory.ts`, `src/policy.ts`, scripts, compose, migrations | Scope, redaction, pause/kill, restore tests | Mem0 service/config for live provider | PostgreSQL fallback and basic policy/redaction units exist. | Define provider interface metadata and central side-effect guard. |
 | 8 | End-to-end release verification | Not started | Lint/type check, unit/integration/migration/backup/restore/browser/visual suites pass; P0 report contains exact evidence and gaps. | Full CI command set in `package.json` | all | All required suites | Milestones 0–7 | None | Establish test harness and run baseline. |
-| 9 | Revenue operations gate | Blocked by P0 | After P0 passes, create readiness report and approval for first operating tranche; Telegram duplicate request; wait for explicit approval. | Readiness report verification | approvals, Telegram, plans | Browser approval path | Explicit owner approval required | Commercial lock remains on. | Do not execute until milestone 8 passes. |
-| 10 | Evidence-backed revenue operations | Blocked by milestone 9 | Inventory resources; research and score multiple lawful opportunities; select bounded experiment; operate through durable records and evaluate realised profit. | Experiment/ledger/audit evidence | ventures, experiments, jobs, ledger | End-to-end controlled experiment | P0 readiness + owner approval | No commercial operation initiated. | Await release gate. |
+| 9 | Revenue operations gate | Complete | P0 passes, owner approval exists, and exactly one append-only tranche release atomically unlocks scoped commercial effects. | Full release matrix plus live SQL/MCP verification | approvals, effects, finance, audit, plans | Unit, integration, browser, restart, restore | None | ₹500 released; commercial lock false; one release row and audit event. | Continue scoped demand validation. |
+| 10 | Evidence-backed revenue operations | In progress | Inventory resources; research and score multiple lawful opportunities; select bounded experiment; operate through durable records and evaluate realised profit. | Experiment/effect/ledger/audit evidence | ventures, experiments, jobs, ledger | End-to-end controlled experiment | Active scoped approval | First individualized zero-cost pitch sent with Agent OS effect and AgentMail receipt. | Track delivery/reply and continue qualified queue within kill rules. |
 
 ## Decisions
 

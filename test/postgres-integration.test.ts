@@ -15,6 +15,7 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   const { TelegramControlService } = await import('../src/telegram-controls.ts');
   const { createOwnerSession, getOwnerSession, revokeOwnerSession } = await import('../src/auth.ts');
   const { createEntity, updateEntity } = await import('../src/entities.ts');
+  const { LedgerService, releaseOperatingTranche } = await import('../src/finance.ts');
   const { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, ticketDetail } = await import('../src/records.ts');
 
   const objective = await pool.query<{ id: string }>("INSERT INTO objectives(statement,status) VALUES('integration fixture','active') RETURNING id");
@@ -131,21 +132,96 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
     await externalClient.query('COMMIT');
   } finally { externalClient.release(); }
 
+  const trancheApproval = await pool.query<{ id: string }>(
+    `INSERT INTO approvals(action_type,requested_action,reason,cost_minor,currency,risk,recommendation,idempotency_key,status,expires_at,decided_at,decided_by)
+     VALUES('tranche_release','release integration tranche','prove audited release',50000,'INR','bounded','release after P0','integration-tranche-release','approved',now()+interval '1 hour',now(),'integration-owner') RETURNING id`,
+  );
+  await assert.rejects(
+    releaseOperatingTranche(pool, trancheApproval.rows[0].id, { type: 'system', id: 'integration-reconciler' }),
+    (error: unknown) => error instanceof Error && error.message === 'p0_gate_incomplete',
+  );
+  await pool.query("UPDATE readiness_gates SET status='PASS',verified_at=now(),evidence_uri='integration://p0' WHERE priority='P0'");
+  const released = await releaseOperatingTranche(pool, trancheApproval.rows[0].id, { type: 'system', id: 'integration-reconciler' });
+  assert.equal(released.amountMinor, 50000);
+  assert.equal(released.releasedOperatingMinor, 50000);
+  assert.equal(released.commercialLock, false);
+  assert.equal(released.duplicate, false);
+  const repeatedRelease = await releaseOperatingTranche(pool, trancheApproval.rows[0].id, { type: 'system', id: 'integration-reconciler' });
+  assert.equal(repeatedRelease.id, released.id);
+  assert.equal(repeatedRelease.duplicate, true);
+  assert.deepEqual((await pool.query(
+    'SELECT released_operating_minor::text AS released FROM financial_policy_state WHERE currency=$1',
+    ['INR'],
+  )).rows[0], { released: '50000' });
+  assert.deepEqual((await pool.query(
+    'SELECT commercial_lock FROM system_controls WHERE singleton=true',
+  )).rows[0], { commercial_lock: false });
+  assert.equal((await pool.query(
+    "SELECT count(*) FROM audit_events WHERE event_type='operating_tranche_released' AND entity_id=$1",
+    [released.id],
+  )).rows[0].count, '1');
+  await assert.rejects(
+    pool.query('UPDATE operating_tranche_releases SET actor_id=$2 WHERE id=$1', [released.id, 'changed']),
+    /append-only table/,
+  );
+
+  const spendVenture = await pool.query<{ id: string }>(
+    `INSERT INTO ventures(name,thesis,target_user,problem,offer,revenue_model,distribution_strategy)
+     VALUES('Tranche spend fixture','prove controlled spend','test','historical costs must not consume new authority','test','internal','none') RETURNING id`,
+  );
+  const spendExperiment = await pool.query<{ id: string }>(
+    `INSERT INTO experiments(venture_id,hypothesis,target_customer,method,success_metric,failure_metric)
+     VALUES($1,'released authority works','test','append one controlled expense','expense persists','expense denied') RETURNING id`,
+    [spendVenture.rows[0].id],
+  );
+  const expenseApproval = await pool.query<{ id: string }>(
+    `INSERT INTO approvals(action_type,requested_action,reason,cost_minor,currency,risk,recommendation,idempotency_key,status,expires_at,decided_at,decided_by)
+     VALUES('expense','integration expense','prove historical fixed cost does not consume released authority',1000,'INR','bounded','approve fixture','integration-expense-approval','approved',now()+interval '1 hour',now(),'integration-owner') RETURNING id`,
+  );
+  const ledger = new LedgerService(pool, { singleLimitMinor: 30000, dailyLimitMinor: 80000, experimentLimitMinor: 100000 });
+  const controlledExpense = await ledger.append({
+    transactionId: 'integration-controlled-expense',
+    entryType: 'expense',
+    currency: 'INR',
+    grossMinor: 1000,
+    netMinor: 1000,
+    counterparty: 'integration fixture',
+    ventureId: spendVenture.rows[0].id,
+    experimentId: spendExperiment.rows[0].id,
+    paymentStatus: 'settled',
+    evidenceUri: 'integration://controlled-expense',
+    idempotencyKey: 'integration-controlled-expense',
+  }, {
+    approvalId: expenseApproval.rows[0].id,
+    actorId: 'integration-agent',
+    justification: {
+      category: 'integration_test',
+      objective: 'prove released authority',
+      expectedResult: 'one append-only expense',
+      evidenceUri: 'integration://controlled-expense',
+      alternatives: ['no-op fixture'],
+      worstCaseLoss: '1000 minor units',
+      successCondition: 'ledger insert succeeds',
+      stopCondition: 'any policy denial',
+      expectedPayback: 'not applicable test fixture',
+      confidence: 100,
+    },
+  });
+  assert.equal(controlledExpense.duplicate, false);
+
   const messageApproval = await pool.query<{ id: string }>(
     `INSERT INTO approvals(action_type,requested_action,reason,risk,recommendation,idempotency_key,status,expires_at,decided_at,decided_by)
-     VALUES('message','integration message','effect state test','low','approve test only','integration-message-approval','approved',now()+interval '1 hour',now(),'integration-owner') RETURNING id`,
+     VALUES('external_outreach','integration message','effect state test','low','approve test only','integration-message-approval','approved',now()+interval '1 hour',now(),'integration-owner') RETURNING id`,
   );
   const ambiguousClient = await pool.connect();
   try {
     await ambiguousClient.query('BEGIN');
-    await ambiguousClient.query('UPDATE system_controls SET commercial_lock=false WHERE singleton=true');
     const authorized = await authorizeEffect(ambiguousClient, {
       idempotencyKey: 'integration-effect-message-1', kind: 'message', approvalId: messageApproval.rows[0].id,
     }, actorContext({ actorType: 'worker', actorId: 'integration-supervisor', credentialScope: 'effects:message', originPlatform: 'relay' }));
     assert.equal(await claimAuthorizedEffect(ambiguousClient, authorized.id, 'message'), true);
     assert.equal(await claimAuthorizedEffect(ambiguousClient, authorized.id, 'message'), false);
     assert.equal(await recordExternalResult(ambiguousClient, authorized.id, { outcome: 'ambiguous', error: 'timeout_after_call' }), 'reconciliation_required');
-    await ambiguousClient.query('UPDATE system_controls SET commercial_lock=true WHERE singleton=true');
     await ambiguousClient.query('COMMIT');
   } finally { ambiguousClient.release(); }
   const ambiguous = await pool.query<{ state: string; provider_idempotency_key: string }>(
@@ -220,7 +296,6 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   let cancellableEffect = '';
   try {
     await killClient.query('BEGIN');
-    await killClient.query('UPDATE system_controls SET commercial_lock=false WHERE singleton=true');
     const approval = await killClient.query<{ id: string }>(
       `INSERT INTO approvals(action_type,requested_action,reason,risk,recommendation,idempotency_key,status,expires_at,decided_at,decided_by)
        VALUES('message','cancel on kill','P0 fixture','none','test','kill-effect-approval','approved',now()+interval '1 hour',now(),'integration-owner') RETURNING id`,
@@ -228,7 +303,6 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
     const intent = await authorizeEffect(killClient, { idempotencyKey: 'kill-effect', kind: 'message', approvalId: approval.rows[0].id },
       actorContext({ actorType: 'worker', actorId: 'integration-supervisor', credentialScope: 'effects:message', originPlatform: 'integration' }));
     cancellableEffect = intent.id;
-    await killClient.query('UPDATE system_controls SET commercial_lock=true WHERE singleton=true');
     await killClient.query('COMMIT');
   } catch (error) {
     await killClient.query('ROLLBACK'); throw error;

@@ -1,4 +1,4 @@
 interface:
   display_name: "Agent OS"
-  short_description: "Operate the Goofy Agent OS safely."
-  default_prompt: "Inspect Agent OS status and use its durable authorization boundaries."
+  short_description: "Operate and persist work in Goofy Agent OS."
+  default_prompt: "Use the configured Agent OS MCP server to inspect authoritative state, persist material work, and respect durable effect boundaries."

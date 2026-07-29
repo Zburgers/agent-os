@@ -6,6 +6,7 @@ import { redactSecrets } from './redaction.ts';
 import { createEntity, isEntityName, listEntity, updateEntity } from './entities.ts';
 import { renderControlPlane, type ControlPlanePage } from './control-plane.ts';
 import { ApprovalService } from './approvals.ts';
+import { reconcileApprovedOperatingTranches } from './finance.ts';
 import { ApprovalRequestService } from './approval-requests.ts';
 import { TicketService } from './tickets.ts';
 import { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, ticketDetail } from './records.ts';
@@ -274,13 +275,22 @@ const server = createServer(async (req, res) => {
     const ticketMatch = url.pathname.match(/^\/api\/tickets(?:\/([0-9a-f-]+)(?:\/(comments|dependencies))?)?$/);
     if (ticketMatch) { const id = ticketMatch[1]; const resource = ticketMatch[2]; if (req.method === "POST" && !id) { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: "csrf_required" }); return respond(res, 201, await tickets.create(await body(req) as any, { type: actorFor(auth).type, id: actorFor(auth).id })); } if (req.method === "PATCH" && id && !resource) { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: "csrf_required" }); const input = await body(req); return respond(res, 200, input.status === undefined ? await tickets.update(id, input as any, { type: actorFor(auth).type, id: actorFor(auth).id }) : await tickets.transition(id, input.status as any, { type: actorFor(auth).type, id: actorFor(auth).id }, input as any)); } if (req.method === "POST" && id && resource === "comments") { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: "csrf_required" }); const input = await body(req); await tickets.comment(id, String(input.body ?? ""), { type: actorFor(auth).type, id: actorFor(auth).id }); return respond(res, 204, ""); } if (req.method === "POST" && id && resource === "dependencies") { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: "csrf_required" }); const input = await body(req); await tickets.addDependency(id, String(input.depends_on_ticket_id ?? ""), { type: actorFor(auth).type, id: actorFor(auth).id }); return respond(res, 204, ""); } }
     const approvalAction = url.pathname.match(/^\/api\/approvals\/([0-9a-f-]+)\/(approve|reject|modify|comment|cancel)$/);
-    if (approvalAction && req.method === "POST") { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: "csrf_required" }); if (!ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' }); const input = await body(req); return respond(res, 200, await approvals.transition(approvalAction[1], approvalAction[2] as any, { type: actorFor(auth).type as any, id: actorFor(auth).id }, typeof input.note === "string" ? input.note : undefined, input.replacement as Record<string, unknown> | undefined)); }
+    if (approvalAction && req.method === "POST") {
+      if (!mutationAllowed(auth, req)) return respond(res, 403, { error: "csrf_required" });
+      if (!ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
+      const input = await body(req);
+      const transitioned = await approvals.transition(approvalAction[1], approvalAction[2] as any, { type: actorFor(auth).type as any, id: actorFor(auth).id }, typeof input.note === "string" ? input.note : undefined, input.replacement as Record<string, unknown> | undefined);
+      const releasedTranches = approvalAction[2] === 'approve'
+        ? await reconcileApprovedOperatingTranches(pool, { type: 'owner', id: actorFor(auth).id })
+        : [];
+      return respond(res, 200, { ...transitioned, released_tranches: releasedTranches });
+    }
     const entityMatch = url.pathname.match(/^\/api\/(ventures|opportunities|objectives|tasks|experiments|decisions)(?:\/([0-9a-f-]+))?$/);
     if (entityMatch && isEntityName(entityMatch[1])) {
       const entity = entityMatch[1]; const id = entityMatch[2];
       if (req.method === 'GET' && !id) return respond(res, 200, await listEntity(entity));
-      if (req.method === 'POST' && !id) { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' }); return respond(res, 201, await createEntity(entity, await body(req))); }
-      if (req.method === 'PATCH' && id) { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' }); return respond(res, 200, await updateEntity(entity, id, await body(req))); }
+      if (req.method === 'POST' && !id) { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' }); return respond(res, 201, await createEntity(entity, await body(req), actorFor(auth).id)); }
+      if (req.method === 'PATCH' && id) { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' }); return respond(res, 200, await updateEntity(entity, id, await body(req), actorFor(auth).id)); }
     }
     return respond(res, 404, { error: 'not_found' });
   } catch (error) { const message = error instanceof Error ? error.message : 'unknown'; console.error('request_failed', redactSecrets(message, [token, process.env.DATABASE_URL ?? ''])); return respond(res, 500, { error: 'internal_error' }); }

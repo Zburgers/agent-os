@@ -9,6 +9,14 @@ export class EffectPolicyError extends Error {
 }
 
 const externalKinds = new Set<EffectKind>(['message', 'expense', 'deployment', 'payment', 'account_change', 'purchase']);
+const approvalActionTypes: Record<Exclude<EffectKind, 'internal'>, string[]> = {
+  message: ['message', 'external_outreach'],
+  expense: ['expense'],
+  deployment: ['deployment'],
+  payment: ['payment'],
+  account_change: ['account_change', 'commercial_account_creation'],
+  purchase: ['expense'],
+};
 
 export async function authorizeEffect(
   client: PoolClient,
@@ -53,11 +61,12 @@ export async function authorizeEffect(
   if (externalKinds.has(input.kind) && controls.rows[0]?.commercial_lock) return deny('commercial_lock');
 
   if (externalKinds.has(input.kind)) {
+    const allowedActionTypes = approvalActionTypes[input.kind as Exclude<EffectKind, 'internal'>];
     const approval = input.approvalId
       ? await client.query<{ id: string }>(
           `SELECT id FROM approvals WHERE id=$1 AND status='approved' AND expires_at>now()
-           AND action_type=$2 FOR SHARE`,
-          [input.approvalId, input.kind === 'purchase' ? 'expense' : input.kind],
+           AND action_type=ANY($2::text[]) FOR SHARE`,
+          [input.approvalId, allowedActionTypes],
         )
       : { rows: [] };
     if (!approval.rows[0]) return deny(input.approvalId ? 'approval_scope_mismatch' : 'approval_required');

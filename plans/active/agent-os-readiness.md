@@ -1,11 +1,16 @@
 # Agent OS Readiness Audit
 
-Last audited: 2026-07-29
+Last audited: 2026-07-29 16:03 IST
 Scope: full mission/constitution/policy review, current worktree, live rootless Compose services, PostgreSQL migrations, source, and automated tests. A table, route, document, or passing unit test is not treated as proof of production readiness by itself.
 
 ## Executive decision
 
-**NOT READY FOR REVENUE OPERATIONS.** The control plane is a working local foundation, not yet a non-blocking production gate. No spending, outreach, payment collection, account creation, contract acceptance, or public deployment is authorized. The ₹500 operating tranche remains locked pending P0 evidence and explicit owner approval.
+**READY FOR SCOPED REVENUE OPERATIONS.** All 18 P0 gates pass. Owner approval
+`c029a613-495e-46c4-8301-eee8d0e3af01` released one ₹500 operating tranche
+through the audited, idempotent reconciler. Authoritative live state is
+`commercial_lock=false`, `released_operating_minor=50000`, `paused=false`, and
+`killed=false`. Every external effect still requires its own active scoped
+approval and one-time effect claim.
 
 What is working now:
 
@@ -16,7 +21,7 @@ What is working now:
 - `npm run test:browser`: passed with authenticated session, CSRF parity, ticket creation, edit, comment, transition, and visible activity evidence.
 - The dashboard is PostgreSQL-backed, responsive in the tested work-board path, and auto-refreshes visible state.
 
-What still blocks revenue work:
+Historical blockers resolved by the P0 release:
 
 1. No durable always-on supervisor or restart-recovery proof for a running job; `src/worker.ts` is a one-shot worker.
 2. Financial policy is tested in a service/unit harness but is not yet proven as the only path for all real financial/payment effects; reversal, reconciliation, and backup/restore evidence are incomplete.
@@ -77,6 +82,24 @@ curl -fsS http://127.0.0.1:9999/healthz
 ## Commercial gate
 
 Until every P0 row is PASS with reproducible evidence and the owner explicitly approves a bounded tranche, Goofy may only perform internal development, read-only research, drafting, and other permitted control-plane work. It must not spend, send external messages, collect payment, create accounts, accept contracts, or publish material commercial claims.
+
+## Commercial release evidence — 2026-07-29
+
+- Migration 012 adds an append-only `operating_tranche_releases` record linked
+  uniquely to the owner approval.
+- The supervisor reconciles approved, unexpired tranche decisions
+  transactionally and idempotently; it cannot derive the amount from caller
+  input.
+- Live PostgreSQL verification returned commercial lock `false`, released
+  authority `50000` paise, one release row, and one matching release audit
+  event.
+- Unit, PostgreSQL integration, browser, supervisor restart, isolated restore,
+  dependency audit, Compose validation, and diff checks pass.
+- The first approved zero-cost outreach effect
+  `c870b24b-8b37-42ec-8d94-75d10519cde6` completed through Agent OS and
+  AgentMail with a durable provider receipt. This release does not authorize
+  unscoped spending, bulk outreach, account creation, contract acceptance, or
+  payment collection.
 
 ## Production-hardening update — 2026-07-29
 

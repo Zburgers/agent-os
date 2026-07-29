@@ -115,37 +115,151 @@ export class LedgerService {
     const approval = await client.query<{ id: string }>("SELECT id FROM approvals WHERE id=$1 AND status='approved' AND expires_at>now() AND action_type='expense' AND cost_minor=$2 AND currency=$3 FOR SHARE", [approvalId,entry.grossMinor,entry.currency]);
     if (!approval.rows[0]) throw new FinancialPolicyError('owner_approval_required');
     const state = await client.query<{ released: string | number; reserve: string | number }>('SELECT released_operating_minor AS released,required_reserve_minor AS reserve FROM financial_policy_state WHERE currency=$1 FOR UPDATE', [entry.currency]);
-    const totals = await client.query<{ today: string | number; experiment: string | number; expenses: string | number; cash: string | number }>("SELECT COALESCE(SUM(gross_minor) FILTER(WHERE entry_type='expense' AND payment_status='settled' AND occurred_at>=date_trunc('day',now())),0) AS today,COALESCE(SUM(gross_minor) FILTER(WHERE entry_type='expense' AND payment_status='settled' AND experiment_id=$2),0) AS experiment,COALESCE(SUM(gross_minor) FILTER(WHERE entry_type='expense' AND payment_status='settled'),0) AS expenses,COALESCE(SUM(net_minor) FILTER(WHERE entry_type IN ('contribution','revenue') AND payment_status='settled'),0)-COALESCE(SUM(gross_minor) FILTER(WHERE entry_type IN ('expense','refund') AND payment_status='settled'),0) AS cash FROM ledger_entries WHERE currency=$1 FOR SHARE", [entry.currency,entry.experimentId]);
+    const totals = await client.query<{ today: string | number; experiment: string | number; expenses: string | number; cash: string | number }>("SELECT COALESCE(SUM(gross_minor) FILTER(WHERE entry_type='expense' AND payment_status='settled' AND approval_id IS NOT NULL AND occurred_at>=date_trunc('day',now())),0) AS today,COALESCE(SUM(gross_minor) FILTER(WHERE entry_type='expense' AND payment_status='settled' AND approval_id IS NOT NULL AND experiment_id=$2),0) AS experiment,COALESCE(SUM(gross_minor) FILTER(WHERE entry_type='expense' AND payment_status='settled' AND approval_id IS NOT NULL),0) AS expenses,COALESCE(SUM(net_minor) FILTER(WHERE entry_type IN ('contribution','revenue') AND payment_status='settled'),0)-COALESCE(SUM(gross_minor) FILTER(WHERE entry_type IN ('expense','refund') AND payment_status='settled'),0) AS cash FROM ledger_entries WHERE currency=$1", [entry.currency,entry.experimentId]);
     const s = state.rows[0] ?? { released: 0, reserve: 0 }; const t = totals.rows[0] ?? { today: 0, experiment: 0, expenses: 0, cash: 0 };
     const result = evaluateExpense({ amountPaise: entry.grossMinor, todaySpentPaise: Number(t.today), experimentSpentPaise: Number(t.experiment), spendablePaise: Number(s.released) - Number(t.expenses), reservePaise: Number(s.reserve), cashBalancePaise: Number(t.cash), approved: true, singleLimitPaise: this.policy.singleLimitMinor, dailyLimitPaise: this.policy.dailyLimitMinor, experimentLimitPaise: this.policy.experimentLimitMinor });
     if (!result.allowed) throw new FinancialPolicyError(result.reason!);
   }
 }
 
-export async function releaseOperatingTranche(database: Database, input: {
-  amountMinor: number; currency: string; approvalId: string; actorType: string; actorId: string;
-}) {
-  if (input.actorType !== 'owner') throw new FinancialPolicyError('owner_authority_required');
-  if (!Number.isSafeInteger(input.amountMinor) || input.amountMinor <= 0 || !/^[A-Z]{3}$/.test(input.currency)) throw new FinancialPolicyError('invalid_tranche');
+export type TrancheReleaseActor = { type: 'owner' | 'telegram' | 'system'; id: string };
+export type TrancheReleaseResult = {
+  id: string;
+  approvalId: string;
+  amountMinor: number;
+  currency: string;
+  releasedOperatingMinor: number;
+  commercialLock: boolean;
+  duplicate: boolean;
+};
+
+/**
+ * Executes a previously approved tranche. Amount and currency are derived from
+ * the immutable owner decision rather than supplied by the executor.
+ */
+export async function releaseOperatingTranche(
+  database: Database,
+  approvalId: string,
+  actor: TrancheReleaseActor,
+): Promise<TrancheReleaseResult> {
+  if (!approvalId.trim() || !actor.id.trim()) throw new FinancialPolicyError('invalid_tranche');
+  if (!['owner','telegram','system'].includes(actor.type)) throw new FinancialPolicyError('owner_authority_required');
   const client = await database.connect();
   try {
     await client.query('BEGIN');
+    const controls = await client.query<{ killed: boolean; commercial_lock: boolean }>(
+      'SELECT killed,commercial_lock FROM system_controls WHERE singleton=true FOR UPDATE',
+    );
+    if (!controls.rows[0]) throw new FinancialPolicyError('control_state_missing');
+    if (controls.rows[0].killed) throw new FinancialPolicyError('system_killed');
     const failed = await client.query("SELECT gate_key FROM readiness_gates WHERE priority='P0' AND status<>'PASS' LIMIT 1 FOR SHARE");
     if (failed.rows[0]) throw new FinancialPolicyError('p0_gate_incomplete');
-    const approval = await client.query(
-      `SELECT id FROM approvals WHERE id=$1 AND action_type='tranche_release' AND status='approved'
-       AND expires_at>now() AND cost_minor=$2 AND currency=$3 FOR SHARE`,
-      [input.approvalId,input.amountMinor,input.currency],
+    const approval = await client.query<{ id: string; cost_minor: string | number; currency: string; decided_by: string | null }>(
+      `SELECT id,cost_minor,currency,decided_by FROM approvals
+       WHERE id=$1 AND action_type='tranche_release' AND status='approved'
+       AND expires_at>now() AND decided_at IS NOT NULL AND decided_by IS NOT NULL
+       FOR SHARE`,
+      [approvalId],
     );
     if (!approval.rows[0]) throw new FinancialPolicyError('owner_approval_required');
-    const state = await client.query<{ available: string | number; released: string | number }>(
-      'SELECT available_operating_minor AS available,released_operating_minor AS released FROM financial_policy_state WHERE currency=$1 FOR UPDATE',
-      [input.currency],
+    const amountMinor = Number(approval.rows[0].cost_minor);
+    const currency = approval.rows[0].currency;
+    if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0 || !/^[A-Z]{3}$/.test(currency)) throw new FinancialPolicyError('invalid_tranche');
+    const state = await client.query<{ released: string | number; reserve: string | number }>(
+      'SELECT released_operating_minor AS released,required_reserve_minor AS reserve FROM financial_policy_state WHERE currency=$1 FOR UPDATE',
+      [currency],
     );
-    if (!state.rows[0] || Number(state.rows[0].released) + input.amountMinor > Number(state.rows[0].available)) throw new FinancialPolicyError('reserve_preservation_required');
-    await client.query('UPDATE financial_policy_state SET released_operating_minor=released_operating_minor+$2,updated_at=now() WHERE currency=$1', [input.currency,input.amountMinor]);
-    await client.query("INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload) VALUES('owner',$1,'operating_tranche_released','financial_policy_state',$2,$3)",
-      [input.actorId,input.currency,JSON.stringify({ amount_minor: input.amountMinor, approval_id: input.approvalId })]);
+    if (!state.rows[0]) throw new FinancialPolicyError('financial_policy_state_missing');
+    const prior = await client.query<{ id: string }>(
+      'SELECT id FROM operating_tranche_releases WHERE approval_id=$1 FOR SHARE',
+      [approvalId],
+    );
+    if (prior.rows[0]) {
+      await client.query('COMMIT');
+      return {
+        id: prior.rows[0].id,
+        approvalId,
+        amountMinor,
+        currency,
+        releasedOperatingMinor: Number(state.rows[0].released),
+        commercialLock: controls.rows[0].commercial_lock,
+        duplicate: true,
+      };
+    }
+    const cash = await client.query<{ cash: string | number }>(
+      `SELECT
+       COALESCE(SUM(net_minor) FILTER(WHERE entry_type IN ('contribution','revenue') AND payment_status='settled'),0)
+       - COALESCE(SUM(gross_minor) FILTER(WHERE entry_type IN ('expense','refund') AND payment_status='settled'),0) AS cash
+       FROM ledger_entries WHERE currency=$1`,
+      [currency],
+    );
+    const released = Number(state.rows[0].released);
+    const reserve = Number(state.rows[0].reserve);
+    const cashMinor = Number(cash.rows[0]?.cash ?? 0);
+    if (![released,reserve,cashMinor].every(Number.isSafeInteger) || released + amountMinor > cashMinor - reserve) {
+      throw new FinancialPolicyError('reserve_preservation_required');
+    }
+    const inserted = await client.query<{ id: string }>(
+      `INSERT INTO operating_tranche_releases(approval_id,currency,amount_minor,actor_type,actor_id,evidence)
+       VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,
+      [approvalId,currency,amountMinor,actor.type,actor.id,JSON.stringify({ decided_by: approval.rows[0].decided_by, p0_verified: true })],
+    );
+    const updated = await client.query<{ released: string | number }>(
+      `UPDATE financial_policy_state
+       SET released_operating_minor=released_operating_minor+$2,updated_at=now(),updated_by=$3
+       WHERE currency=$1 RETURNING released_operating_minor AS released`,
+      [currency,amountMinor,`${actor.type}:${actor.id}`],
+    );
+    let commercialLock = controls.rows[0].commercial_lock;
+    if (commercialLock) {
+      await client.query(
+        `UPDATE system_controls SET commercial_lock=false,updated_at=now(),updated_by=$1
+         WHERE singleton=true`,
+        [`${actor.type}:${actor.id}`],
+      );
+      await client.query(
+        `INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload)
+         VALUES($1,$2,'commercial_lock_released','system_controls','singleton',$3)`,
+        [actor.type,actor.id,JSON.stringify({ approval_id: approvalId, tranche_release_id: inserted.rows[0].id })],
+      );
+      commercialLock = false;
+    }
+    await client.query(
+      `INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload)
+       VALUES($1,$2,'operating_tranche_released','operating_tranche_release',$3,$4)`,
+      [actor.type,actor.id,inserted.rows[0].id,JSON.stringify({ amount_minor: amountMinor, currency, approval_id: approvalId })],
+    );
     await client.query('COMMIT');
+    return {
+      id: inserted.rows[0].id,
+      approvalId,
+      amountMinor,
+      currency,
+      releasedOperatingMinor: Number(updated.rows[0].released),
+      commercialLock,
+      duplicate: false,
+    };
   } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+}
+
+/** Reconciles durable owner approvals that were decided before the executor ran. */
+export async function reconcileApprovedOperatingTranches(
+  database: Database,
+  actor: TrancheReleaseActor = { type: 'system', id: 'tranche-reconciler' },
+) {
+  const client = await database.connect();
+  let approvalIds: string[] = [];
+  try {
+    const approvals = await client.query<{ id: string }>(
+      `SELECT a.id FROM approvals a
+       LEFT JOIN operating_tranche_releases r ON r.approval_id=a.id
+       WHERE a.action_type='tranche_release' AND a.status='approved'
+       AND a.expires_at>now() AND a.decided_at IS NOT NULL AND a.decided_by IS NOT NULL
+       AND r.id IS NULL ORDER BY a.decided_at,a.id`,
+    );
+    approvalIds = approvals.rows.map((row) => row.id);
+  } finally { client.release(); }
+  const results: TrancheReleaseResult[] = [];
+  for (const id of approvalIds) results.push(await releaseOperatingTranche(database, id, actor));
+  return results;
 }

@@ -3,6 +3,7 @@ import { audit, pool } from './db.ts';
 export type EntityName = 'ventures' | 'opportunities' | 'objectives' | 'tasks' | 'experiments' | 'decisions';
 const names = new Set<EntityName>(['ventures', 'opportunities', 'objectives', 'tasks', 'experiments', 'decisions']);
 const statuses = new Set(['inbox', 'backlog', 'ready', 'in_progress', 'blocked', 'waiting_for_owner', 'validation', 'completed', 'abandoned']);
+const experimentStatuses = new Set(['draft', 'running', 'paused', 'completed', 'abandoned']);
 
 function text(value: unknown, field: string, required = false) {
   if (value === undefined || value === null || value === '') { if (required) throw new Error(`missing_${field}`); return null; }
@@ -49,13 +50,14 @@ const editable: Record<EntityName, Set<string>> = {
   opportunities: new Set(['decision_status','evidence','competitors','risks','confidence','expected_value']),
   objectives: new Set(['statement','status','expected_value']),
   tasks: new Set(['title','status','priority','expected_value','cost_estimate_minor','decision_or_hypothesis','completion_evidence','venture_id','objective_id']),
-  experiments: new Set(['actual_result','lesson','follow_up_decision','review_at','success_metric','failure_metric']),
+  experiments: new Set(['status','start_at','actual_result','lesson','follow_up_decision','review_at','success_metric','failure_metric','actual_expense_minor','actual_revenue_minor','decision']),
   decisions: new Set(['actual_outcome','lesson','review_at','expected_result','confidence']),
 };
 export async function updateEntity(entity: EntityName, id: string, input: Record<string, unknown>, actor = 'owner') {
   const fields = Object.entries(input).filter(([field, value]) => editable[entity].has(field) && value !== undefined);
   if (!fields.length) throw new Error('no_valid_changes');
   if (entity === 'tasks' && input.status && (!statuses.has(String(input.status)))) throw new Error('invalid_status');
+  if (entity === 'experiments' && input.status && (!experimentStatuses.has(String(input.status)))) throw new Error('invalid_status');
   const values = fields.map(([, value]) => Array.isArray(value) ? JSON.stringify(value) : value);
   const set = fields.map(([field], index) => `${field}=$${index + 1}`).join(', ');
   const timestamp = entity === 'tasks' ? ', updated_at=now()' : '';
