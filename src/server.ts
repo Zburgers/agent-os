@@ -250,7 +250,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/api/overview') return respond(res, 200, await overview());
     if (req.method === 'GET' && ['/assets/wallet-client.js','/assets/metamask-connect.js'].includes(url.pathname)) return respond(res, 200, await readFile(new URL(`../public/${url.pathname.split('/').pop()}`, import.meta.url)), 'text/javascript; charset=utf-8');
-    if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID), 'text/html; charset=utf-8');
+    if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID, await wallet.status()), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/api/wallet/status') return respond(res, 200, await wallet.status());
     if (req.method === 'GET' && url.pathname === '/api/paypal/status') return respond(res, 200, paypal.status());
     if (req.method === 'POST' && url.pathname === '/api/paypal/orders') { if(auth.kind!=='agent') return respond(res,403,{error:'agent_scope_required'}); return respond(res,201,await paypal.createOrder(await body(req))); }
