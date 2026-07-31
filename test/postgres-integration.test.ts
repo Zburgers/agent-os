@@ -18,6 +18,7 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   const { CommercialOperationsService } = await import('../src/commercial-operations.ts');
   const { LedgerService, releaseOperatingTranche } = await import('../src/finance.ts');
   const { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, ticketDetail } = await import('../src/records.ts');
+  const { ChannelOutboxError, ChannelOutboxService } = await import('../src/channel-outbox.ts');
 
   const outboxConstraints = await pool.query<{ conname: string }>(
     `SELECT conname FROM pg_constraint
@@ -49,7 +50,7 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   );
   const outbox = await pool.query<{ attempts: number; max_attempts: number }>(
     `INSERT INTO channel_outbox(channel,recipient_ref,message_kind,redacted_payload,idempotency_key,effect_intent_id)
-     VALUES('telegram','integration-owner','approval_required','{}','approval:integration:owner',$1)
+     VALUES('telegram','123456','approval_required','{"text":"Integration owner notice"}','approval:integration:owner',$1)
      RETURNING attempts,max_attempts`,
     [outboxEffect.rows[0].id],
   );
@@ -70,6 +71,96 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
     pool.query("UPDATE channel_outbox SET attempts=4 WHERE idempotency_key='approval:integration:owner'"),
     /channel_outbox_attempts_check/,
   );
+
+  await pool.query('UPDATE system_controls SET commercial_lock=false WHERE singleton=true');
+  const channelOutbox = new ChannelOutboxService(pool, { leaseSeconds: 60, ownerTelegramIds: ['123456'] });
+  const deliveryClaim = await channelOutbox.claim();
+  assert.equal(deliveryClaim.claimed, true);
+  assert.equal(deliveryClaim.delivery?.text, 'Integration owner notice');
+  assert.equal(deliveryClaim.delivery?.attempt, 1);
+  await channelOutbox.recordResult(deliveryClaim.delivery!.id, deliveryClaim.delivery!.attempt, {
+    outcome: 'succeeded',
+    receipt: { providerStatus: 'sent', messageId: '42', chatId: '123456', ignored: 'must-not-persist' },
+  });
+  assert.deepEqual((await pool.query(
+    `SELECT o.status,o.attempts,o.provider_receipt,e.state AS effect_state
+     FROM channel_outbox o JOIN effect_intents e ON e.id=o.effect_intent_id WHERE o.id=$1`,
+    [deliveryClaim.delivery!.id],
+  )).rows[0], {
+    status: 'delivered', attempts: 1,
+    provider_receipt: { provider_status: 'sent', message_id: '42', chat_id: '123456' },
+    effect_state: 'succeeded',
+  });
+  await assert.rejects(
+    channelOutbox.recordResult(deliveryClaim.delivery!.id, deliveryClaim.delivery!.attempt, { outcome: 'succeeded' }),
+    (error: unknown) => error instanceof ChannelOutboxError && error.code === 'invalid_delivery_state',
+  );
+  await pool.query('UPDATE system_controls SET commercial_lock=true WHERE singleton=true');
+
+  async function createOutboxFixture(key: string, options: { effectState?: string; status?: string; attempts?: number; maxAttempts?: number; stale?: boolean } = {}) {
+    const effect = await pool.query<{ id: string }>(
+      `INSERT INTO effect_intents(effect_kind,idempotency_key,state,payload)
+       VALUES('message',$1,$2,'{}') RETURNING id`,
+      [`integration-channel-${key}-effect`, options.effectState ?? 'authorized'],
+    );
+    const row = await pool.query<{ id: string }>(
+      `INSERT INTO channel_outbox(channel,recipient_ref,message_kind,redacted_payload,idempotency_key,effect_intent_id,status,attempts,max_attempts,lease_expires_at)
+       VALUES('telegram','123456','approval_required','{"text":"Integration notice"}',$1,$2,$3,$4,$5,
+         CASE WHEN $6 THEN now()-interval '1 minute' ELSE NULL END) RETURNING id`,
+      [`integration-channel-${key}-outbox`, effect.rows[0].id, options.status ?? 'pending', options.attempts ?? 0, options.maxAttempts ?? 3, options.stale ?? false],
+    );
+    return { effectId: effect.rows[0].id, outboxId: row.rows[0].id };
+  }
+
+  const deniedFixture = await createOutboxFixture('controls');
+  assert.deepEqual(await channelOutbox.claim(), { claimed: false, reason: 'commercial_lock' });
+  await pool.query('UPDATE system_controls SET commercial_lock=false,paused=true WHERE singleton=true');
+  assert.deepEqual(await channelOutbox.claim(), { claimed: false, reason: 'system_paused' });
+  await pool.query('UPDATE system_controls SET paused=false,killed=true WHERE singleton=true');
+  assert.deepEqual(await channelOutbox.claim(), { claimed: false, reason: 'system_killed' });
+  assert.equal((await pool.query('SELECT attempts FROM channel_outbox WHERE id=$1', [deniedFixture.outboxId])).rows[0].attempts, 0);
+  await pool.query("UPDATE channel_outbox SET status='cancelled',updated_at=now() WHERE id=$1", [deniedFixture.outboxId]);
+  await pool.query("UPDATE effect_intents SET state='cancelled',updated_at=now() WHERE id=$1", [deniedFixture.effectId]);
+  await pool.query('UPDATE system_controls SET killed=false,paused=false,commercial_lock=false WHERE singleton=true');
+
+  await createOutboxFixture('concurrent');
+  const concurrentClaims = await Promise.all([channelOutbox.claim(), channelOutbox.claim()]);
+  assert.equal(concurrentClaims.filter((claim) => claim.claimed).length, 1);
+  assert.equal(concurrentClaims.filter((claim) => !claim.claimed && claim.reason === 'empty').length, 1);
+  const concurrentDelivery = concurrentClaims.find((claim) => claim.claimed)!.delivery!;
+  await channelOutbox.recordResult(concurrentDelivery.id, concurrentDelivery.attempt, { outcome: 'ambiguous', error: 'timeout_after_submit' });
+  assert.deepEqual(await channelOutbox.claim(), { claimed: false, reason: 'empty' });
+  assert.deepEqual((await pool.query(
+    `SELECT o.status,e.state AS effect_state FROM channel_outbox o
+     JOIN effect_intents e ON e.id=o.effect_intent_id WHERE o.id=$1`,
+    [concurrentDelivery.id],
+  )).rows[0], { status: 'reconciliation_required', effect_state: 'reconciliation_required' });
+
+  await createOutboxFixture('retry-cap', { maxAttempts: 2 });
+  const retryOne = (await channelOutbox.claim()).delivery!;
+  assert.deepEqual(await channelOutbox.recordResult(retryOne.id, 1, { outcome: 'failed', error: 'provider_rejected' }), {
+    id: retryOne.id, status: 'pending', retry: true,
+  });
+  await pool.query("UPDATE channel_outbox SET next_attempt_at=now() WHERE id=$1", [retryOne.id]);
+  const retryTwo = (await channelOutbox.claim()).delivery!;
+  assert.equal(retryTwo.attempt, 2);
+  assert.deepEqual(await channelOutbox.recordResult(retryTwo.id, 2, { outcome: 'failed', error: 'provider_rejected' }), {
+    id: retryTwo.id, status: 'failed', retry: false,
+  });
+  assert.deepEqual((await pool.query(
+    `SELECT o.status,e.state AS effect_state FROM channel_outbox o
+     JOIN effect_intents e ON e.id=o.effect_intent_id WHERE o.id=$1`,
+    [retryTwo.id],
+  )).rows[0], { status: 'failed', effect_state: 'failed' });
+
+  const staleFixture = await createOutboxFixture('stale', { effectState: 'executing', status: 'delivering', attempts: 1, stale: true });
+  assert.deepEqual(await channelOutbox.claim(), { claimed: false, reason: 'empty' });
+  assert.deepEqual((await pool.query(
+    `SELECT o.status,e.state AS effect_state FROM channel_outbox o
+     JOIN effect_intents e ON e.id=o.effect_intent_id WHERE o.id=$1`,
+    [staleFixture.outboxId],
+  )).rows[0], { status: 'reconciliation_required', effect_state: 'reconciliation_required' });
+  await pool.query('UPDATE system_controls SET commercial_lock=true WHERE singleton=true');
 
   const objective = await pool.query<{ id: string }>("INSERT INTO objectives(statement,status) VALUES('integration fixture','active') RETURNING id");
   const opening = await pool.query<{ contributions: string; fixed_expense: string; revenue: string; cash: string }>(

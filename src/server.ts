@@ -26,6 +26,7 @@ import { renderWalletPage } from './wallet-page.ts';
 import { PayPalService } from './paypal.ts';
 import { publicJavaScriptAsset } from './static-assets.ts';
 import { loadApprovalNotificationConfig } from './approval-notifications.ts';
+import { ChannelOutboxError, ChannelOutboxService } from './channel-outbox.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -43,6 +44,7 @@ const memory = new HybridContextualMemory();
 const wallet = new WalletService(pool);
 const agentWallet = new AgentWalletService(pool);
 const paypal = new PayPalService(pool);
+const channelOutbox = new ChannelOutboxService(pool, { ownerTelegramIds: approvalNotificationConfig.ownerTelegramIds });
 type Auth = { kind: 'bearer' | 'basic' | 'session' | 'agent'; csrfToken?: string; sessionValue?: string } | null;
 
 function constantEqual(left: string, right: string) { const a = Buffer.from(left); const b = Buffer.from(right); return a.length === b.length && timingSafeEqual(a, b); }
@@ -178,6 +180,20 @@ const server = createServer(async (req, res) => {
       await revokeOwnerSession(auth.sessionValue); await audit('owner_logout', 'session', null, {}, 'owner'); return respond(res, 204, '', undefined, { 'set-cookie': expiredSessionCookie() });
     }
     if (req.method === 'GET' && url.pathname === '/api/session') return respond(res, 200, { session: auth.kind, csrf_token: auth.csrfToken ?? null });
+    if (req.method === 'POST' && url.pathname === '/api/channel-outbox/claim') {
+      if (auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
+      return respond(res, 200, await channelOutbox.claim());
+    }
+    const channelResult = url.pathname.match(/^\/api\/channel-outbox\/([0-9a-f-]+)\/result$/);
+    if (req.method === 'POST' && channelResult) {
+      if (auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
+      const input = await body(req);
+      return respond(res, 200, await channelOutbox.recordResult(channelResult[1], Number(input.attempt), {
+        outcome: String(input.outcome ?? '') as 'succeeded' | 'failed' | 'ambiguous',
+        receipt: input.receipt && typeof input.receipt === 'object' ? input.receipt as Record<string, unknown> : undefined,
+        error: typeof input.error === 'string' ? input.error : undefined,
+      }));
+    }
     if (req.method === 'POST' && url.pathname === '/api/effects') {
       if (auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
       const input = await body(req);
@@ -401,6 +417,7 @@ const server = createServer(async (req, res) => {
     return respond(res, 404, { error: 'not_found' });
   } catch (error) {
     if (error instanceof AgentWalletError) return respond(res, 400, { error: error.code });
+    if (error instanceof ChannelOutboxError) return respond(res, 409, { error: error.code });
     const message = error instanceof Error ? error.message : 'unknown';
     console.error('request_failed', redactSecrets(message, [token, process.env.DATABASE_URL ?? '']));
     return respond(res, 500, { error: 'internal_error' });
