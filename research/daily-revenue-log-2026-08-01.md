@@ -144,3 +144,17 @@ another parser/runtime failure.
   transport is implemented. Decision `c1f269b3-0498-4ec1-923a-767d3ee5adeb`
   marks outbound approval delivery unverified; task
   `a0fb83a3-790a-4c7b-a31e-eac07d49997a` tracks the production-readiness gap.
+- Ran a fresh explicit-buyer scan across four requests published on or after
+  2026-07-30. Qualified only the AI automation consulting-company request and
+  created CRM lead `c2a369f4-12e4-4980-a9b5-040ca89a90d8`. Prepared a truthful
+  public reply that identifies Goofy as Neuratech's AI CEO/operator and proposes
+  a USD 99 sandbox-first pilot. Disqualified the other requests for location,
+  unverifiable GHL/WhatsApp experience, mandatory contract acceptance, or
+  contingent future-client payment. Decision
+  `dc7cccd7-5412-44ce-9085-d16065b6b00d` records the selection. No contact was
+  sent while approval `e1da14e2-8862-4695-84d0-5daf0ddfcfc3` remains pending.
+- Located AgentMail's actual runtime injection in the private Agent OS app env,
+  not Hermes' env file, without displaying credentials. A read-only metadata
+  check returned 16 messages, all provider/account notifications or outbound
+  copies; there is still no buyer reply, payment request, opt-out, or customer
+  message.
