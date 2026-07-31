@@ -1,3 +1,5 @@
+import { enqueueApprovalNotifications, type ApprovalNotificationConfig } from './approval-notifications.ts';
+
 export type ApprovalRequestActor = { type: 'owner' | 'agent' | 'telegram' | 'system'; id: string };
 export type ApprovalRequestInput = {
   actionType: string; requestedAction: string; reason: string; risk: string; recommendation: string; idempotencyKey: string; expiresAt: string;
@@ -21,7 +23,11 @@ function evidence(value: unknown) { if (value === undefined) return []; if (!Arr
 /** Creates one precise approval request or returns its durable idempotent predecessor. */
 export class ApprovalRequestService {
   private readonly database: Database;
-  constructor(database: Database) { this.database = database; }
+  private readonly notificationConfig?: ApprovalNotificationConfig;
+  constructor(database: Database, notificationConfig?: ApprovalNotificationConfig) {
+    this.database = database;
+    this.notificationConfig = notificationConfig;
+  }
   async request(input: ApprovalRequestInput, actor: ApprovalRequestActor) {
     const expiresAt = new Date(required(input.expiresAt, 'expires_at'));
     if (Number.isNaN(expiresAt.valueOf()) || expiresAt <= new Date()) throw new ApprovalRequestError('invalid_expiry');
@@ -39,8 +45,19 @@ export class ApprovalRequestService {
       const action = duplicate ? 'deduplicated' : 'requested';
       await client.query('INSERT INTO approval_events(approval_id,actor_type,actor_id,action,payload) VALUES($1,$2,$3,$4,$5)', [record.id, actor.type, actor.id, action, JSON.stringify({ idempotency_key: values[8] })]);
       await client.query('INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload) VALUES($1,$2,$3,$4,$5,$6)', [actor.type, actor.id, `approval_${action}`, 'approval', record.id, JSON.stringify({ idempotency_key: values[8] })]);
+      let notification;
+      if (this.notificationConfig) {
+        notification = duplicate
+          ? { enqueued: 0, duplicates: 1, denied: 0 }
+          : await enqueueApprovalNotifications(client as Parameters<typeof enqueueApprovalNotifications>[0], {
+            id: record.id, actionType: values[0] as string, requestedAction: values[1] as string,
+            reason: values[2] as string, costMinor: values[3] as number, currency: values[4] as string,
+            risk: values[5] as string, recommendation: values[7] as string,
+            expiresAt: expiresAt.toISOString(), maximumExposureMinor: values[15] as number,
+          }, this.notificationConfig);
+      }
       await client.query('COMMIT');
-      return { ...record, duplicate };
+      return notification ? { ...record, duplicate, notification } : { ...record, duplicate };
     } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
   }
 }

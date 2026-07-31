@@ -25,15 +25,17 @@ import { AgentWalletError, AgentWalletService } from './agent-wallet.ts';
 import { renderWalletPage } from './wallet-page.ts';
 import { PayPalService } from './paypal.ts';
 import { publicJavaScriptAsset } from './static-assets.ts';
+import { loadApprovalNotificationConfig } from './approval-notifications.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
 const port = Number(process.env.PORT ?? 3000);
 const agentRuntimeTokens = runtimeTokensFromEnvironment();
+const approvalNotificationConfig = await loadApprovalNotificationConfig(process.env);
 const attempts = new Map<string, { count: number; resetAt: number }>();
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
 const approvals = new ApprovalService(pool);
-const approvalRequests = new ApprovalRequestService(pool);
+const approvalRequests = new ApprovalRequestService(pool, approvalNotificationConfig);
 const tickets = new TicketService(pool);
 const commercial = new CommercialOperationsService(pool);
 const telegram = new TelegramControlService(pool, new Set((process.env.OWNER_TELEGRAM_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean)));
