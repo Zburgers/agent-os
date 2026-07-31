@@ -122,3 +122,9 @@ another parser/runtime failure.
   conservative profit observations remain zero, and no signer, transaction, or
   spend was used. The evidence was also attached to task
   `574588be-07ed-43aa-94a7-09cd64260e4d` in Agent OS.
+- Found and repaired a fail-closed integration gap before the `$7` attempt:
+  `marketplace_bounty_claim_and_submission` approvals were not accepted by any
+  external effect kind. The narrow fix maps only that explicit approval type to
+  `account_change`, backed by a red-then-green PostgreSQL integration test. A
+  production rebuild is still required before the live API can enforce the new
+  mapping; no marketplace action was taken through the undeployed code.

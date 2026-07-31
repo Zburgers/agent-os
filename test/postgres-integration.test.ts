@@ -214,6 +214,24 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
     `INSERT INTO approvals(action_type,requested_action,reason,risk,recommendation,idempotency_key,status,expires_at,decided_at,decided_by)
      VALUES('external_outreach','integration message','effect state test','low','approve test only','integration-message-approval','approved',now()+interval '1 hour',now(),'integration-owner') RETURNING id`,
   );
+
+  const marketplaceApproval = await pool.query<{ id: string }>(
+    `INSERT INTO approvals(action_type,requested_action,reason,risk,recommendation,idempotency_key,status,expires_at,decided_at,decided_by)
+     VALUES('marketplace_bounty_claim_and_submission','claim one marketplace bounty','effect scope test','bounded external work','approve exact test job only','integration-marketplace-approval','approved',now()+interval '1 hour',now(),'integration-owner') RETURNING id`,
+  );
+  const marketplaceClient = await pool.connect();
+  try {
+    await marketplaceClient.query('BEGIN');
+    const marketplaceEffect = await authorizeEffect(marketplaceClient, {
+      idempotencyKey: 'integration-marketplace-effect-1',
+      kind: 'account_change',
+      approvalId: marketplaceApproval.rows[0].id,
+      payload: { provider: 'test_marketplace', operation: 'claim_and_submit', job_id: 'exact-test-job' },
+    }, actorContext({ actorType: 'agent', actorId: 'integration-agent', credentialScope: 'effects:account_change', originPlatform: 'api' }));
+    assert.equal(marketplaceEffect.state, 'authorized');
+    await marketplaceClient.query('ROLLBACK');
+  } finally { marketplaceClient.release(); }
+
   const ambiguousClient = await pool.connect();
   try {
     await ambiguousClient.query('BEGIN');

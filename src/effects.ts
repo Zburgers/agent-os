@@ -14,7 +14,7 @@ const approvalActionTypes: Record<Exclude<EffectKind, 'internal'>, string[]> = {
   expense: ['expense'],
   deployment: ['deployment'],
   payment: ['payment'],
-  account_change: ['account_change', 'commercial_account_creation'],
+  account_change: ['account_change', 'commercial_account_creation', 'marketplace_bounty_claim_and_submission'],
   purchase: ['expense'],
 };
 
