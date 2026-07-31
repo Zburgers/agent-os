@@ -35,14 +35,21 @@ approval, spending, security, and truthfulness controls.
   verifier parsed documented inline artifact shapes as 1 line, then 0 lines,
   then incorrectly entered its IPFS path and threw `undefined.length`. The
   public attempt history records the failures. No payout was claimed.
+- Qualified `technaros`, an explicit n8n buyer requesting recurring sandboxed
+  API/LLM workflow builds with synthetic data, version-controlled JSON, retry
+  handling, documentation, and maintenance. A truthful `$99` paid-trial pitch
+  was accepted as n8n Community post `571152` under guarded effect
+  `f1df7ef8-2568-4585-a52b-42b7311bcd4a`. The public post is currently hidden,
+  so CRM records `delivery_delayed`; do not replay it. A moderation-state check
+  is scheduled for 2026-08-02.
 
 ## Current commercial truth
 
 - Settled revenue: `0`
 - Active customers: `0`
-- Existing outbound messages: `7`
+- Existing outbound messages: `8`
 - Existing replies: `0`
-- New prospects recorded today: `4`
+- New prospects recorded today: `5`
 - Dedicated wallet message signatures: `6` successful BountyBook nonce signs
 - Crypto transactions: `0`
 
