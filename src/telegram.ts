@@ -1,9 +1,9 @@
 export type TelegramMessage = { userId: string; text: string };
 export type TelegramCommand =
   | { accepted: false; reason: 'unauthorized_user' | 'unsupported_command' }
-  | { accepted: true; command: 'status' | 'balance' | 'profit' | 'ventures' | 'tasks' | 'approvals' | 'jobs' | 'decisions' | 'pause' | 'resume' | 'kill' | 'health' | 'report'; argument?: string };
+  | { accepted: true; command: 'status' | 'balance' | 'profit' | 'ventures' | 'tasks' | 'approvals' | 'jobs' | 'decisions' | 'pause' | 'resume' | 'kill' | 'health' | 'report' | 'approve' | 'reject'; argument?: string };
 
-const commands = new Set(['status', 'balance', 'profit', 'ventures', 'tasks', 'approvals', 'jobs', 'decisions', 'pause', 'resume', 'kill', 'health', 'report']);
+const commands = new Set(['status', 'balance', 'profit', 'ventures', 'tasks', 'approvals', 'jobs', 'decisions', 'pause', 'resume', 'kill', 'health', 'report', 'approve', 'reject']);
 
 export function parseTelegramCommand(message: TelegramMessage, ownerIds: Set<string>): TelegramCommand {
   if (!ownerIds.has(message.userId)) return { accepted: false, reason: 'unauthorized_user' };

@@ -1,13 +1,50 @@
 import type { Pool } from 'pg';
 import { destructiveConfirmation, parseTelegramCommand } from './telegram.ts';
 import { applySystemControl } from './system-controls.ts';
+import { verifyApprovalToken } from './approval-token.ts';
+import { ApprovalService, ApprovalTransitionError } from './approvals.ts';
+
+type Options = { approvalSigningSecret?: string; now?: () => Date };
+const canonicalUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class TelegramControlService {
   private readonly database: Pool;
   private readonly ownerIds: Set<string>;
-  constructor(database: Pool, ownerIds: Set<string>) {
+  private readonly approvalSigningSecret?: string;
+  private readonly now: () => Date;
+  private readonly approvals: ApprovalService;
+  constructor(database: Pool, ownerIds: Set<string>, options: Options = {}) {
     this.database = database;
     this.ownerIds = ownerIds;
+    this.approvalSigningSecret = options.approvalSigningSecret;
+    this.now = options.now ?? (() => new Date());
+    this.approvals = new ApprovalService(database);
+  }
+
+  private async auditDecisionRejection(userId: string, action: 'approve' | 'reject', reason: string, approvalId?: string) {
+    await this.database.query(
+      `INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload)
+       VALUES('telegram',$1,'telegram_approval_decision_rejected','approval',$2,$3)`,
+      [userId, approvalId ?? null, JSON.stringify({ action, reason })],
+    );
+    return { accepted: false, reason };
+  }
+
+  private async decideApproval(userId: string, command: 'approve' | 'reject', token?: string) {
+    const value = token && this.approvalSigningSecret
+      ? verifyApprovalToken(token, this.approvalSigningSecret, this.now().valueOf()) : null;
+    if (!value || !canonicalUuid.test(value.approvalId)) return this.auditDecisionRejection(userId, command, 'invalid_approval_token');
+    if (value.action !== command) return this.auditDecisionRejection(userId, command, 'approval_action_mismatch', value.approvalId);
+    try {
+      const approval = await this.approvals.transition(value.approvalId, command, { type: 'telegram', id: userId }, `Decision received through signed Telegram ${command} control`);
+      return { accepted: true, command, approval };
+    } catch (error) {
+      if (!(error instanceof ApprovalTransitionError)) throw error;
+      const reasons = { already_decided: 'approval_already_decided', expired: 'approval_expired', not_found: 'approval_not_found' } as const;
+      return this.auditDecisionRejection(
+        userId, command, reasons[error.reason as keyof typeof reasons] ?? 'approval_transition_rejected', value.approvalId,
+      );
+    }
   }
 
   async handle(userId: string, text: string) {
@@ -19,6 +56,7 @@ export class TelegramControlService {
        JSON.stringify({ command: text.split(/\s+/, 1)[0]?.slice(0, 32), accepted: parsed.accepted, reason: parsed.accepted ? undefined : parsed.reason })],
     );
     if (!parsed.accepted) return parsed;
+    if (parsed.command === 'approve' || parsed.command === 'reject') return this.decideApproval(userId, parsed.command, parsed.argument);
     if (destructiveConfirmation(parsed.command, parsed.argument)) return { accepted: true, confirmation_required: true, command: parsed.command };
     if (parsed.command === 'pause' || parsed.command === 'resume' || parsed.command === 'kill') {
       try {

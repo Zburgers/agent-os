@@ -39,7 +39,11 @@ const approvals = new ApprovalService(pool);
 const approvalRequests = new ApprovalRequestService(pool, approvalNotificationConfig);
 const tickets = new TicketService(pool);
 const commercial = new CommercialOperationsService(pool);
-const telegram = new TelegramControlService(pool, new Set((process.env.OWNER_TELEGRAM_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean)));
+const telegram = new TelegramControlService(
+  pool,
+  new Set((process.env.OWNER_TELEGRAM_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean)),
+  { approvalSigningSecret: approvalNotificationConfig.signingSecret },
+);
 const memory = new HybridContextualMemory();
 const wallet = new WalletService(pool);
 const agentWallet = new AgentWalletService(pool);

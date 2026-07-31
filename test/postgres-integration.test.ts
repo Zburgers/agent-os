@@ -13,6 +13,7 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   const { claimNextJob, executeInternalJob, recoverAbandonedJobs } = await import('../src/jobs.ts');
   const { applySystemControl } = await import('../src/system-controls.ts');
   const { TelegramControlService } = await import('../src/telegram-controls.ts');
+  const { issueApprovalToken } = await import('../src/approval-token.ts');
   const { createOwnerSession, getOwnerSession, revokeOwnerSession } = await import('../src/auth.ts');
   const { createEntity, updateEntity } = await import('../src/entities.ts');
   const { CommercialOperationsService } = await import('../src/commercial-operations.ts');
@@ -534,9 +535,47 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   const controlJob = await pool.query<{ id: string }>(
     "INSERT INTO jobs(name,purpose,idempotency_key,status) VALUES('control fixture','pause immediately','control-fixture','queued') RETURNING id",
   );
-  const telegram = new TelegramControlService(pool, new Set(['42']));
+  const telegramSigningSecret = 'postgres-integration-telegram-secret-at-least-32-bytes';
+  const telegram = new TelegramControlService(pool, new Set(['42']), { approvalSigningSecret: telegramSigningSecret });
   assert.equal((await telegram.handle('41', '/pause confirm') as any).reason, 'unauthorized_user');
   assert.equal(Array.isArray((await telegram.handle('42', '/balance') as any).finance), true);
+
+  const telegramApproval = await pool.query<{ id: string }>(
+    `INSERT INTO approvals(action_type,requested_action,reason,risk,recommendation,idempotency_key,status,expires_at)
+     VALUES('message','signed Telegram fixture','integration verification','none','approve',
+       'telegram-signed-approval-fixture','pending',now()+interval '1 hour') RETURNING id`,
+  );
+  const signedApprove = issueApprovalToken({
+    approvalId: telegramApproval.rows[0].id,
+    action: 'approve',
+    expiresAt: Date.now() + 30 * 60_000,
+  }, telegramSigningSecret);
+  assert.equal((await telegram.handle('42', `/approve ${signedApprove}`) as any).approval.status, 'approved');
+  assert.deepEqual((await telegram.handle('42', `/approve ${signedApprove}`) as any), {
+    accepted: false, reason: 'approval_already_decided',
+  });
+  const telegramDecision = await pool.query(
+    'SELECT status,decided_by FROM approvals WHERE id=$1', [telegramApproval.rows[0].id],
+  );
+  assert.deepEqual(telegramDecision.rows[0], { status: 'approved', decided_by: '42' });
+
+  const tamperApproval = await pool.query<{ id: string }>(
+    `INSERT INTO approvals(action_type,requested_action,reason,risk,recommendation,idempotency_key,status,expires_at)
+     VALUES('message','tampered Telegram fixture','integration verification','none','reject',
+       'telegram-tamper-approval-fixture','pending',now()+interval '1 hour') RETURNING id`,
+  );
+  const signedReject = issueApprovalToken({
+    approvalId: tamperApproval.rows[0].id,
+    action: 'reject',
+    expiresAt: Date.now() + 30 * 60_000,
+  }, telegramSigningSecret);
+  assert.equal((await telegram.handle('42', `/reject ${signedReject}x`) as any).reason, 'invalid_approval_token');
+  assert.equal((await pool.query('SELECT status FROM approvals WHERE id=$1', [tamperApproval.rows[0].id])).rows[0].status, 'pending');
+  assert.equal((await pool.query(
+    `SELECT count(*) FROM audit_events
+     WHERE entity_type='telegram_command' AND payload::text LIKE $1`, [`%${signedApprove}%`],
+  )).rows[0].count, '0');
+
   assert.equal((await telegram.handle('42', '/pause') as any).confirmation_required, true);
   assert.equal((await telegram.handle('42', '/pause confirm') as any).controls.paused, true);
   assert.equal((await pool.query('SELECT status FROM jobs WHERE id=$1', [controlJob.rows[0].id])).rows[0].status, 'paused');
