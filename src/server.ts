@@ -23,6 +23,7 @@ import { buildDailyBriefData, renderDailyBrief } from './daily-brief.ts';
 import { WalletService } from './wallet.ts';
 import { renderWalletPage } from './wallet-page.ts';
 import { PayPalService } from './paypal.ts';
+import { publicJavaScriptAsset } from './static-assets.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -163,6 +164,8 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/webhooks/paypal') {
       const raw = await rawBody(req); return respond(res, 200, await paypal.handleWebhook(req.headers, raw));
     }
+    const publicAsset = req.method === 'GET' ? publicJavaScriptAsset(url.pathname) : null;
+    if (publicAsset) return respondBytes(res, 200, await readFile(new URL(`../public/${publicAsset}`, import.meta.url)), 'text/javascript; charset=utf-8');
     const auth = await authenticate(req.headers);
     if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/finance', '/jobs', '/health', '/daily-brief', '/wallet'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
     if (versioned && req.method !== 'GET' && !String(req.headers['idempotency-key'] ?? '').trim()) return respond(res, 400, { error: 'idempotency_key_required' });
@@ -249,7 +252,6 @@ const server = createServer(async (req, res) => {
       return respond(res, 200, { allowed, policy_code: policyCode, effect_kind: effectKind });
     }
     if (req.method === 'GET' && url.pathname === '/api/overview') return respond(res, 200, await overview());
-    if (req.method === 'GET' && ['/assets/wallet-client.js','/assets/metamask-connect.js'].includes(url.pathname)) return respond(res, 200, await readFile(new URL(`../public/${url.pathname.split('/').pop()}`, import.meta.url)), 'text/javascript; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID, await wallet.status()), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/api/wallet/status') return respond(res, 200, await wallet.status());
     if (req.method === 'GET' && url.pathname === '/api/paypal/status') return respond(res, 200, paypal.status());
