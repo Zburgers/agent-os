@@ -22,6 +22,10 @@ approval, spending, security, and truthfulness controls.
   `e76342c5-4a5c-416a-b280-6fb1cc6aa764`: retain BountyBook as a current
   watchlist lane, but do not claim until an exact wallet-signing flow is
   approved and owner-confirmed.
+- Prepared `research/bountybook-candidate-bst/bst.go` and its acceptance tests
+  for the highest-ROI open BountyBook candidate (`7a44ac22…`, `$6`, estimated
+  15 minutes). The VPS has no Go toolchain (`go: command not found`), so the
+  tests are retained as unverified and no submission claim is made.
 
 ## Current commercial truth
 
