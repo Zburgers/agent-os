@@ -3,6 +3,9 @@
 | Action | Autonomous? | Required control |
 |---|---:|---|
 | Read-only research and internal development | Yes | Audit record |
+| Dedicated agent-wallet authentication message | Yes, for allowlisted providers and formats | Protected signer + pause/kill gate + durable audit; authorized 2026-08-01 |
+| Dedicated agent-wallet transaction | Only within existing financial authority | Ledger/effect controls, simulation, limits, reconciliation, and any required approval |
+| Owner-wallet message or transaction signature | No | Direct owner action |
 | Draft outreach, invoices, and purchase instructions | Yes | Clearly marked draft |
 | Send external message | No, until scoped owner policy | Owner approval/policy |
 | Any initial expense | No | Expiring owner approval + financial proposal |

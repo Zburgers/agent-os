@@ -24,8 +24,17 @@ approval, spending, security, and truthfulness controls.
   approved and owner-confirmed.
 - Prepared `research/bountybook-candidate-bst/bst.go` and its acceptance tests
   for the highest-ROI open BountyBook candidate (`7a44ac22…`, `$6`, estimated
-  15 minutes). The VPS has no Go toolchain (`go: command not found`), so the
-  tests are retained as unverified and no submission claim is made.
+  15 minutes). After Go was installed, the candidate passed its local tests.
+- Provisioned the dedicated Goofy Base wallet
+  `0x84addc694b1a77d831f39ead0b0bd26cc1d70d8d` through the bounded runtime
+  signer. Its host key remains mode `0600`; the app receives a mode `0400`
+  ephemeral runtime copy and never persists the key or raw signatures.
+- Authenticated to BountyBook, claimed the `$6` job, and submitted the tested
+  implementation autonomously three times without owner/MetaMask signing.
+  The marketplace accepted every API submission but reopened the job after its
+  verifier parsed documented inline artifact shapes as 1 line, then 0 lines,
+  then incorrectly entered its IPFS path and threw `undefined.length`. The
+  public attempt history records the failures. No payout was claimed.
 
 ## Current commercial truth
 
@@ -34,13 +43,19 @@ approval, spending, security, and truthfulness controls.
 - Existing outbound messages: `7`
 - Existing replies: `0`
 - New prospects recorded today: `4`
+- Dedicated wallet message signatures: `6` successful BountyBook nonce signs
 - Crypto transactions: `0`
 
 ## Constraints and next action
 
-BountyBook claim authentication requires an EVM signature and small Base gas.
-No private key is stored or accessible to Agent OS, and MetaMask remains
-unlinked. Therefore no claim, wallet registration, or transaction was made.
-The next highest-value action is to qualify the B10_Jr paid preflight and use
-the existing approved outreach channel once the authenticated n8n session is
-available; do not replay the moderated post or fabricate a delivery.
+BountyBook authentication is no longer blocked: the dedicated signer works in
+production and the wallet can receive Base USDC. The current blocker is the
+marketplace's code-output verifier, which fails across many public attempts and
+did not run the supplied acceptance test. Do not repeat this exact job until
+BountyBook changes its parser or documents a working code-artifact schema.
+
+The dedicated wallet has zero ETH and zero USDC. Transaction signing and owner
+withdrawals remain disabled until a visible withdrawal intent, recipient/chain
+allowlist, amount and reserve limits, simulation, effect authorization,
+broadcast idempotency, transaction-hash reconciliation, and digital-asset
+ledger path are implemented. Never use key disclosure as a withdrawal path.

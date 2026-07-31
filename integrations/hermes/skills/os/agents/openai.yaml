@@ -1,4 +1,4 @@
 interface:
   display_name: "Agent OS"
-  short_description: "Operate and persist work in Goofy Agent OS."
-  default_prompt: "Use the configured Agent OS MCP server to inspect authoritative state, persist material work, and respect durable effect boundaries."
+  short_description: "Operate Goofy Agent OS, revenue work, controls, and wallets."
+  default_prompt: "Use the configured Agent OS MCP server and authenticated Agent OS surfaces to inspect authoritative state, persist material work, operate the bounded dedicated wallet when applicable, and respect durable effect and security boundaries."

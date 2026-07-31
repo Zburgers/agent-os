@@ -31,6 +31,8 @@ services:
       # deliberately separate. Neither is persisted by the application.
       INFURA_PROJECT_ID: ${INFURA_PROJECT_ID:-}
       ETHEREUM_RPC_URL: ${ETHEREUM_RPC_URL:-}
+      BASE_RPC_URL: ${BASE_RPC_URL:-https://mainnet.base.org}
+      AGENT_WALLET_KEY_PATH: /run/goofy-agent-wallet/key
       PAYPAL_CLIENT_ID: ${PAYPAL_CLIENT_ID:-}
       PAYPAL_SECRET: ${PAYPAL_SECRET:-}
       PAYPAL_ENVIRONMENT: ${PAYPAL_ENVIRONMENT:-sandbox}
@@ -42,13 +44,15 @@ services:
       # The dashboard is reachable only on the owner's private network.
       # PostgreSQL has no host port and remains on this Compose network.
       - "${AGENT_OS_BIND_ADDRESS:-127.0.0.1}:${AGENT_OS_PORT:-9999}:3000"
-    command: ["sh", "-c", "export AGENT_RUNTIME_TOKEN=\"$$(cat /run/secrets/agent_os_hermes_token)\"; exec su-exec agent sh -c 'npm run migrate && npm start'"]
+    command: ["sh", "-c", "install -d -m 0700 -o agent -g agent /run/goofy-agent-wallet; install -m 0400 -o agent -g agent /run/secrets/goofy_agent_wallet_key /run/goofy-agent-wallet/key; export AGENT_RUNTIME_TOKEN=\"$$(cat /run/secrets/agent_os_hermes_token)\"; exec su-exec agent sh -c 'npm run migrate && npm start'"]
     secrets:
       - source: agent_os_hermes_token
         target: agent_os_hermes_token
         uid: "1003"
         gid: "1003"
         mode: 0400
+    volumes:
+      - /home/goofy/.hermes/goofy-agent-wallet.key:/run/secrets/goofy_agent_wallet_key:ro
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s

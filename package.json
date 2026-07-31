@@ -17,7 +17,7 @@
     "migrate": "node --experimental-strip-types src/migrate.ts",
     "worker": "node --experimental-strip-types src/worker.ts",
     "supervisor": "node --experimental-strip-types src/supervisor.ts",
-    "check": "find src -name '*.ts' -type f -exec node --check {} \\;",
+    "check": "esbuild src/*.ts --outdir=/tmp/goofy-agent-os-check --platform=node --format=esm --log-level=error",
     "build": "npm run check && npm run build:wallet-client",
     "build:wallet-client": "esbuild src/wallet-client.ts --bundle --platform=browser --format=esm --external:/assets/metamask-connect.js --outfile=public/wallet-client.js && esbuild node_modules/@metamask/connect-evm/dist/browser/es/connect-evm.mjs --bundle --platform=browser --format=esm --outfile=public/metamask-connect.js"
   },

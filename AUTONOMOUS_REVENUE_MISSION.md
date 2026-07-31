@@ -779,11 +779,14 @@ Periodically:
 * Test memory retrieval.
 * Record memory system failures.
 
-Never store:
+Never store in PostgreSQL, Mem0, source control, logs, audit payloads, dashboard
+responses, Telegram, or ordinary application files:
 
 * Passwords.
 * API keys.
-* Private keys.
+* Owner wallet private keys or recovery material.
+* Dedicated agent-wallet private keys outside the protected runtime signer described
+  in the owner-authorized amendment below.
 * OTP values.
 * Full payment credentials.
 * Authentication cookies.
@@ -792,6 +795,28 @@ Never store:
 * Secrets copied from environment variables.
 
 Use a separate secret manager or encrypted runtime secret mechanism.
+
+## Owner-authorized dedicated agent wallet amendment — 2026-08-01
+
+The owner authorizes Goofy to create and control a separate operational wallet so
+the agent can authenticate to agent-native marketplaces, receive revenue, and make
+bounded operational payments without repeatedly requesting owner signatures.
+
+This amendment does not authorize access to or storage of the owner's MetaMask,
+bank, card, PayPal, recovery phrase, or unrestricted wallet credentials. The
+dedicated wallet key may exist only inside a least-privilege runtime signer or a
+mode-0600 secret file owned by the `goofy` Linux account. It must never appear in
+PostgreSQL, Mem0, source control, logs, backups, audit payloads, dashboard responses,
+Telegram, or model-visible output.
+
+PostgreSQL remains authoritative for the wallet's public address, policy, signing
+and transaction metadata, limits, effects, reconciliations, and audit history.
+Every signing attempt must be attributable and visible in the dashboard without
+persisting the raw signature. Pause and kill controls apply before every signing
+operation. Message signing may be autonomous only for explicitly allowlisted
+providers and validated message formats. Transaction signing does not bypass the
+financial ledger, reserves, spending limits, simulations, idempotency, or approval
+requirements defined elsewhere in this mission.
 
 ---
 

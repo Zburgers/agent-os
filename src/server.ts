@@ -21,6 +21,7 @@ import { authorizeEffect, claimAuthorizedEffect, recordExternalResult } from './
 import { CommercialOperationsService } from './commercial-operations.ts';
 import { buildDailyBriefData, renderDailyBrief } from './daily-brief.ts';
 import { WalletService } from './wallet.ts';
+import { AgentWalletError, AgentWalletService } from './agent-wallet.ts';
 import { renderWalletPage } from './wallet-page.ts';
 import { PayPalService } from './paypal.ts';
 import { publicJavaScriptAsset } from './static-assets.ts';
@@ -38,6 +39,7 @@ const commercial = new CommercialOperationsService(pool);
 const telegram = new TelegramControlService(pool, new Set((process.env.OWNER_TELEGRAM_IDS ?? '').split(',').map((id) => id.trim()).filter(Boolean)));
 const memory = new HybridContextualMemory();
 const wallet = new WalletService(pool);
+const agentWallet = new AgentWalletService(pool);
 const paypal = new PayPalService(pool);
 type Auth = { kind: 'bearer' | 'basic' | 'session' | 'agent'; csrfToken?: string; sessionValue?: string } | null;
 
@@ -252,8 +254,21 @@ const server = createServer(async (req, res) => {
       return respond(res, 200, { allowed, policy_code: policyCode, effect_kind: effectKind });
     }
     if (req.method === 'GET' && url.pathname === '/api/overview') return respond(res, 200, await overview());
-    if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID, await wallet.status()), 'text/html; charset=utf-8');
+    if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID, await wallet.status(), await agentWallet.status()), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/api/wallet/status') return respond(res, 200, await wallet.status());
+    if (req.method === 'GET' && url.pathname === '/api/agent-wallet/status') return respond(res, 200, await agentWallet.status());
+    if (req.method === 'POST' && url.pathname === '/api/agent-wallet/provision') {
+      if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
+      return respond(res, 201, await agentWallet.provision(actorFor(auth).id));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/agent-wallet/sign-message') {
+      if (!mutationAllowed(auth, req) || auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
+      const input = await body(req);
+      return respond(res, 200, await agentWallet.signMessage({
+        provider: String(input.provider ?? ''), message: String(input.message ?? ''),
+        idempotencyKey: String(input.idempotency_key ?? req.headers['idempotency-key'] ?? ''),
+      }));
+    }
     if (req.method === 'GET' && url.pathname === '/api/paypal/status') return respond(res, 200, paypal.status());
     if (req.method === 'POST' && url.pathname === '/api/paypal/orders') { if(auth.kind!=='agent') return respond(res,403,{error:'agent_scope_required'}); return respond(res,201,await paypal.createOrder(await body(req))); }
     if (req.method === 'POST' && url.pathname === '/api/wallet/link-nonce') { if (!mutationAllowed(auth,req) || !ownerAuth(auth)) return respond(res,403,{error:'owner_authority_required'}); return respond(res,201,await wallet.nonce()); }
@@ -382,6 +397,11 @@ const server = createServer(async (req, res) => {
       if (req.method === 'PATCH' && id) { if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' }); return respond(res, 200, await updateEntity(entity, id, await body(req), actorFor(auth).id)); }
     }
     return respond(res, 404, { error: 'not_found' });
-  } catch (error) { const message = error instanceof Error ? error.message : 'unknown'; console.error('request_failed', redactSecrets(message, [token, process.env.DATABASE_URL ?? ''])); return respond(res, 500, { error: 'internal_error' }); }
+  } catch (error) {
+    if (error instanceof AgentWalletError) return respond(res, 400, { error: error.code });
+    const message = error instanceof Error ? error.message : 'unknown';
+    console.error('request_failed', redactSecrets(message, [token, process.env.DATABASE_URL ?? '']));
+    return respond(res, 500, { error: 'internal_error' });
+  }
 });
 server.listen(port, () => console.log(`agent-os listening on ${port}`));

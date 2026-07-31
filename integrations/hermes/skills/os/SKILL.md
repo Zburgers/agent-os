@@ -1,6 +1,6 @@
 ---
 name: os
-description: Inspect and operate the Goofy Agent OS through its authoritative configured MCP server, durable dashboard records, contextual-memory discipline, and approval/effect boundaries. Use for /os status, balance, profit, ventures, tasks, experiments, approvals, jobs, decisions, persistence, memory, pause, resume, kill, health, report, commercial-lock diagnosis, and any Agent OS operational request.
+description: Use when inspecting or operating Goofy Agent OS state, revenue work, dedicated or owner-linked wallets, autonomous signing, balances, profit, ventures, tasks, experiments, approvals, jobs, decisions, persistence, memory, controls, health, reports, or commercial-lock diagnosis.
 ---
 
 # Agent OS
@@ -32,20 +32,47 @@ denied tool guard. Every external message, expense, deployment, payment,
 purchase, or account change requires a matching Agent OS effect authorization.
 Commercial lock, pause, and kill fail closed.
 
-## Ethereum wallet workflow
+## Wallet workflows
 
-Wallet addresses are operational metadata, never credentials. Never request,
-store, display, or use a seed phrase, private key, recovery data, browser
-session, or unrestricted signing permission. A wallet connection is not
-spending authorization.
+Distinguish the owner-linked MetaMask from the owner-authorized dedicated Goofy
+wallet. Public addresses are operational metadata. Never request, store, display,
+or use the owner's seed phrase, private key, recovery data, browser session, or
+unrestricted signing permission. Never return any dedicated-wallet key or raw
+signature through MCP, dashboard, PostgreSQL, Mem0, Markdown, logs, Telegram, or
+model-visible output.
 
-Use the wallet flow in this strict order: inspect read-only wallet status;
+For the owner-linked MetaMask, use this strict order: inspect read-only status;
 create an immutable Mainnet transaction draft; wait for the owner's durable
 approval; the owner submits the exact envelope in the authenticated dashboard
 and separately confirms in MetaMask; reconcile only by its returned hash. The
 MCP may create a draft but may never link a wallet, approve, sign, submit, or
 retry a transaction. Raw contract calldata remains a draft and requires the
 owner's explicit dashboard warning acknowledgement.
+
+The dedicated Goofy wallet is a separate least-privilege operational wallet
+authorized by the owner on 2026-08-01. Its key exists only in the protected
+runtime signer. On this Compose deployment, the mode-0600 host key is mounted
+read-only and copied by the root entrypoint to a mode-0400, agent-owned,
+ephemeral runtime location before privileges are dropped. PostgreSQL is authoritative for its public address, policy,
+allowed chains/providers, operation hashes, outcomes, limits, effects, and
+reconciliation. Read its public status and activity from the authenticated
+`/api/agent-wallet/status` dashboard/API surface until matching MCP read tools
+are available.
+
+Autonomous EIP-191 message signing is currently permitted only for provider
+`bountybook` and messages matching `bounty:<32 lowercase hex>:<10 digit
+timestamp>`. Use `/api/agent-wallet/sign-message` with agent authentication and
+a unique idempotency key. Check pause/kill, derived-address match, and durable
+rate limit before every signature. Use the returned signature transiently for
+the intended nonce verification, then discard it. Never persist a BountyBook
+session token; keep it only in process memory for its one-hour lifetime.
+
+Transaction signing for the dedicated wallet is disabled. Do not infer spending
+authority from key custody. Before enabling a transaction path, require an
+immutable effect, ledger attribution, reserve and spending-limit enforcement,
+chain/recipient allowlists, simulation, idempotency, reconciliation, and any
+approval required by the financial policy. Owner withdrawals must use that
+visible transaction path; never expose the key as a withdrawal mechanism.
 
 ## PayPal and public callbacks
 

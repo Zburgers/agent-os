@@ -42,3 +42,17 @@ contains no credentials, wallet secrets, or payment data.
   with PayPal. A tailnet lookup can reach a local proxy/certificate instead of
   the public Funnel endpoint and is not an acceptance test.
 - To revoke public exposure: `tailscale funnel --https=443 off`.
+# Dedicated Goofy agent wallet
+
+The owner-authorized dedicated wallet is separate from the owner's MetaMask. Its
+key is stored at `/home/goofy/.hermes/goofy-agent-wallet.key`, owned by `goofy`
+with mode `0600`, and mounted read-only into the application container. PostgreSQL
+contains only the public address, policy, message hashes, outcomes, and activity.
+The dashboard never returns private key material or raw signatures.
+
+Provision the host key once with `node --experimental-strip-types
+scripts/provision-agent-wallet.mjs`. After migration/deployment, register its public
+address through the owner-only `POST /api/agent-wallet/provision` endpoint. The
+agent-only `POST /api/agent-wallet/sign-message` endpoint currently accepts only
+BountyBook authentication nonces. Transaction signing is disabled until its
+ledger/effect/spending implementation is separately verified.

@@ -8,6 +8,8 @@ The dashboard, Telegram webhook, payment webhook, worker, database, and external
 - Short-lived, signed approval tokens; expiry and decision audit records.
 - CSRF protection for browser mutations, secure sessions/cookies in production, input validation, output encoding, rate limits.
 - Runtime secrets only; no source, logs, audit payloads, dashboard, Telegram, or Mem0 exposure.
+- The owner-authorized dedicated agent wallet (2026-08-01) uses a least-privilege runtime signer or mode-0600 key file owned by `goofy`. Only its public address, policy, hashes, outcomes, and external references enter PostgreSQL/dashboard. The owner wallet remains outside this boundary.
+- Autonomous signing is default-deny: allowlisted provider, validated message format, durable rate limit, pause/kill check, derived-address verification, and audit event are required before each signature. Raw signatures are returned transiently and never persisted.
 - Per-action kill/pause enforcement, approval enforcement, spending circuit breaker, domain allowlists where configured.
 - Idempotency keys for financial records, webhooks, and side-effecting jobs.
 - Least privilege service accounts; separate dev and production configuration.

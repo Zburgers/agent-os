@@ -30,3 +30,9 @@ test('commercial route renders the full revenue operations workspace', () => {
     assert.ok(html.includes(value), value);
   }
 });
+
+test('finance page includes the dedicated Goofy wallet operational view', () => {
+  const html = renderControlPlane('finance', {}, 'csrf-test');
+  assert.ok(html.includes('Dedicated Goofy wallet'));
+  assert.ok(html.includes('/api/agent-wallet/status'));
+});
