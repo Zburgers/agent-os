@@ -1,0 +1,39 @@
+[Unit]
+Description=Goofy Agent OS owner-channel relay
+Documentation=file:///home/goofy/agent-os/docs/HERMES_INTEGRATION.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/goofy/agent-os
+ExecStart=/usr/bin/node /home/goofy/agent-os/scripts/relay-channel-outbox.mjs
+Environment=AGENT_OS_RELAY_BASE_URL=http://127.0.0.1:9999
+Environment=AGENT_OS_RELAY_TOKEN_FILE=/home/goofy/.hermes/agent-os-token
+Environment=HERMES_CLI_PATH=/home/goofy/.local/bin/hermes
+Environment=AGENT_OS_RELAY_POLL_MS=2000
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=35s
+UMask=0077
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+LockPersonality=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=default.target
