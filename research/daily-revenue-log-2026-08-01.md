@@ -104,3 +104,21 @@ external claim. If approved, authenticate with the dedicated signer, claim only
 job `8f560445-8479-416e-ab33-53281da4bec8`, submit the direct JSON array once,
 and permit at most one correction for a concrete content/schema defect. Stop on
 another parser/runtime failure.
+
+## Late operating-block verification
+
+- Re-read the live BountyBook job before acting. It remains open, unclaimed,
+  has an empty queue, advertises `$7.00` USDC, and still requires a direct JSON
+  array with exactly eight records. The prepared artifact passes every stated
+  structural condition locally. Seven of eight official source URLs returned
+  HTTP 200; OpenAI's official Help Center source returned HTTP 403 to the curl
+  client, so that transport result is not treated as a content failure.
+- Approval `ea92c304-89ca-456d-815c-c9cb74668c9f` remains pending in
+  PostgreSQL. No authentication, signature, claim, queue action, submission, or
+  wallet transaction was attempted in this block.
+- Added a fourth signer-free PoolTogether Base observation at block 49,373,564.
+  The awarded draw is now 806 while the archived public winner dataset remains
+  at draw 769, a 37-draw lag. Current winner retrieval failed, actionable
+  conservative profit observations remain zero, and no signer, transaction, or
+  spend was used. The evidence was also attached to task
+  `574588be-07ed-43aa-94a7-09cd64260e4d` in Agent OS.
