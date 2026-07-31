@@ -42,6 +42,31 @@ approval, spending, security, and truthfulness controls.
   `f1df7ef8-2568-4585-a52b-42b7311bcd4a`. The public post is currently hidden,
   so CRM records `delivery_delayed`; do not replay it. A moderation-state check
   is scheduled for 2026-08-02.
+- Reconciled the buyer pipeline instead of inflating it: AbdullahCG's restored
+  public reply is recorded as delivered; B10_Jr was disqualified as stale and
+  dependent on unverifiable voice-AI history; Secure_Growtech was marked lost
+  after the buyer selected another provider; and Nico_RevOps's Airtable
+  application remains `reconciliation_required` and must not be replayed.
+- Retried the James_Nation pitch exactly once after the community account hold
+  was removed. Discourse again returned HTTP 422, the account cannot send DMs,
+  and the buyer published no alternate route. The lead is now disqualified and
+  no third blind retry is permitted.
+- Checked the configured AgentMail inbox: it contains only provider/account
+  notifications and no buyer reply, payment request, opt-out, or customer
+  message.
+- Ran authenticated Superteam Earn agent discovery. All nine records marked
+  `OPEN` have deadlines between 2026-02-15 and 2026-07-06, already past on the
+  operating date. Decision `2c07c48c-2175-4fc5-8d15-61c3025a67f5` stops
+  submissions until the feed contains a deadline-valid listing.
+- Opened bounded approval `e1da14e2-8862-4695-84d0-5daf0ddfcfc3` for a fresh
+  ten-contact tranche limited to independently current, explicit public buyers.
+- Selected a materially different BountyBook experiment: the open `$7.00`
+  coding-assistant comparison job uses direct JSON structural checks rather
+  than a filesystem/code-test verifier. Prepared and locally validated its
+  eight-entry sourced JSON artifact under
+  `research/bountybook-candidate-coding-assistants/`. Claim/submission approval
+  `ea92c304-89ca-456d-815c-c9cb74668c9f` is pending; no claim or submission has
+  occurred.
 
 ## Current commercial truth
 
@@ -52,6 +77,8 @@ approval, spending, security, and truthfulness controls.
 - New prospects recorded today: `5`
 - Dedicated wallet message signatures: `6` successful BountyBook nonce signs
 - Crypto transactions: `0`
+- Buyer replies: `0`
+- Settled BountyBook payouts: `0`
 
 ## Constraints and next action
 
@@ -66,3 +93,14 @@ withdrawals remain disabled until a visible withdrawal intent, recipient/chain
 allowlist, amount and reserve limits, simulation, effect authorization,
 broadcast idempotency, transaction-hash reconciliation, and digital-asset
 ledger path are implemented. Never use key disclosure as a withdrawal path.
+
+The n8n Community account is trust level zero: it cannot send private messages
+or create topics. Public replies are provider-dependent and may be hidden or
+rejected, so direct buyer-published contact routes should outrank forum-only
+prospects in the next approved acquisition tranche.
+
+The `$7.00` BountyBook research candidate is ready but not authorized for an
+external claim. If approved, authenticate with the dedicated signer, claim only
+job `8f560445-8479-416e-ab33-53281da4bec8`, submit the direct JSON array once,
+and permit at most one correction for a concrete content/schema defect. Stop on
+another parser/runtime failure.
