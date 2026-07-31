@@ -128,3 +128,19 @@ another parser/runtime failure.
   `account_change`, backed by a red-then-green PostgreSQL integration test. A
   production rebuild is still required before the live API can enforce the new
   mapping; no marketplace action was taken through the undeployed code.
+- Re-evaluated the live board after the selected job's attempt count became
+  visible. The `$7` job has `226` attempts, `0` passes, and `222` identical
+  verifier crashes reading undefined `min_word_count` before any check runs.
+  A full read-only scan of all `73` currently open BountyBook jobs found zero
+  successful attempts on every listing and repeated undefined
+  `length`/`required_fields` runtime failures, often across hundreds or
+  thousands of attempts. Decision `29c54068-f3f4-4781-a810-7904b4605b4b`
+  kills all BountyBook earning attempts until a provider release or live
+  successful verification proves the oracle works. Do not execute approval
+  `ea92c304-89ca-456d-815c-c9cb74668c9f` even if it is later approved.
+- Audited the mission's dual-channel approval requirement. The app supports an
+  authenticated inbound Telegram webhook and owner allowlist, and PostgreSQL
+  contains `channel_outbox`, but no application consumer or outbound bot
+  transport is implemented. Decision `c1f269b3-0498-4ec1-923a-767d3ee5adeb`
+  marks outbound approval delivery unverified; task
+  `a0fb83a3-790a-4c7b-a31e-eac07d49997a` tracks the production-readiness gap.
