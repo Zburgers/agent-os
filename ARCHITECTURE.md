@@ -12,7 +12,13 @@ A TypeScript control-plane service and static server-rendered operations dashboa
   installed gateway owns Telegram/Discord transport and its configured Mem0
   provider; Agent OS does not duplicate those facilities.
 - `telegram controls`: secret-authenticated webhook, strict owner allowlist,
-  audited commands, destructive confirmation, and owner-only pause/resume/kill.
+  audited commands, destructive confirmation, owner-only pause/resume/kill,
+  and action-bound signed approval decisions through the shared approval state
+  machine.
+- `owner notification outbox`: fixed redacted templates authorize one message
+  effect per recipient; PostgreSQL leases and caps delivery attempts. A
+  least-privilege host relay calls loopback Agent OS and shell-free Hermes,
+  recording only sanitized receipts or reconciliation state.
 - `contextual memory`: PostgreSQL keeps provider provenance and mutation audit
   evidence while remaining authoritative for operations. Mem0 Cloud is scoped
   semantic retrieval; `memory/` is an explicit, curated Markdown promotion

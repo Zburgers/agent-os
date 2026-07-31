@@ -59,3 +59,19 @@ Hermes uses the native MCP, hook, skill, channel, and Mem0 facilities described
 in `docs/HERMES_INTEGRATION.md`. After changing integration code, run
 `hermes mcp test agent-os`, `hermes hooks doctor`, validate the risky fixture,
 and restart the gateway. Never use a real channel send as a health check.
+
+### Telegram delivery recovery
+
+Inspect `/health` before touching an outbox row. A stale relay heartbeat means
+the host relay is not polling; verify its user service and loopback access.
+`reconciliation_required` means delivery crossed an ambiguous provider
+boundary and must never be reset to pending or replayed automatically. Compare
+the sanitized provider reference and Hermes history, then record a manual
+reconciliation decision. Explicit failures retry only to the stored cap.
+
+Provision the dedicated approval-token secret directly to an owner-controlled
+mode-0600 host file without printing it, mount only that exact file read-only,
+and set `APPROVAL_TOKEN_SECRET_FILE` to its absolute in-container path. Start
+`deploy/goofy-agent-os-channel-relay.service` only under an approved exact
+deployment effect. A readiness PASS additionally requires one owner-only live
+canary with receipt, replay/tamper rejection, and kill-state claim denial.

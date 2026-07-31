@@ -18,7 +18,7 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   const { createEntity, updateEntity } = await import('../src/entities.ts');
   const { CommercialOperationsService } = await import('../src/commercial-operations.ts');
   const { LedgerService, releaseOperatingTranche } = await import('../src/finance.ts');
-  const { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, ticketDetail } = await import('../src/records.ts');
+  const { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, recordChannelRelayHeartbeat, telegramDeliveryHealth, ticketDetail } = await import('../src/records.ts');
   const { ChannelOutboxError, ChannelOutboxService } = await import('../src/channel-outbox.ts');
 
   const outboxConstraints = await pool.query<{ conname: string }>(
@@ -537,6 +537,10 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   );
   const telegramSigningSecret = 'postgres-integration-telegram-secret-at-least-32-bytes';
   const telegram = new TelegramControlService(pool, new Set(['42']), { approvalSigningSecret: telegramSigningSecret });
+  await recordChannelRelayHeartbeat(pool);
+  const telegramHealth = await telegramDeliveryHealth(pool);
+  assert.equal(telegramHealth.relay.fresh, true);
+  assert.equal(typeof telegramHealth.counts.pending, 'number');
   assert.equal((await telegram.handle('41', '/pause confirm') as any).reason, 'unauthorized_user');
   assert.equal(Array.isArray((await telegram.handle('42', '/balance') as any).finance), true);
 

@@ -23,6 +23,10 @@ services:
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
       PORT: 3000
       OWNER_TELEGRAM_IDS: ${OWNER_TELEGRAM_IDS:-}
+      # Set after mounting a dedicated protected signing-secret file during the
+      # separately approved production deployment. Never pass the secret value.
+      APPROVAL_TOKEN_SECRET_FILE: ${APPROVAL_TOKEN_SECRET_FILE:-}
+      TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID: ${TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID:-}
       AGENT_RUNTIME_TOKEN: ${AGENT_RUNTIME_TOKEN:-}
       AGENT_RUNTIME_TOKEN_FILE: /run/secrets/agent_os_hermes_token
       # Mem0 Cloud is contextual memory only; PostgreSQL remains authoritative.

@@ -21,11 +21,16 @@ The dashboard, Telegram webhook, payment webhook, worker, database, and external
 - All durable supervisor internal effects pass `authorizeEffect`; denied proposals persist with stable policy codes.
 - Agent API authentication cannot mutate owner controls or decide approvals. `/api/v1` mutations require an idempotency key.
 - Telegram webhook input requires a secret header, accepted and rejected identities are audited, and destructive commands require `confirm`.
+- Owner approval notifications use one authorized effect and durable outbox row
+  per allowlisted recipient. A shell-free host relay supplies text on stdin,
+  records bounded outcomes, and treats timeout/termination/invalid receipts as
+  reconciliation-required. Signed decisions are recipient-allowlisted,
+  expiring, action-bound, replay-safe, and token-free in durable evidence.
 Hermes supplies the gateway channels, hooks, MCP runtime, skills, and configured
 Mem0 provider. Agent OS integrates them through a mode-0600 shared credential,
 loopback-only API, native MCP registration, and a fail-closed tool hook; it does
 not install duplicate infrastructure. See `docs/HERMES_INTEGRATION.md`.
 
-Private HTTPS and controlled end-to-end delivery-receipt acceptance remain
-release evidence gaps. Commercial lock remains enabled, so no live channel send
-was used as a test.
+Controlled end-to-end delivery-receipt acceptance remains a release evidence
+gap until the exact deployment and owner-notification policy are approved. The
+Telegram readiness gate must remain non-passing until that live canary succeeds.

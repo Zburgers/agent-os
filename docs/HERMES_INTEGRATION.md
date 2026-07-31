@@ -30,6 +30,22 @@ operation. Agent OS remains authoritative for owner identity, approval,
 controls, effects, finance, audit, and channel delivery records. Bot tokens
 never enter Agent OS containers.
 
+## Owner notification relay
+
+`scripts/relay-channel-outbox.mjs` polls the authenticated loopback API and
+invokes the fixed Hermes CLI path with `shell:false`; notice text travels only
+over stdin. The host relay receives neither PostgreSQL nor Telegram
+credentials. Every claim updates the `channel-relay` heartbeat, and `/health`
+shows payload-free outbox counts, oldest pending age, reconciliation count,
+failures, and relay freshness.
+
+Approval notices are generated from fixed redacted fields and include separate
+short-lived, action-bound `/approve <token>` and `/reject <token>` commands.
+The HMAC key must be a dedicated absolute mode-0600 file, never an environment
+value or a reuse of the Agent OS bearer credential. Invalid, expired,
+action-mismatched, and replayed decisions fail closed and are audited without
+the token.
+
 Hermes' configured Mem0 provider remains the single contextual-memory provider.
 Agent OS stores scoped, policy-screened memory references and never treats
 Mem0 as an authorization, accounting, approval, or audit store. The PostgreSQL
@@ -43,6 +59,7 @@ hermes hooks doctor
 hermes skills list
 node integrations/hermes/pre-tool-guard.mjs < test/fixtures/hermes-risky-tool.json
 hermes gateway status
+systemd-analyze verify deploy/goofy-agent-os-channel-relay.service
 ```
 
 The risky fixture must return a block with `commercial_lock`. Do not test

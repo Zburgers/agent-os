@@ -170,6 +170,47 @@ export async function listHealthChecks(input: Page = {}) {
   return { items: rows, limit, offset, total: Number(rows[0]?.total_count ?? 0) };
 }
 
+type HealthDatabase = { query<T = Record<string, unknown>>(sql: string, values?: unknown[]): Promise<{ rows: T[] }> };
+
+export async function recordChannelRelayHeartbeat(database: HealthDatabase = pool) {
+  await database.query(
+    `INSERT INTO supervisor_heartbeats(worker_id,status,detail)
+     VALUES('channel-relay','running','{"channel":"telegram"}')
+     ON CONFLICT(worker_id) DO UPDATE SET heartbeat_at=now(),status='running',detail=EXCLUDED.detail`,
+  );
+}
+
+export async function telegramDeliveryHealth(database: HealthDatabase = pool, now = new Date()) {
+  const [outbox, heartbeat] = await Promise.all([
+    database.query<{
+      pending: string; delivering: string; delivered: string; failed: string;
+      reconciliation_required: string; oldest_pending_seconds: string | null;
+    }>(
+      `SELECT count(*) FILTER(WHERE status='pending') AS pending,
+       count(*) FILTER(WHERE status='delivering') AS delivering,
+       count(*) FILTER(WHERE status='delivered') AS delivered,
+       count(*) FILTER(WHERE status='failed') AS failed,
+       count(*) FILTER(WHERE status='reconciliation_required') AS reconciliation_required,
+       floor(EXTRACT(epoch FROM now()-min(created_at) FILTER(WHERE status='pending')))::text AS oldest_pending_seconds
+       FROM channel_outbox WHERE channel='telegram'`,
+    ),
+    database.query<{ heartbeat_at: string | Date }>(
+      `SELECT heartbeat_at FROM supervisor_heartbeats WHERE worker_id='channel-relay'`,
+    ),
+  ]);
+  const row = outbox.rows[0];
+  const heartbeatAt = heartbeat.rows[0]?.heartbeat_at ? new Date(heartbeat.rows[0].heartbeat_at) : null;
+  const ageSeconds = heartbeatAt ? Math.max(0, Math.floor((now.valueOf() - heartbeatAt.valueOf()) / 1000)) : null;
+  return {
+    counts: {
+      pending: Number(row?.pending ?? 0), delivering: Number(row?.delivering ?? 0), delivered: Number(row?.delivered ?? 0),
+      failed: Number(row?.failed ?? 0), reconciliation_required: Number(row?.reconciliation_required ?? 0),
+    },
+    oldest_pending_seconds: row?.oldest_pending_seconds === null || row?.oldest_pending_seconds === undefined ? null : Number(row.oldest_pending_seconds),
+    relay: { heartbeat_at: heartbeatAt?.toISOString() ?? null, age_seconds: ageSeconds, fresh: ageSeconds !== null && ageSeconds <= 30 },
+  };
+}
+
 export async function listIncidents(input: Page = {}) {
   const { limit, offset, status, search } = page(input);
   const { rows } = await pool.query(

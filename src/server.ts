@@ -10,7 +10,7 @@ import { ApprovalService } from './approvals.ts';
 import { reconcileApprovedOperatingTranches } from './finance.ts';
 import { ApprovalRequestService } from './approval-requests.ts';
 import { TicketService } from './tickets.ts';
-import { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, ticketDetail } from './records.ts';
+import { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, recordChannelRelayHeartbeat, telegramDeliveryHealth, ticketDetail } from './records.ts';
 import { TelegramControlService } from './telegram-controls.ts';
 import { HybridContextualMemory } from './memory.ts';
 import { cancelJob, pauseJob, rerunJob } from './jobs.ts';
@@ -186,6 +186,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/session') return respond(res, 200, { session: auth.kind, csrf_token: auth.csrfToken ?? null });
     if (req.method === 'POST' && url.pathname === '/api/channel-outbox/claim') {
       if (auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
+      await recordChannelRelayHeartbeat();
       return respond(res, 200, await channelOutbox.claim());
     }
     const channelResult = url.pathname.match(/^\/api\/channel-outbox\/([0-9a-f-]+)\/result$/);
@@ -345,6 +346,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === "GET" && url.pathname === "/api/activity") return respond(res, 200, await listActivity(readPage()));
     if (req.method === "GET" && url.pathname === "/api/health-checks") return respond(res, 200, await listHealthChecks(readPage()));
+    if (req.method === 'GET' && url.pathname === '/api/telegram-delivery-health') return respond(res, 200, await telegramDeliveryHealth());
     if (req.method === "GET" && url.pathname === "/api/incidents") return respond(res, 200, await listIncidents(readPage()));
     const commercialPage = () => ({
       status: url.searchParams.get('status') ?? undefined,
