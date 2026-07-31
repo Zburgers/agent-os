@@ -19,6 +19,58 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   const { LedgerService, releaseOperatingTranche } = await import('../src/finance.ts');
   const { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, ticketDetail } = await import('../src/records.ts');
 
+  const outboxConstraints = await pool.query<{ conname: string }>(
+    `SELECT conname FROM pg_constraint
+     WHERE conrelid='channel_outbox'::regclass
+       AND conname IN ('channel_outbox_attempts_check','channel_outbox_max_attempts_check')
+     ORDER BY conname`,
+  );
+  assert.deepEqual(outboxConstraints.rows.map((row) => row.conname), [
+    'channel_outbox_attempts_check', 'channel_outbox_max_attempts_check',
+  ]);
+  const outboxColumns = await pool.query<{ column_name: string }>(
+    `SELECT column_name FROM information_schema.columns
+     WHERE table_schema='public' AND table_name='channel_outbox'
+       AND column_name IN ('effect_intent_id','max_attempts','lease_expires_at','updated_at')
+     ORDER BY column_name`,
+  );
+  assert.deepEqual(outboxColumns.rows.map((row) => row.column_name), [
+    'effect_intent_id', 'lease_expires_at', 'max_attempts', 'updated_at',
+  ]);
+  const outboxTrigger = await pool.query<{ count: string }>(
+    `SELECT count(*) FROM pg_trigger
+     WHERE tgrelid='channel_outbox'::regclass AND tgname='channel_outbox_audit_backstop' AND NOT tgisinternal`,
+  );
+  assert.equal(outboxTrigger.rows[0].count, '1');
+
+  const outboxEffect = await pool.query<{ id: string }>(
+    `INSERT INTO effect_intents(effect_kind,idempotency_key,state,payload)
+     VALUES('message','integration-telegram-outbox-effect','authorized','{}') RETURNING id`,
+  );
+  const outbox = await pool.query<{ attempts: number; max_attempts: number }>(
+    `INSERT INTO channel_outbox(channel,recipient_ref,message_kind,redacted_payload,idempotency_key,effect_intent_id)
+     VALUES('telegram','integration-owner','approval_required','{}','approval:integration:owner',$1)
+     RETURNING attempts,max_attempts`,
+    [outboxEffect.rows[0].id],
+  );
+  assert.deepEqual(outbox.rows[0], { attempts: 0, max_attempts: 3 });
+  await assert.rejects(
+    pool.query(
+      `INSERT INTO channel_outbox(channel,recipient_ref,message_kind,redacted_payload,idempotency_key,effect_intent_id)
+       VALUES('telegram','integration-owner','approval_required','{}','approval:integration:owner:duplicate',$1)`,
+      [outboxEffect.rows[0].id],
+    ),
+    /channel_outbox_effect_intent_unique/,
+  );
+  await assert.rejects(
+    pool.query("UPDATE channel_outbox SET max_attempts=6 WHERE idempotency_key='approval:integration:owner'"),
+    /channel_outbox_max_attempts_check/,
+  );
+  await assert.rejects(
+    pool.query("UPDATE channel_outbox SET attempts=4 WHERE idempotency_key='approval:integration:owner'"),
+    /channel_outbox_attempts_check/,
+  );
+
   const objective = await pool.query<{ id: string }>("INSERT INTO objectives(statement,status) VALUES('integration fixture','active') RETURNING id");
   const opening = await pool.query<{ contributions: string; fixed_expense: string; revenue: string; cash: string }>(
     `SELECT
