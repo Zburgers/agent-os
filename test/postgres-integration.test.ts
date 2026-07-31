@@ -20,6 +20,13 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   const { LedgerService, releaseOperatingTranche } = await import('../src/finance.ts');
   const { approvalDetail, jobDetail, ledgerDetail, listActivity, listApprovals, listHealthChecks, listIncidents, listJobs, listLedgerEntries, listTickets, recordChannelRelayHeartbeat, telegramDeliveryHealth, ticketDetail } = await import('../src/records.ts');
   const { ChannelOutboxError, ChannelOutboxService } = await import('../src/channel-outbox.ts');
+  const { ReadinessEvidenceService } = await import('../src/readiness.ts');
+
+  assert.deepEqual((await pool.query(
+    "SELECT status,evidence_uri FROM readiness_gates WHERE gate_key='telegram_controls'",
+  )).rows[0], {
+    status: 'PARTIAL', evidence_uri: 'pending://telegram-control-notification-live-canary',
+  });
 
   const outboxConstraints = await pool.query<{ conname: string }>(
     `SELECT conname FROM pg_constraint
@@ -579,6 +586,45 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
     `SELECT count(*) FROM audit_events
      WHERE entity_type='telegram_command' AND payload::text LIKE $1`, [`%${signedApprove}%`],
   )).rows[0].count, '0');
+
+  const readinessDeploymentApproval = await pool.query<{ id: string }>(
+    `INSERT INTO approvals(action_type,requested_action,reason,risk,recommendation,idempotency_key,status,expires_at,decided_at,decided_by)
+     VALUES('deployment','deploy commit 94c0508289dadced3efab02111386a167ffe12c5 and canary','integration','none','verify','readiness-deploy-approval',
+       'approved',now()+interval '1 hour',now(),'integration-owner') RETURNING id`,
+  );
+  const readinessDeploymentEffect = await pool.query<{ id: string }>(
+    `INSERT INTO effect_intents(approval_id,effect_kind,idempotency_key,state,payload,authorized_at,executing_at)
+     VALUES($1,'deployment','readiness-deploy-effect','executing',$2,now(),now()) RETURNING id`,
+    [readinessDeploymentApproval.rows[0].id, { commit: '94c0508289dadced3efab02111386a167ffe12c5' }],
+  );
+  const readinessPolicy = await pool.query<{ id: string }>(
+    `INSERT INTO approvals(action_type,requested_action,reason,risk,recommendation,idempotency_key,status,expires_at,decided_at,decided_by)
+     VALUES('message','readiness notice policy','integration','none','verify','readiness-policy-approval',
+       'approved',now()+interval '1 hour',now(),'integration-owner') RETURNING id`,
+  );
+  const readinessMessageEffect = await pool.query<{ id: string }>(
+    `INSERT INTO effect_intents(approval_id,effect_kind,idempotency_key,state,payload,authorized_at,executing_at,finished_at,receipt)
+     VALUES($1,'message','readiness-message-effect','succeeded','{}',now(),now(),now(),'{}') RETURNING id`,
+    [readinessPolicy.rows[0].id],
+  );
+  const readinessDelivery = await pool.query<{ id: string }>(
+    `INSERT INTO channel_outbox(effect_intent_id,channel,recipient_ref,message_kind,redacted_payload,idempotency_key,status,provider_receipt,delivered_at)
+     VALUES($1,'telegram','42','approval_required','{"text":"Canary"}','readiness-delivery','delivered',
+       '{"provider_status":"sent","message_id":"123","chat_id":"42"}',now()) RETURNING id`,
+    [readinessMessageEffect.rows[0].id],
+  );
+  await pool.query("UPDATE readiness_gates SET status='PARTIAL' WHERE gate_key='telegram_controls'");
+  const readiness = new ReadinessEvidenceService(pool);
+  assert.equal((await readiness.passTelegramControls({
+    effectId: readinessDeploymentEffect.rows[0].id,
+    deliveryId: readinessDelivery.rows[0].id,
+    commit: '94c0508289dadced3efab02111386a167ffe12c5',
+  }, { type: 'agent', id: 'integration-agent' })).status, 'PASS');
+  assert.deepEqual((await pool.query(
+    "SELECT status,evidence_uri FROM readiness_gates WHERE gate_key='telegram_controls'",
+  )).rows[0], {
+    status: 'PASS', evidence_uri: `agent-os://telegram-canary/${readinessDelivery.rows[0].id}`,
+  });
 
   assert.equal((await telegram.handle('42', '/pause') as any).confirmation_required, true);
   assert.equal((await telegram.handle('42', '/pause confirm') as any).controls.paused, true);

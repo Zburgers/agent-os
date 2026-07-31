@@ -19,6 +19,10 @@ A TypeScript control-plane service and static server-rendered operations dashboa
   effect per recipient; PostgreSQL leases and caps delivery attempts. A
   least-privilege host relay calls loopback Agent OS and shell-free Hermes,
   recording only sanitized receipts or reconciliation state.
+- `readiness evidence`: deployment-scoped service promotes Telegram controls
+  from PARTIAL to PASS only after locking live controls and joining the exact
+  executing deployment approval to a succeeded message effect, approved notice
+  policy, delivered outbox row, and matching sanitized provider receipt.
 - `contextual memory`: PostgreSQL keeps provider provenance and mutation audit
   evidence while remaining authoritative for operations. Mem0 Cloud is scoped
   semantic retrieval; `memory/` is an explicit, curated Markdown promotion

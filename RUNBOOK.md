@@ -75,3 +75,10 @@ and set `APPROVAL_TOKEN_SECRET_FILE` to its absolute in-container path. Start
 `deploy/goofy-agent-os-channel-relay.service` only under an approved exact
 deployment effect. A readiness PASS additionally requires one owner-only live
 canary with receipt, replay/tamper rejection, and kill-state claim denial.
+Migration 017 intentionally resets `telegram_controls` to PARTIAL. During the
+still-executing exact deployment effect, POST the reconciled delivery ID,
+deployment effect ID, and exact commit to
+`/api/v1/readiness/telegram-controls/pass`. The service independently verifies
+the exact canary-scoped deployment approval, delivered message effect,
+approved notification policy, sanitized matching receipt, and live controls;
+never update the gate directly with SQL.

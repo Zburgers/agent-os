@@ -27,3 +27,11 @@ CREATE INDEX IF NOT EXISTS channel_outbox_delivery_ready
 CREATE INDEX IF NOT EXISTS channel_outbox_delivery_lease
   ON channel_outbox(lease_expires_at)
   WHERE status = 'delivering';
+
+-- The earlier inbound-command check is not sufficient evidence for the new
+-- durable outbound approval-notification contract. Deployment deliberately
+-- reopens this gate until a reconciled live canary is recorded through the
+-- governed readiness evidence service.
+UPDATE readiness_gates SET status='PARTIAL',verified_at=NULL,
+  evidence_uri='pending://telegram-control-notification-live-canary',updated_at=now()
+WHERE gate_key='telegram_controls';

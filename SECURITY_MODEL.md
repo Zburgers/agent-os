@@ -26,6 +26,11 @@ The dashboard, Telegram webhook, payment webhook, worker, database, and external
   records bounded outcomes, and treats timeout/termination/invalid receipts as
   reconciliation-required. Signed decisions are recipient-allowlisted,
   expiring, action-bound, replay-safe, and token-free in durable evidence.
+- Migration 017 invalidates older inbound-only Telegram readiness evidence.
+  Restoring PASS requires an executing exact canary-scoped deployment effect
+  and independently verified delivered outbox/provider evidence through the
+  authenticated readiness service; arbitrary agent claims and direct SQL are
+  not accepted as release evidence.
 Hermes supplies the gateway channels, hooks, MCP runtime, skills, and configured
 Mem0 provider. Agent OS integrates them through a mode-0600 shared credential,
 loopback-only API, native MCP registration, and a fail-closed tool hook; it does

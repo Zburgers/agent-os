@@ -27,6 +27,7 @@ import { PayPalService } from './paypal.ts';
 import { publicJavaScriptAsset } from './static-assets.ts';
 import { loadApprovalNotificationConfig } from './approval-notifications.ts';
 import { ChannelOutboxError, ChannelOutboxService } from './channel-outbox.ts';
+import { ReadinessEvidenceError, ReadinessEvidenceService } from './readiness.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -49,6 +50,7 @@ const wallet = new WalletService(pool);
 const agentWallet = new AgentWalletService(pool);
 const paypal = new PayPalService(pool);
 const channelOutbox = new ChannelOutboxService(pool, { ownerTelegramIds: approvalNotificationConfig.ownerTelegramIds });
+const readinessEvidence = new ReadinessEvidenceService(pool);
 type Auth = { kind: 'bearer' | 'basic' | 'session' | 'agent'; csrfToken?: string; sessionValue?: string } | null;
 
 function constantEqual(left: string, right: string) { const a = Buffer.from(left); const b = Buffer.from(right); return a.length === b.length && timingSafeEqual(a, b); }
@@ -188,6 +190,13 @@ const server = createServer(async (req, res) => {
       if (auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
       await recordChannelRelayHeartbeat();
       return respond(res, 200, await channelOutbox.claim());
+    }
+    if (req.method === 'POST' && url.pathname === '/api/readiness/telegram-controls/pass') {
+      if (auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
+      const input = await body(req);
+      return respond(res, 200, await readinessEvidence.passTelegramControls({
+        effectId: String(input.effect_id ?? ''), deliveryId: String(input.delivery_id ?? ''), commit: String(input.commit ?? ''),
+      }, { type: 'agent', id: 'goofy-runtime' }));
     }
     const channelResult = url.pathname.match(/^\/api\/channel-outbox\/([0-9a-f-]+)\/result$/);
     if (req.method === 'POST' && channelResult) {
@@ -423,7 +432,7 @@ const server = createServer(async (req, res) => {
     return respond(res, 404, { error: 'not_found' });
   } catch (error) {
     if (error instanceof AgentWalletError) return respond(res, 400, { error: error.code });
-    if (error instanceof ChannelOutboxError) return respond(res, 409, { error: error.code });
+    if (error instanceof ChannelOutboxError || error instanceof ReadinessEvidenceError) return respond(res, 409, { error: error.code });
     const message = error instanceof Error ? error.message : 'unknown';
     console.error('request_failed', redactSecrets(message, [token, process.env.DATABASE_URL ?? '']));
     return respond(res, 500, { error: 'internal_error' });
