@@ -10,6 +10,43 @@
 
 ---
 
+## Binding implementation decisions
+
+These decisions are part of the specification. Do not substitute a different architecture without asking the owner first.
+
+1. **Runnable artifact:** this file is the runnable plan. The companion design document is context, not a second plan.
+2. **Execution branch:** create `feat/revenue-paths-codex-autonomy` from current `main` in an isolated worktree. Preserve unrelated changes; never rewrite history.
+3. **Migration order:** use `018`, `019`, and `020` exactly as assigned. If any number is already used, stop and ask the owner instead of silently renumbering.
+4. **Scheduling authority:** systemd is the only clock/trigger. PostgreSQL is authoritative for configuration, occurrences, run state, results, and audit. Do not add a second interval scheduler.
+5. **Configured thread:** store `019faa3e-b7af-7e13-8335-4f651c989e27` once in PostgreSQL job configuration. Environment override is test-only.
+6. **Timebox:** start at 09:00:00 Asia/Kolkata; send the child `SIGINT` at 58 minutes; allow 60 seconds to exit; reconcile afterward. systemd uses `RuntimeMaxSec=1h`, `TimeoutStopSec=30s`, and `KillMode=mixed`. No child may survive the unit.
+7. **Missed run:** `Persistent=true` permits one catch-up after downtime. The scheduled occurrence key is the intended IST date, so one date deduplicates. Manual Run now uses a UUID occurrence key. Only one block may run at once.
+8. **Collision:** a colliding scheduled occurrence becomes `skipped/already_running`; a colliding manual request returns HTTP 409 and starts no process.
+9. **Controls:** global pause/kill produces `skipped/control_paused` or `skipped/control_killed`. Schedule pause affects only future starts. Kill during execution interrupts the child within a maximum five-second polling interval.
+10. **Codex command:** use an absolute preflight-resolved executable and an argument array equivalent to `codex exec resume <thread-id> <prompt> --json -o <mode-0600-file>`. Never use interactive resume, shell command construction, dangerous bypass flags, `--ignore-rules`, or `--ignore-user-config`.
+11. **Logs:** raw JSONL belongs in an owner-only mode-0700 directory outside Git. PostgreSQL stores its path/checksum plus redacted bounded metadata. Never store raw tool arguments, environment variables, credentials, signatures, private keys, or model reasoning.
+12. **Track vocabulary:** `status` is exactly `proposed | active | paused | completed | killed`; `owner_kind` is exactly `agent | owner | joint`; computed `health` is `on_track | at_risk | blocked | inactive`; `stage` is free text limited to 80 characters.
+13. **Track money:** never persist derived spend/revenue/profit on tracks. Compute them from settled linked ledger entries.
+14. **Track lifecycle:** archive via status; provide no destructive delete API. Reparenting must reject cycles and cross-scope parents.
+15. **Initial mapping:** create the exact four top-level paths/children in the design. Link `Automation Reliability Sprint` only to `n8n / automation business`; link existing bounty experiments only to `Bounties`; leave uncertain records unlinked and report them.
+16. **Wallet activation:** code and migrations create no active value-bearing policy. New policies default to `draft`; the authenticated owner explicitly activates the first policy. Receiving funds remains allowed.
+17. **Wallet mutation:** policies are immutable versions. Editing creates a superseding draft. Owner-authenticated activation/revocation is audited. Agent operations inside an active policy require no per-operation approval.
+18. **Git authority:** routine commit/push/branch/tag/PR operations are autonomous and audited. Repository deletion/transfer/visibility changes, default-branch force-push/deletion, secret publication, security-control weakening, and legal acceptance remain excluded.
+19. **Smoke authorization:** the owner authorizes one non-side-effecting live resume smoke turn. It may not message, spend, deploy, create accounts, sign, transact, or change external state. Enable the timer only after it passes.
+20. **Ambiguity:** inspect local code, tests, migrations, Git history, Codex help, and Agent OS state first. If uncertainty remains and a choice changes security boundaries, financial authority, external effects, migration semantics, public behavior, or owner-wallet separation, stop before that task and ask the owner one explicit question. Never guess. Ordinary internal details consistent with this spec do not require confirmation.
+
+## Task 0 — Preflight and baseline
+
+**Files:**
+- Read only: `AGENTS.md`, `AUTONOMOUS_REVENUE_MISSION.md`, all governance files, relevant source/tests/migrations, and both plan documents
+
+**Steps:**
+1. Read governing instructions completely. Inspect Git state/history, migration numbers, package scripts, Codex version/help, systemd user/linger state, Agent OS controls/jobs/approvals/tasks/activity, and target-session metadata without printing sensitive conversation content.
+2. Confirm migrations `018`–`020` are unused, `codex exec resume` is supported, the exact session exists, controls are not paused/killed, and the historical blockers are no longer pending.
+3. Create `feat/revenue-paths-codex-autonomy` in an isolated worktree. If the baseline is dirty or tests fail, stop and report evidence before editing.
+4. Run `npm test`, `npm run build`, `npm run test:integration`, `npm run test:browser`, `npm run test:restart`, and `npm run test:restore`. Record exact results and do not blame pre-existing failures on this work.
+5. Commit nothing during preflight.
+
 ## Phase 1 — Revenue Paths
 
 ### Task 1: Add the hierarchical track schema
@@ -21,10 +58,10 @@
 
 **Steps:**
 1. Add a failing PostgreSQL test covering parent/child tracks, cycle prevention, optional links from existing operational tables, indexes, and audit triggers.
-2. Run `npm run test:postgres` and confirm the new assertions fail because `revenue_tracks` does not exist.
+2. Run `npm run test:integration` and confirm the new assertions fail because `revenue_tracks` does not exist.
 3. Add `revenue_tracks` with `parent_track_id`, business metadata, status/stage constraints, owner kind, financial/reporting fields, review/kill criteria, timestamps, and a recursive cycle-prevention trigger. Add nullable indexed `track_id` foreign keys to ventures, objectives, tasks, experiments, opportunities, leads, artifacts, decisions, jobs, and ledger entries.
 4. Add TypeScript entity types without creating a second source of truth for aggregate metrics.
-5. Run `npm run test:postgres`; expect all PostgreSQL integration tests to pass.
+5. Run `npm run test:integration`; expect all PostgreSQL integration tests to pass.
 6. Commit: `feat: add hierarchical revenue track model`.
 
 ### Task 2: Add track queries and mutation services
@@ -81,7 +118,8 @@
 1. Add a failing idempotency test using current venture/task fixtures.
 2. Implement a repeatable bootstrap that creates the four agreed top-level paths and subpaths, then links existing records by explicit stable mapping; never infer or overwrite an existing link silently.
 3. Run the script twice against disposable PostgreSQL and assert identical state.
-4. Commit: `data: organize current work into revenue paths`.
+4. Emit a machine-readable report of linked and deliberately unlinked record IDs; assert uncertain records remain unlinked.
+5. Commit: `data: organize current work into revenue paths`.
 
 ## Phase 2 — Daily Codex Goal Runner
 
@@ -95,7 +133,7 @@
 **Steps:**
 1. Add failing tests for one run per occurrence, allowed terminal states (`completed`, `timeboxed`, `failed`, `skipped`, `cancelled`), thread ID, timestamps, checksums, Git SHAs, redacted summary, and links to the Agent OS job/run.
 2. Apply the migration with append-only completed-run evidence and uniqueness constraints.
-3. Run PostgreSQL integration tests; expect pass.
+3. Run `npm run test:integration`; expect pass.
 4. Commit: `feat: persist codex operating blocks`.
 
 ### Task 7: Implement the singleton Codex runner
@@ -109,7 +147,7 @@
 **Steps:**
 1. Write failing tests for exact session selection, non-interactive `exec resume`, prompt construction, working directory, lock contention, pause/kill skip, approved-stale-blocker reconciliation text, JSONL redaction, graceful 58-minute timeout, hard-stop fallback, exit mapping, and result persistence.
 2. Confirm failure because the runner is absent.
-3. Implement with `spawn` argument arrays (no shell), a non-blocking lock, allowlisted executable/path, bounded environment inheritance, streamed JSONL parsing, secret redaction, checksums, and cleanup handlers.
+3. Implement with `spawn` argument arrays (no shell), a non-blocking lock, an allowlisted absolute executable, bounded environment inheritance, a mode-0700 log directory, mode-0600 files, streamed JSONL parsing, secret redaction, checksums, five-second control polling, process-group cleanup, and signal/exception handlers.
 4. Re-run targeted tests; expect pass.
 5. Commit: `feat: add audited codex goal runner`.
 
@@ -123,7 +161,7 @@
 
 **Steps:**
 1. Add failing static tests requiring `Type=oneshot`, exact `WorkingDirectory`, `RuntimeMaxSec=1h`, safe kill behavior, resource limits, `OnCalendar=*-*-* 09:00:00 Asia/Kolkata`, `Persistent=true`, and zero randomized delay.
-2. Add hardened user units without `--dangerously-bypass-approvals-and-sandbox` or `--dangerously-bypass-hook-trust`.
+2. Add hardened user units with the exact timebox/control values in the binding decisions and without dangerous bypass or ignore flags.
 3. Run `systemd-analyze verify systemd/goofy-agent-os-codex-goal.service systemd/goofy-agent-os-codex-goal.timer`; expect no errors.
 4. Run `systemd-analyze calendar '*-*-* 09:00:00 Asia/Kolkata'`; verify the next occurrence is 09:00 IST.
 5. Commit: `ops: schedule daily codex goal at 09:00 IST`.
@@ -153,7 +191,7 @@
 **Steps:**
 1. Pass all fake-binary, integration, redaction, systemd, pause/kill, overlap, and timeout tests first.
 2. Validate locally that the target rollout file exists and its thread ID equals `019faa3e-b7af-7e13-8335-4f651c989e27` without printing conversation content.
-3. Run one bounded live smoke turn with a prompt that identifies itself as a smoke test, reconciles current approvals, makes no external effect, and records the returned thread ID/last message. Cap at two minutes.
+3. Run one bounded live smoke turn with this exact prompt: `Owner-authorized scheduler smoke test. Resume this exact existing thread and inspect current authoritative Agent OS goal/control/approval state. Confirm whether the previously blocked goal can now resume. Do not modify files, Git, database state, services, accounts, wallets, deployments, or external systems; do not send messages or spend. Return only a concise state summary and next permitted action.` Cap at two minutes.
 4. Verify the new event is appended to the same rollout/thread, no new session ID is created for the work, and Agent OS contains exactly one smoke run record.
 5. Only after the smoke passes, install/enable the timer with `systemctl --user enable --now goofy-agent-os-codex-goal.timer` and verify it appears at 09:00 IST.
 6. Commit: `test: verify exact codex goal resumption`.
@@ -174,7 +212,7 @@
 
 **Steps:**
 1. Add failing policy tests establishing no owner approval for ordinary branch/commit/push/tag/PR/memory changes while retaining default denial for default-branch force-push/deletion, repository deletion/transfer/visibility change, secret publication, security-control weakening, and legal acceptance.
-2. Add one dated owner-authorized amendment consistently across canonical governance and the OS skill.
+2. Add one dated owner-authorized amendment consistently across canonical governance and the OS skill. Require audit/effect records but no per-commit/per-push owner approval.
 3. Update the Hermes pre-tool guard to recognize routine Git operations as agent-authorized effects with audit/idempotency but no approval ID.
 4. Run targeted policy/guard tests; expect pass.
 5. Commit: `policy: authorize autonomous repository operations`.
@@ -190,7 +228,7 @@
 
 **Steps:**
 1. Add failing default-deny tests for chain, provider, recipient/contract, message type, selector, transaction value, gas, daily/total budget, expiry, revocation, pause/kill, and idempotency.
-2. Add immutable/versioned platform policies and operation-to-policy attribution.
+2. Add immutable/versioned platform policies and operation-to-policy attribution. New versions default to `draft`; only authenticated owner action activates or revokes them.
 3. Implement policy evaluation independent of model instructions. Unknown dimensions must deny with a stable policy code.
 4. Run targeted and PostgreSQL tests; expect pass.
 5. Commit: `feat: add standing agent wallet policies`.
@@ -206,7 +244,7 @@
 
 **Steps:**
 1. Add failing tests requiring immutable effect authorization, simulation, nonce handling, fee ceiling, ledger/reserve attribution, protected signer use, broadcast receipt, idempotent retry, ambiguous-outcome reconciliation, and raw-key/signature non-persistence.
-2. Implement transaction draft, simulation, signing, submission, and reconciliation as explicit durable states.
+2. Implement transaction draft, simulation, signing, submission, and reconciliation as explicit durable states. Do not broadcast publicly during tests or implementation without both an active owner-created policy and separate explicit live-test authorization.
 3. Keep owner-wallet endpoints draft-only and prove they cannot call the dedicated signer.
 4. Run targeted wallet tests; expect pass.
 5. Commit: `feat: execute policy-authorized agent transactions`.
@@ -246,12 +284,12 @@
 **Steps:**
 1. Run `npm test`; expect zero failures.
 2. Run `npm run build`; expect exit 0.
-3. Run `npm run test:postgres`; expect zero failures.
-4. Run browser, restart, backup/restore, secret-redaction, and wallet simulation suites; expect zero failures.
+3. Run `npm run test:integration`; expect zero failures.
+4. Run `npm run test:browser`, `npm run test:restart`, `npm run test:restore`, targeted redaction tests, and wallet simulation suites; expect zero failures.
 5. Run `npm audit --audit-level=high`; expect no high/critical findings.
 6. Run `systemd-analyze verify` for all checked-in units and verify the 09:00 IST calendar.
 7. Run `git diff --check` and the repository secret scan; expect clean output.
-8. Capture screenshots of `/revenue-paths`, the scheduled run detail, and the wallet-policy page for visual review.
+8. Capture sanitized screenshots of `/revenue-paths`, the scheduled run detail, and the wallet-policy page. Include no session token, signature, secret, raw wallet operation, or customer personal data.
 9. Update architecture, operations, and changelog documentation with verified behavior and rollback steps.
 10. Commit: `docs: document revenue paths and autonomous operations`.
 
@@ -259,3 +297,6 @@
 
 Implement in this order: Revenue Paths, scheduled runner with fake tests, exact-thread smoke test, routine Git policy, wallet policy engine, wallet transactions, final verification. Do not enable the live timer until exact-thread smoke validation succeeds. Do not enable value-bearing wallet transactions until simulation, ledger/reserve, effect, reconciliation, pause/kill, and owner-wallet-separation tests pass.
 
+## Completion contract
+
+Complete means: every task has an atomic commit; Task 15 commands pass freshly; the smoke test proves same-thread resumption; the enabled timer shows its next trigger at 09:00 IST; no duplicate scheduler exists; Run now collision behavior is proven; Revenue Paths uses live PostgreSQL data; routine Git no longer requests approval; no value-bearing wallet policy was silently activated; owner-wallet signing remains impossible; and tested rollback instructions exist. If any item is unproven, report the implementation as incomplete with exact evidence.
