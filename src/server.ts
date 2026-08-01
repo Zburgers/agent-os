@@ -29,6 +29,7 @@ import { publicJavaScriptAsset } from './static-assets.ts';
 import { loadApprovalNotificationConfig } from './approval-notifications.ts';
 import { ChannelOutboxError, ChannelOutboxService } from './channel-outbox.ts';
 import { ReadinessEvidenceError, ReadinessEvidenceService } from './readiness.ts';
+import { AgentWalletTransactionError, AgentWalletTransactionService } from './agent-wallet-transactions.ts';
 import { RevenueTrackService, RevenueTrackValidationError } from './revenue-tracks.ts';
 import { codexOperatingBlockSnapshot, createManualCodexOccurrence, setCodexSchedulePaused } from './codex-operating-block-control.ts';
 
@@ -305,6 +306,16 @@ const server = createServer(async (req, res) => {
         provider: String(input.provider ?? ''), message: String(input.message ?? ''),
         idempotencyKey: String(input.idempotency_key ?? req.headers['idempotency-key'] ?? ''),
       }));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/agent-wallet/transactions/broadcast') return respond(res, 403, { error: 'live_test_authorization_required' });
+    if (req.method === 'POST' && url.pathname === '/api/agent-wallet/transactions/simulate') {
+      if (!mutationAllowed(auth, req) || auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
+      const input = await body(req);
+      const policy = (await pool.query(`SELECT policy FROM agent_wallet_platform_policies WHERE status='active' ORDER BY version DESC LIMIT 1`)).rows[0]?.policy;
+      if (!policy) return respond(res, 403, { error: 'policy_not_active' });
+      const state = await controls();
+      const transactions = new AgentWalletTransactionService(pool, { sign: async () => { throw new AgentWalletTransactionError('signing_not_enabled'); } }, { broadcast: async () => { throw new AgentWalletTransactionError('broadcast_not_enabled'); } });
+      return respond(res, 201, await transactions.createDraft({ idempotencyKey: String(input.idempotency_key ?? req.headers['idempotency-key'] ?? ''), chainId: Number(input.chain_id), recipient: String(input.recipient ?? ''), valueMinor: Number(input.value_minor ?? 0), gasMinor: Number(input.gas_minor ?? 0) }, { policy, controls: state, dailyUsedMinor: Number(input.daily_used_minor ?? 0), totalUsedMinor: Number(input.total_used_minor ?? 0) }));
     }
     if (req.method === 'GET' && url.pathname === '/api/paypal/status') return respond(res, 200, paypal.status());
     if (req.method === 'POST' && url.pathname === '/api/paypal/orders') { if(auth.kind!=='agent') return respond(res,403,{error:'agent_scope_required'}); return respond(res,201,await paypal.createOrder(await body(req))); }
