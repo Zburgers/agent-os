@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { audit, controls, pool } from './db.ts';
-import { basicOwnerToken, bearerToken, createOwnerSession, expiredSessionCookie, getOwnerSession, ownerTokenMatches, parseCookies, revokeOwnerSession, runtimeTokensFromEnvironment, sessionCookie } from './auth.ts';
+import { basicOwnerToken, bearerToken, createOwnerSession, expiredSessionCookie, getOwnerSession, ownerTokenMatches, parseCookies, revenueTrackMutationAllowed, revokeOwnerSession, runtimeTokensFromEnvironment, sessionCookie } from './auth.ts';
 import { redactSecrets } from './redaction.ts';
 import { createEntity, isEntityName, listEntity, updateEntity } from './entities.ts';
 import { renderControlPlane, type ControlPlanePage } from './control-plane.ts';
@@ -28,6 +28,7 @@ import { publicJavaScriptAsset } from './static-assets.ts';
 import { loadApprovalNotificationConfig } from './approval-notifications.ts';
 import { ChannelOutboxError, ChannelOutboxService } from './channel-outbox.ts';
 import { ReadinessEvidenceError, ReadinessEvidenceService } from './readiness.ts';
+import { RevenueTrackService, RevenueTrackValidationError } from './revenue-tracks.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -51,6 +52,7 @@ const agentWallet = new AgentWalletService(pool);
 const paypal = new PayPalService(pool);
 const channelOutbox = new ChannelOutboxService(pool, { ownerTelegramIds: approvalNotificationConfig.ownerTelegramIds });
 const readinessEvidence = new ReadinessEvidenceService(pool);
+const revenueTracks = new RevenueTrackService(pool);
 type Auth = { kind: 'bearer' | 'basic' | 'session' | 'agent'; csrfToken?: string; sessionValue?: string } | null;
 
 function constantEqual(left: string, right: string) { const a = Buffer.from(left); const b = Buffer.from(right); return a.length === b.length && timingSafeEqual(a, b); }
@@ -335,6 +337,28 @@ const server = createServer(async (req, res) => {
       const record = await approvalRequests.request({ actionType: input.action_type as string, requestedAction: input.requested_action as string, reason: input.reason as string, risk: input.risk as string, recommendation: input.recommendation as string, idempotencyKey: input.idempotency_key as string, expiresAt: input.expires_at as string, costMinor: input.cost_minor as number | undefined, maximumExposureMinor: input.maximum_exposure_minor as number | undefined, currency: input.currency as string | undefined, alternatives: input.alternatives as string[] | undefined, evidence: input.evidence as unknown[] | undefined, defaultAction: input.default_action as string | undefined, objectiveId: input.objective_id as string | undefined, ventureId: input.venture_id as string | undefined, experimentId: input.experiment_id as string | undefined, ticketId: input.ticket_id as string | undefined, blocker: input.blocker as string | undefined }, actorFor(auth));
       return respond(res, record.duplicate ? 200 : 201, record);
     }
+    const revenueTrackRead = url.pathname.match(/^\/api\/revenue-tracks(?:\/([0-9a-f-]+))?$/);
+    const revenueTrackAction = url.pathname.match(/^\/api\/revenue-tracks\/([0-9a-f-]+)\/(reparent|archive)$/);
+    if (req.method === 'GET' && revenueTrackRead) {
+      if (revenueTrackRead[1]) {
+        const record = await revenueTracks.detail(revenueTrackRead[1]);
+        return record ? respond(res, 200, record) : respond(res, 404, { error: 'not_found' });
+      }
+      return respond(res, 200, await revenueTracks.listTree());
+    }
+    if (((req.method === 'POST' && revenueTrackRead && !revenueTrackRead[1]) || (req.method === 'PATCH' && revenueTrackRead && revenueTrackRead[1]) || (req.method === 'POST' && revenueTrackAction))) {
+      const key = typeof req.headers['idempotency-key'] === 'string' ? req.headers['idempotency-key'] : undefined;
+      if (!revenueTrackMutationAllowed(auth.kind, key)) return respond(res, auth.kind === 'agent' ? 400 : 403, { error: auth.kind === 'agent' ? 'idempotency_key_required' : 'agent_scope_required' });
+      const actor = { type: 'agent' as const, id: 'goofy-runtime' };
+      const input = await body(req);
+      if (revenueTrackAction) {
+        if (revenueTrackAction[2] === 'reparent') return respond(res, 200, await revenueTracks.reparent(revenueTrackAction[1], typeof input.parent_track_id === 'string' ? input.parent_track_id : null, actor, key));
+        if (input.status !== 'completed' && input.status !== 'killed') return respond(res, 400, { error: 'invalid_archive_status' });
+        return respond(res, 200, await revenueTracks.archive(revenueTrackAction[1], input.status, actor, key));
+      }
+      if (req.method === 'POST') return respond(res, 201, await revenueTracks.create({ name: String(input.name ?? ''), parentTrackId: typeof input.parent_track_id === 'string' ? input.parent_track_id : null, ownerKind: input.owner_kind as any, status: input.status as any, strategy: input.strategy as string | undefined, targetCustomer: input.target_customer as string | undefined, monetizationModel: input.monetization_model as string | undefined, stage: input.stage as string | undefined, confidence: input.confidence as number | null | undefined, priority: input.priority as number | undefined, expectedValue: input.expected_value as number | string | null | undefined, plannedCostMinor: input.planned_cost_minor as number | undefined, currentAction: input.current_action as string | null | undefined, nextAction: input.next_action as string | null | undefined, reviewDate: input.review_date as string | null | undefined, successCriteria: input.success_criteria as string | null | undefined, killCriteria: input.kill_criteria as string | null | undefined }, actor, key));
+      return respond(res, 200, await revenueTracks.update(revenueTrackRead[1]!, { name: input.name as string | undefined, ownerKind: input.owner_kind as any, status: input.status as any, strategy: input.strategy as string | undefined, targetCustomer: input.target_customer as string | undefined, monetizationModel: input.monetization_model as string | undefined, stage: input.stage as string | undefined, confidence: input.confidence as number | null | undefined, priority: input.priority as number | undefined, expectedValue: input.expected_value as number | string | null | undefined, plannedCostMinor: input.planned_cost_minor as number | undefined, currentAction: input.current_action as string | null | undefined, nextAction: input.next_action as string | null | undefined, reviewDate: input.review_date as string | null | undefined, successCriteria: input.success_criteria as string | null | undefined, killCriteria: input.kill_criteria as string | null | undefined }, actor, key));
+    }
     if (req.method === "GET" && url.pathname === "/api/tickets") return respond(res, 200, await listTickets({ status: url.searchParams.get("status") ?? undefined, search: url.searchParams.get("search") ?? undefined, limit: Number(url.searchParams.get("limit") ?? 50), offset: Number(url.searchParams.get("offset") ?? 0) }));
     const readPage = () => ({ status: url.searchParams.get("status") ?? undefined, search: url.searchParams.get("search") ?? undefined, eventType: url.searchParams.get("event_type") ?? undefined, source: url.searchParams.get("source") ?? undefined, dateFrom: url.searchParams.get("date_from") ?? undefined, dateTo: url.searchParams.get("date_to") ?? undefined, limit: Number(url.searchParams.get("limit") ?? 50), offset: Number(url.searchParams.get("offset") ?? 0) });
     if (req.method === "GET" && url.pathname === "/api/approvals") return respond(res, 200, await listApprovals(readPage()));
@@ -432,6 +456,7 @@ const server = createServer(async (req, res) => {
     return respond(res, 404, { error: 'not_found' });
   } catch (error) {
     if (error instanceof AgentWalletError) return respond(res, 400, { error: error.code });
+    if (error instanceof RevenueTrackValidationError) return respond(res, 400, { error: error.reason });
     if (error instanceof ChannelOutboxError || error instanceof ReadinessEvidenceError) return respond(res, 409, { error: error.code });
     const message = error instanceof Error ? error.message : 'unknown';
     console.error('request_failed', redactSecrets(message, [token, process.env.DATABASE_URL ?? '']));
