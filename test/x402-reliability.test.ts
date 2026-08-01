@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { validateReliabilityTarget, createReliabilityReport, isPublicAddress, resolvePublicAddresses, type ReliabilityReport } from '../src/x402-reliability.ts';
+import { parseCheckRequest } from '../src/x402-reliability-service.ts';
 
 test('accepts public HTTPS targets and returns a stable report schema', () => {
   assert.deepEqual(validateReliabilityTarget('https://example.com/hook'), { ok: true, url: 'https://example.com/hook' });
@@ -50,4 +51,11 @@ test('accepts only public addresses from DNS resolution', async () => {
     { address: '2001:db8::1', family: 6 },
   ]);
   assert.deepEqual(addresses, ['93.184.216.34', '2001:db8::1']);
+});
+
+test('parses only a bounded target field for the local service', () => {
+  assert.deepEqual(parseCheckRequest('{"target":"https://example.com/hook"}'), { target: 'https://example.com/hook' });
+  assert.throws(() => parseCheckRequest('{"target":"http://localhost"}'), /invalid_target/);
+  assert.throws(() => parseCheckRequest('{"target":"https://example.com","payload":"secret"}'), /invalid_request/);
+  assert.throws(() => parseCheckRequest('not-json'), /invalid_request/);
 });
