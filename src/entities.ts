@@ -3,6 +3,8 @@ import { audit, pool } from './db.ts';
 export type RevenueTrackStatus = 'proposed' | 'active' | 'paused' | 'completed' | 'killed';
 export type RevenueTrackOwnerKind = 'agent' | 'owner' | 'joint';
 export type RevenueTrackHealth = 'on_track' | 'at_risk' | 'blocked' | 'inactive';
+export type CodexOperatingBlockRunStatus = 'running' | 'completed' | 'timeboxed' | 'failed' | 'skipped' | 'cancelled';
+export type CodexOperatingBlockConfig = { thread_id: string; timezone: 'Asia/Kolkata'; schedule: '*-*-* 09:00:00 Asia/Kolkata'; schedule_paused: boolean };
 export type RevenueTrack = {
   id: string;
   parent_track_id: string | null;

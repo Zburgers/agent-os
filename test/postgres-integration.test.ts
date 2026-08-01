@@ -683,3 +683,14 @@ test('revenue tracks support hierarchy, linked records, and immutable audit evid
   );
   assert.equal(audit.rows[0].count, '1');
 });
+
+test('Codex operating blocks persist exact thread, deduplicated occurrences, terminal evidence, and redacted summaries', { skip: !enabled }, async () => {
+  const { pool } = await import('../src/db.ts');
+  const config = await pool.query<{ thread_id: string }>('SELECT thread_id FROM codex_operating_block_config WHERE singleton=true');
+  assert.equal(config.rows[0].thread_id, '019faa3e-b7af-7e13-8335-4f651c989e27');
+  const occurrence = await pool.query<{ id: string }>(`INSERT INTO codex_operating_block_occurrences(occurrence_key,intended_date,trigger_kind) VALUES('integration-codex-occurrence','2026-08-01','scheduled') RETURNING id`);
+  await assert.rejects(pool.query(`INSERT INTO codex_operating_block_occurrences(occurrence_key,intended_date,trigger_kind) VALUES('integration-codex-occurrence','2026-08-01','scheduled')`), /codex_occurrence_key_unique/);
+  const run = await pool.query<{ id: string }>(`INSERT INTO codex_operating_block_runs(occurrence_id,thread_id,status,exit_reason,summary,log_checksum) VALUES($1,'019faa3e-b7af-7e13-8335-4f651c989e27','timeboxed','graceful_timeout','redacted summary',$2) RETURNING id`, [occurrence.rows[0].id, 'a'.repeat(64)]);
+  assert.ok(run.rows[0].id);
+  await assert.rejects(pool.query('UPDATE codex_operating_block_runs SET summary=\'changed\' WHERE id=$1', [run.rows[0].id]), /append-only table/);
+});
