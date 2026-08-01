@@ -317,6 +317,16 @@ const server = createServer(async (req, res) => {
       const transactions = new AgentWalletTransactionService(pool, { sign: async () => { throw new AgentWalletTransactionError('signing_not_enabled'); } }, { broadcast: async () => { throw new AgentWalletTransactionError('broadcast_not_enabled'); } });
       return respond(res, 201, await transactions.createDraft({ idempotencyKey: String(input.idempotency_key ?? req.headers['idempotency-key'] ?? ''), chainId: Number(input.chain_id), recipient: String(input.recipient ?? ''), valueMinor: Number(input.value_minor ?? 0), gasMinor: Number(input.gas_minor ?? 0) }, { policy, controls: state, dailyUsedMinor: Number(input.daily_used_minor ?? 0), totalUsedMinor: Number(input.total_used_minor ?? 0) }));
     }
+    if (req.method === 'POST' && url.pathname === '/api/agent-wallet/policies') {
+      if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
+      return respond(res, 201, await agentWallet.createPlatformPolicy(await body(req), { type: 'owner', id: 'owner' }));
+    }
+    const policyAction = url.pathname.match(/^\/api\/agent-wallet\/policies\/([0-9a-f-]+)\/(activate|revoke)$/);
+    if (req.method === 'POST' && policyAction) {
+      if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
+      const result = policyAction[2] === 'activate' ? await agentWallet.activatePlatformPolicy(policyAction[1], { type: 'owner', id: 'owner' }) : await agentWallet.revokePlatformPolicy(policyAction[1], { type: 'owner', id: 'owner' });
+      return respond(res, 200, result);
+    }
     if (req.method === 'GET' && url.pathname === '/api/paypal/status') return respond(res, 200, paypal.status());
     if (req.method === 'POST' && url.pathname === '/api/paypal/orders') { if(auth.kind!=='agent') return respond(res,403,{error:'agent_scope_required'}); return respond(res,201,await paypal.createOrder(await body(req))); }
     if (req.method === 'POST' && url.pathname === '/api/wallet/link-nonce') { if (!mutationAllowed(auth,req) || !ownerAuth(auth)) return respond(res,403,{error:'owner_authority_required'}); return respond(res,201,await wallet.nonce()); }
