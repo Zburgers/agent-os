@@ -1523,3 +1523,7 @@ Your first priority is building the secure operational control plane that will a
 Once the control plane meets the readiness definition, begin researching and executing the highest expected-value legitimate path to realized revenue.
 
 Continue operating, measuring, learning, and reallocating resources until paused or stopped by the owner.
+
+## Dated Git autonomy amendment (2026-08-01)
+
+The owner authorizes routine Git operations within this private repository, including ordinary branch creation, commits, pushes, tags, pull requests, and audited memory/document changes. Each operation still requires authentication, secret scanning, idempotency, and an Agent OS audit/effect record, but does not require per-operation owner approval. Default-branch force-push or deletion, repository deletion, transfer or visibility changes, secret publication, security-control weakening, and legal acceptance remain denied.
