@@ -55,6 +55,8 @@ On startup run abandoned-job recovery, then claim only jobs permitted by live co
 
 The singleton Codex operating block resumes thread `019faa3e-b7af-7e13-8335-4f651c989e27` daily at 09:00 Asia/Kolkata through systemd. It uses a 58-minute graceful boundary, a 60-second child-stop allowance, and a one-hour service limit. PostgreSQL occurrence and run records are authoritative; the owner-only JSONL directory is `/home/goofy/.codex/operating-blocks`.
 
+The one-time live smoke command is `scripts/test-codex-resume-smoke.sh`. It is bounded to two minutes and explicitly forbids file, Git, database, service, account, wallet, deployment, messaging, spending, and external-system changes. It must pass before enabling the timer.
+
 Install only after the exact-thread smoke test and all verification gates pass:
 
 ```sh
