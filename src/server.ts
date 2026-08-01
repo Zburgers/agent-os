@@ -23,6 +23,7 @@ import { buildDailyBriefData, renderDailyBrief } from './daily-brief.ts';
 import { WalletService } from './wallet.ts';
 import { AgentWalletError, AgentWalletService } from './agent-wallet.ts';
 import { renderWalletPage } from './wallet-page.ts';
+import { renderRevenuePathsPage } from './revenue-paths-page.ts';
 import { PayPalService } from './paypal.ts';
 import { publicJavaScriptAsset } from './static-assets.ts';
 import { loadApprovalNotificationConfig } from './approval-notifications.ts';
@@ -181,7 +182,7 @@ const server = createServer(async (req, res) => {
     const publicAsset = req.method === 'GET' ? publicJavaScriptAsset(url.pathname) : null;
     if (publicAsset) return respondBytes(res, 200, await readFile(new URL(`../public/${publicAsset}`, import.meta.url)), 'text/javascript; charset=utf-8');
     const auth = await authenticate(req.headers);
-    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/finance', '/jobs', '/health', '/daily-brief', '/wallet'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
+    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/finance', '/jobs', '/health', '/daily-brief', '/wallet', '/revenue-paths'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
     if (versioned && req.method !== 'GET' && !String(req.headers['idempotency-key'] ?? '').trim()) return respond(res, 400, { error: 'idempotency_key_required' });
     if (req.method === 'POST' && url.pathname === '/api/logout') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
@@ -289,6 +290,7 @@ const server = createServer(async (req, res) => {
     }
     if (req.method === 'GET' && url.pathname === '/api/overview') return respond(res, 200, await overview());
     if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID, await wallet.status(), await agentWallet.status()), 'text/html; charset=utf-8');
+    if (req.method === 'GET' && url.pathname === '/revenue-paths') return respond(res, 200, renderRevenuePathsPage(auth.csrfToken), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/api/wallet/status') return respond(res, 200, await wallet.status());
     if (req.method === 'GET' && url.pathname === '/api/agent-wallet/status') return respond(res, 200, await agentWallet.status());
     if (req.method === 'POST' && url.pathname === '/api/agent-wallet/provision') {
