@@ -1,5 +1,7 @@
 import type { Pool } from 'pg';
 
+function escapeHtml(value: unknown) { return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]!)); }
+
 type Database = Pick<Pool, 'query'>;
 
 type Prospect = {
@@ -484,4 +486,9 @@ export function renderDailyBrief(data: DailyBriefData) {
   </script>
 </body>
 </html>`;
+}
+
+export function renderCodexOperatingBlockPage(snapshot: any = {}, csrfToken = '') {
+  const latest = snapshot.latest ?? {};
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="csrf-token" content="${escapeHtml(csrfToken)}"><title>Codex Operating Block · Goofy Agent OS</title><style>body{font:16px system-ui;margin:0;background:#101514;color:#e8eeeb;padding:32px}main{max-width:900px;margin:auto}section{border:1px solid #2c3833;border-radius:10px;padding:20px;margin:16px 0;background:#161d1b}button{padding:10px 14px;margin-right:8px}dt{color:#9aa8a1;margin-top:10px}dd{margin:3px 0}</style></head><body><main><p>Daily Codex operations</p><h1>Scheduled Codex operating block</h1><section><h2>Controls</h2><p>Schedule: ${snapshot.schedulePaused ? 'Paused' : 'Active'}</p><button id="run-now" type="button">Run now</button><button id="pause" type="button">${snapshot.schedulePaused ? 'Resume schedule' : 'Pause schedule'}</button></section><section><h2>Active run</h2><p>${snapshot.active ? `Run ${escapeHtml(snapshot.active.id)} · ${escapeHtml(snapshot.active.status)}` : 'No active run'}</p></section><section><h2>Latest result</h2><dl><dt>Status</dt><dd>${escapeHtml(latest.statusLabel ?? latest.status ?? 'No result')}</dd><dt>Commits</dt><dd>${escapeHtml(latest.git ?? 'No Git change recorded')}</dd><dt>Track</dt><dd>${escapeHtml(latest.track ?? 'No track recorded')}</dd><dt>Money</dt><dd>${escapeHtml(latest.money ?? 'No settled money recorded')}</dd><dt>Approvals</dt><dd>${escapeHtml(latest.approvals ?? 'No approval summary recorded')}</dd><dt>Summary</dt><dd>${escapeHtml(latest.summary ?? 'No summary recorded')}</dd><dt>Next action</dt><dd>${escapeHtml(latest.next_action ?? 'No next action recorded')}</dd></dl></section><script>const csrf=document.querySelector('meta[name=csrf-token]').content;document.querySelector('#run-now').onclick=()=>fetch('/api/codex-operating-block/run-now',{method:'POST',headers:{'x-csrf-token':csrf}}).then(()=>location.reload());document.querySelector('#pause').onclick=()=>fetch('/api/codex-operating-block/schedule-pause',{method:'POST',headers:{'content-type':'application/json','x-csrf-token':csrf},body:JSON.stringify({paused:${snapshot.schedulePaused ? 'false' : 'true'}})}).then(()=>location.reload());</script></main></body></html>`;
 }

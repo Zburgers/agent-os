@@ -7,3 +7,4 @@ export function renderDashboard(data: Record<string, any>, csrfToken?: string) {
 }
 
 export { renderRevenuePathsPage };
+export { renderCodexOperatingBlockPage } from './daily-brief.ts';

@@ -19,7 +19,7 @@ import { applySystemControl } from './system-controls.ts';
 import { actorContext } from './actor.ts';
 import { authorizeEffect, claimAuthorizedEffect, recordExternalResult } from './effects.ts';
 import { CommercialOperationsService } from './commercial-operations.ts';
-import { buildDailyBriefData, renderDailyBrief } from './daily-brief.ts';
+import { buildDailyBriefData, renderDailyBrief, renderCodexOperatingBlockPage } from './daily-brief.ts';
 import { WalletService } from './wallet.ts';
 import { AgentWalletError, AgentWalletService } from './agent-wallet.ts';
 import { renderWalletPage } from './wallet-page.ts';
@@ -30,6 +30,7 @@ import { loadApprovalNotificationConfig } from './approval-notifications.ts';
 import { ChannelOutboxError, ChannelOutboxService } from './channel-outbox.ts';
 import { ReadinessEvidenceError, ReadinessEvidenceService } from './readiness.ts';
 import { RevenueTrackService, RevenueTrackValidationError } from './revenue-tracks.ts';
+import { codexOperatingBlockSnapshot, createManualCodexOccurrence, setCodexSchedulePaused } from './codex-operating-block-control.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -182,7 +183,7 @@ const server = createServer(async (req, res) => {
     const publicAsset = req.method === 'GET' ? publicJavaScriptAsset(url.pathname) : null;
     if (publicAsset) return respondBytes(res, 200, await readFile(new URL(`../public/${publicAsset}`, import.meta.url)), 'text/javascript; charset=utf-8');
     const auth = await authenticate(req.headers);
-    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/finance', '/jobs', '/health', '/daily-brief', '/wallet', '/revenue-paths'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
+    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/finance', '/jobs', '/health', '/daily-brief', '/wallet', '/revenue-paths', '/codex-operating-block'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
     if (versioned && req.method !== 'GET' && !String(req.headers['idempotency-key'] ?? '').trim()) return respond(res, 400, { error: 'idempotency_key_required' });
     if (req.method === 'POST' && url.pathname === '/api/logout') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
@@ -315,6 +316,18 @@ const server = createServer(async (req, res) => {
     const walletResult=url.pathname.match(/^\/api\/wallet\/intents\/([0-9a-f-]+)\/result$/); if(req.method==='POST'&&walletResult) { if(!mutationAllowed(auth,req)||!ownerAuth(auth)) return respond(res,403,{error:'owner_authority_required'}); return respond(res,200,await wallet.result(walletResult[1],await body(req))); }
     if (req.method === 'GET' && url.pathname === '/daily-brief') {
       return respond(res, 200, renderDailyBrief(await buildDailyBriefData(pool)), 'text/html; charset=utf-8');
+    }
+    if (req.method === 'GET' && url.pathname === '/codex-operating-block') return respond(res, 200, renderCodexOperatingBlockPage(await codexOperatingBlockSnapshot(pool), auth.csrfToken), 'text/html; charset=utf-8');
+    if (req.method === 'GET' && url.pathname === '/api/codex-operating-block') return respond(res, 200, await codexOperatingBlockSnapshot(pool));
+    if (req.method === 'POST' && url.pathname === '/api/codex-operating-block/run-now') {
+      if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
+      const result = await createManualCodexOccurrence(pool);
+      return respond(res, result.status === 'conflict' ? 409 : 202, result);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/codex-operating-block/schedule-pause') {
+      if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
+      const input = await body(req);
+      return respond(res, 200, await setCodexSchedulePaused(pool, input.paused === true));
     }
     if (req.method === 'GET' && ['/assets/daily-brief-hero.png', '/assets/daily-brief-research.png'].includes(url.pathname)) {
       const filename = url.pathname.endsWith('hero.png') ? 'daily-brief-hero.png' : 'daily-brief-research.png';
