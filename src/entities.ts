@@ -1,5 +1,33 @@
 import { audit, pool } from './db.ts';
 
+export type RevenueTrackStatus = 'proposed' | 'active' | 'paused' | 'completed' | 'killed';
+export type RevenueTrackOwnerKind = 'agent' | 'owner' | 'joint';
+export type RevenueTrackHealth = 'on_track' | 'at_risk' | 'blocked' | 'inactive';
+export type RevenueTrack = {
+  id: string;
+  parent_track_id: string | null;
+  name: string;
+  owner_kind: RevenueTrackOwnerKind;
+  status: RevenueTrackStatus;
+  strategy: string;
+  target_customer: string;
+  monetization_model: string;
+  stage: string;
+  confidence: number | null;
+  priority: number;
+  expected_value: string | number | null;
+  planned_cost_minor: string | number;
+  current_action: string | null;
+  next_action: string | null;
+  review_date: string | null;
+  success_criteria: string | null;
+  kill_criteria: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string;
+  updated_by: string;
+};
+
 export type EntityName = 'ventures' | 'opportunities' | 'objectives' | 'tasks' | 'experiments' | 'decisions';
 const names = new Set<EntityName>(['ventures', 'opportunities', 'objectives', 'tasks', 'experiments', 'decisions']);
 const statuses = new Set(['inbox', 'backlog', 'ready', 'in_progress', 'blocked', 'waiting_for_owner', 'validation', 'completed', 'abandoned']);

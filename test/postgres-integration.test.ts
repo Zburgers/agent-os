@@ -657,3 +657,29 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   assert.equal((await pool.query('SELECT status FROM jobs WHERE id=$1', [killJob.rows[0].id])).rows[0].status, 'paused');
   assert.equal((await pool.query("SELECT count(*) FROM audit_events WHERE event_type='control_kill'")).rows[0].count, '1');
 });
+
+test('revenue tracks support hierarchy, linked records, and immutable audit evidence', { skip: !enabled }, async () => {
+  const { pool } = await import('../src/db.ts');
+  const parent = await pool.query<{ id: string }>(
+    `INSERT INTO revenue_tracks(name,stage,owner_kind,status) VALUES('Integration parent','discovery','agent','active') RETURNING id`,
+  );
+  const child = await pool.query<{ id: string }>(
+    `INSERT INTO revenue_tracks(parent_track_id,name,stage,owner_kind,status) VALUES($1,'Integration child','delivery','joint','proposed') RETURNING id`,
+    [parent.rows[0].id],
+  );
+  const venture = await pool.query<{ id: string }>(
+    `INSERT INTO ventures(name,thesis,target_user,problem,offer,revenue_model,distribution_strategy)
+     VALUES('Revenue track integration venture','thesis','buyer','problem','offer','service','direct') RETURNING id`,
+  );
+  await pool.query('UPDATE ventures SET track_id=$1 WHERE id=$2', [child.rows[0].id, venture.rows[0].id]);
+  await assert.rejects(
+    pool.query('UPDATE revenue_tracks SET parent_track_id=$1 WHERE id=$2', [child.rows[0].id, parent.rows[0].id]),
+    /revenue_tracks_no_cycle/,
+  );
+  const links = await pool.query<{ track_id: string }>('SELECT track_id FROM ventures WHERE id=$1', [venture.rows[0].id]);
+  assert.equal(links.rows[0].track_id, child.rows[0].id);
+  const audit = await pool.query<{ count: string }>(
+    `SELECT count(*) FROM pg_trigger WHERE tgrelid='revenue_tracks'::regclass AND tgname='revenue_tracks_audit_backstop' AND NOT tgisinternal`,
+  );
+  assert.equal(audit.rows[0].count, '1');
+});
