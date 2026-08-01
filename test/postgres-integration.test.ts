@@ -694,3 +694,13 @@ test('Codex operating blocks persist exact thread, deduplicated occurrences, ter
   assert.ok(run.rows[0].id);
   await assert.rejects(pool.query('UPDATE codex_operating_block_runs SET summary=\'changed\' WHERE id=$1', [run.rows[0].id]), /append-only table/);
 });
+
+test('dedicated wallet platform policies are immutable, draft by default, and linked to operations', { skip: !enabled }, async () => {
+  const { pool } = await import('../src/db.ts');
+  const wallet = await pool.query<{ id: string }>(`INSERT INTO agent_wallets(address,key_backend,key_reference,status) VALUES('0x1111111111111111111111111111111111111111','protected_file','integration-policy','revoked') RETURNING id`);
+  const policy = await pool.query<{ id: string; status: string }>(`INSERT INTO agent_wallet_platform_policies(wallet_id,version,policy,created_by) VALUES($1,1,'{"chainIds":[8453],"maxTransactionValueMinor":0}','integration-owner') RETURNING id,status`, [wallet.rows[0].id]);
+  assert.equal(policy.rows[0].status, 'draft');
+  const operation = await pool.query<{ id: string }>(`INSERT INTO agent_wallet_operations(wallet_id,provider,operation_type,outcome,idempotency_key,policy_id) VALUES($1,'bountybook','transaction_sign','denied','integration-policy-operation',$2) RETURNING id`, [wallet.rows[0].id, policy.rows[0].id]);
+  assert.ok(operation.rows[0].id);
+  await assert.rejects(pool.query(`UPDATE agent_wallet_platform_policies SET status='active' WHERE id=$1`, [policy.rows[0].id]), /append-only table/);
+});
