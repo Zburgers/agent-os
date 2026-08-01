@@ -1,4 +1,6 @@
 import { isIP } from 'node:net';
+import { promises as dns } from 'node:dns';
+import https from 'node:https';
 
 export type ReliabilityTargetResult =
   | { ok: true; url: string }
@@ -28,6 +30,66 @@ function isPrivateHostname(hostname: string): boolean {
   if (kind === 4) return isPrivateIpv4(normalized);
   if (kind === 6) return normalized === '::1' || normalized.startsWith('fc') || normalized.startsWith('fd') || normalized.startsWith('fe80:');
   return false;
+}
+
+export function isPublicAddress(address: string): boolean {
+  const kind = isIP(address);
+  if (kind === 4) return !isPrivateIpv4(address);
+  if (kind === 6) {
+    const normalized = address.toLowerCase();
+    return normalized !== '::1' && !normalized.startsWith('fc') && !normalized.startsWith('fd') && !normalized.startsWith('fe80:');
+  }
+  return false;
+}
+
+type LookupAddress = { address: string; family: number };
+type Lookup = (hostname: string, options: { all: true; verbatim: true }) => Promise<LookupAddress[]>;
+
+export async function resolvePublicAddresses(hostname: string, lookup: Lookup = (name, options) => dns.lookup(name, options)) {
+  const records = await lookup(hostname, { all: true, verbatim: true });
+  const addresses = [...new Set(records.map((record) => record.address))];
+  if (addresses.length === 0 || addresses.some((address) => !isPublicAddress(address))) throw new Error('private_target');
+  return addresses;
+}
+
+export async function probeReliabilityTarget(
+  input: string,
+  options: { lookup?: Lookup; timeout_ms?: number } = {},
+): Promise<ReliabilityReport> {
+  const target = validateReliabilityTarget(input);
+  if (!target.ok) throw new Error(target.reason);
+  const parsed = new URL(target.url);
+  const addresses = await resolvePublicAddresses(parsed.hostname, options.lookup);
+  const address = addresses[0];
+  const timeoutMs = options.timeout_ms ?? 5000;
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 250 || timeoutMs > 15000) throw new Error('invalid_timeout');
+  const started = Date.now();
+
+  return await new Promise((resolve, reject) => {
+    const request = https.request({
+      hostname: address,
+      port: parsed.port ? Number(parsed.port) : 443,
+      path: `${parsed.pathname}${parsed.search}`,
+      method: 'HEAD',
+      headers: { host: parsed.host },
+      servername: parsed.hostname,
+      timeout: timeoutMs,
+    }, (response) => {
+      response.resume();
+      const retryAfter = response.headers['retry-after'];
+      const retryAfterMs = typeof retryAfter === 'string' && /^\d+$/.test(retryAfter) ? Number(retryAfter) * 1000 : null;
+      resolve(createReliabilityReport({
+        target: target.url,
+        status: response.statusCode ?? 0,
+        latency_ms: Date.now() - started,
+        content_type: response.headers['content-type'] ?? null,
+        retry_after_ms: retryAfterMs,
+      }));
+    });
+    request.once('timeout', () => request.destroy(new Error('probe_timeout')));
+    request.once('error', reject);
+    request.end();
+  });
 }
 
 export function validateReliabilityTarget(input: string): ReliabilityTargetResult {

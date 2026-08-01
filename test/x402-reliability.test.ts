@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateReliabilityTarget, createReliabilityReport, type ReliabilityReport } from '../src/x402-reliability.ts';
+import { validateReliabilityTarget, createReliabilityReport, isPublicAddress, resolvePublicAddresses, type ReliabilityReport } from '../src/x402-reliability.ts';
 
 test('accepts public HTTPS targets and returns a stable report schema', () => {
   assert.deepEqual(validateReliabilityTarget('https://example.com/hook'), { ok: true, url: 'https://example.com/hook' });
@@ -32,4 +32,22 @@ test('report creation does not include request bodies or credentials', () => {
   assert.deepEqual(Object.keys(report).sort(), [
     'content_type', 'latency_ms', 'retry_after_ms', 'schema_version', 'status', 'target',
   ]);
+});
+
+test('rejects private addresses discovered during DNS resolution', async () => {
+  assert.equal(isPublicAddress('93.184.216.34'), true);
+  assert.equal(isPublicAddress('10.0.0.4'), false);
+  assert.equal(isPublicAddress('::1'), false);
+  await assert.rejects(
+    resolvePublicAddresses('example.test', async () => [{ address: '192.168.1.4', family: 4 }]),
+    /private_target/,
+  );
+});
+
+test('accepts only public addresses from DNS resolution', async () => {
+  const addresses = await resolvePublicAddresses('example.test', async () => [
+    { address: '93.184.216.34', family: 4 },
+    { address: '2001:db8::1', family: 6 },
+  ]);
+  assert.deepEqual(addresses, ['93.184.216.34', '2001:db8::1']);
 });
