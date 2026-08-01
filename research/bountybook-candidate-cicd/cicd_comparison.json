@@ -1,0 +1,92 @@
+{
+  "generated_at": "2026-08-01",
+  "platforms": [
+    {
+      "name": "GitHub Actions",
+      "open_source": false,
+      "self_hosted_runner": true,
+      "free_tier_minutes": 2000,
+      "free_tier_notes": "Public repositories are free; private repositories include a monthly hosted-runner allowance that varies by plan.",
+      "config_format": "YAML",
+      "config_file": ".github/workflows/*.yml",
+      "parallel_jobs": true,
+      "matrix_builds": true,
+      "docker_support": true,
+      "secret_management": "GitHub Actions encrypted secrets and environments",
+      "best_for": "Projects already hosted on GitHub that benefit from a large marketplace and repository-native checks.",
+      "limitations": "Tightly coupled to GitHub and its hosted-runner minutes, permissions, and ecosystem.",
+      "pricing_summary": "Free for public repositories; private usage has plan-specific included minutes and per-minute overages; check official pricing."
+    },
+    {
+      "name": "GitLab CI/CD",
+      "open_source": false,
+      "self_hosted_runner": true,
+      "free_tier_minutes": 400,
+      "free_tier_notes": "GitLab.com Free includes a monthly compute-minute allowance; self-managed runners avoid hosted-minute consumption.",
+      "config_format": "YAML",
+      "config_file": ".gitlab-ci.yml",
+      "parallel_jobs": true,
+      "matrix_builds": true,
+      "docker_support": true,
+      "secret_management": "GitLab CI/CD variables, protected variables, and masked variables",
+      "best_for": "Teams wanting an integrated repository, merge-request, registry, security, and pipeline workflow.",
+      "limitations": "Hosted compute limits and feature availability vary by tier; the integrated surface can be more complex to operate.",
+      "pricing_summary": "Free tier available with included compute minutes; paid tiers and additional compute are usage/plan dependent; check official pricing."
+    },
+    {
+      "name": "CircleCI",
+      "open_source": false,
+      "self_hosted_runner": true,
+      "free_tier_minutes": 0,
+      "free_tier_notes": "The free plan is credit-based rather than a fixed minute allowance, so minutes are not directly comparable.",
+      "config_format": "YAML",
+      "config_file": ".circleci/config.yml",
+      "parallel_jobs": true,
+      "matrix_builds": true,
+      "docker_support": true,
+      "secret_management": "Project environment variables, contexts, and restricted contexts",
+      "best_for": "Teams that want a hosted CI service with strong parallelism, caching, and workflow orchestration.",
+      "limitations": "Credit-based pricing and concurrency limits make cost forecasting less direct than a simple minute model.",
+      "pricing_summary": "Free plan and paid usage are credit-based; included credits, concurrency, and compute costs vary by plan; check official pricing."
+    },
+    {
+      "name": "Jenkins",
+      "open_source": true,
+      "self_hosted_runner": true,
+      "free_tier_minutes": 0,
+      "free_tier_notes": "No hosted free-minute allowance; the open-source server and agents run on infrastructure you provide.",
+      "config_format": "Groovy",
+      "config_file": "Jenkinsfile",
+      "parallel_jobs": true,
+      "matrix_builds": true,
+      "docker_support": true,
+      "secret_management": "Jenkins Credentials Binding and credential providers",
+      "best_for": "Organizations that need maximum control, extensibility, and self-hosted execution across heterogeneous infrastructure.",
+      "limitations": "You own upgrades, plugin compatibility, availability, security hardening, and all infrastructure costs.",
+      "pricing_summary": "Jenkins is free and open source; hosting, administration, agents, and plugins can create operational cost."
+    },
+    {
+      "name": "Drone CI",
+      "open_source": true,
+      "self_hosted_runner": true,
+      "free_tier_minutes": 0,
+      "free_tier_notes": "No hosted free-minute allowance in the open-source server; execution uses self-managed runners.",
+      "config_format": "YAML",
+      "config_file": ".drone.yml",
+      "parallel_jobs": true,
+      "matrix_builds": true,
+      "docker_support": true,
+      "secret_management": "Drone repository and organization secrets",
+      "best_for": "Small teams that want a lightweight, container-native, self-hosted pipeline with simple YAML configuration.",
+      "limitations": "Smaller ecosystem and more self-hosting responsibility than the large hosted platforms.",
+      "pricing_summary": "Open-source Drone components are free; hosted and enterprise offerings have separate plan terms; check official pricing."
+    }
+  ],
+  "sources": [
+    "https://docs.github.com/en/actions/learn-github-actions/understanding-github-actions",
+    "https://docs.gitlab.com/ee/ci/",
+    "https://circleci.com/docs/configuration-reference/",
+    "https://www.jenkins.io/doc/book/pipeline/",
+    "https://docs.drone.io/"
+  ]
+}
