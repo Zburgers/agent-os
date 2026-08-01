@@ -30,3 +30,14 @@ test('dated Git autonomy amendment permits routine repository work and denies ex
     assert.match(text, /force-push|repository deletion|legal acceptance/i);
   }
 });
+
+test('wallet governance amendment keeps dedicated and owner wallets separate and bounded', () => {
+  for (const document of ['AUTONOMOUS_REVENUE_MISSION.md', 'AGENT_CONSTITUTION.md', 'FINANCIAL_POLICY.md', 'APPROVAL_MATRIX.md', 'SECURITY_MODEL.md', 'MEMORY_POLICY.md', 'docs/WALLET_PAYPAL_TAILSCALE.md', 'integrations/hermes/skills/os/SKILL.md']) {
+    const text = readFileSync(document, 'utf8');
+    assert.match(text, /2026-08-01/);
+    assert.match(text, /dedicated.*wallet|agent wallet/i);
+    assert.match(text, /owner.*wallet|MetaMask/i);
+    assert.match(text, /draft|revok|policy/i);
+    assert.doesNotMatch(text, /COMPLETE autonomy/i);
+  }
+});

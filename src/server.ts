@@ -291,7 +291,7 @@ const server = createServer(async (req, res) => {
       return respond(res, 200, { allowed, policy_code: policyCode, effect_kind: effectKind });
     }
     if (req.method === 'GET' && url.pathname === '/api/overview') return respond(res, 200, await overview());
-    if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID, await wallet.status(), await agentWallet.status()), 'text/html; charset=utf-8');
+    if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID, await wallet.status(), { ...(await agentWallet.status()), policyVersions: (await pool.query('SELECT id,version,status FROM agent_wallet_platform_policies ORDER BY version DESC LIMIT 20')).rows }), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/revenue-paths') return respond(res, 200, renderRevenuePathsPage(auth.csrfToken), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/api/wallet/status') return respond(res, 200, await wallet.status());
     if (req.method === 'GET' && url.pathname === '/api/agent-wallet/status') return respond(res, 200, await agentWallet.status());

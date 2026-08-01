@@ -56,3 +56,5 @@ address through the owner-only `POST /api/agent-wallet/provision` endpoint. The
 agent-only `POST /api/agent-wallet/sign-message` endpoint currently accepts only
 BountyBook authentication nonces. Transaction signing is disabled until its
 ledger/effect/spending implementation is separately verified.
+
+On 2026-08-01, bounded transaction simulation was added without public-network broadcast. The dedicated wallet remains separate from MetaMask. Platform policy versions are immutable and draft by default; owner activation/revocation is authenticated and audited. Receiving funds is allowed. Withdrawals require the governed transaction path with effect, ledger, reserve, simulation, idempotency, pause/kill, nonce, fee, and reconciliation evidence.

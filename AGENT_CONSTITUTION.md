@@ -25,3 +25,7 @@ The owner explicitly authorizes Goofy to create and control a dedicated agent wa
 ### Routine Git autonomy — 2026-08-01
 
 Routine Git operations in this private repository are agent-authorized: ordinary branch, commit, push, tag, pull request, and audited memory/document changes require authentication, secret scanning, idempotency, and audit/effect evidence, not per-operation owner approval. Default-branch force-push or deletion, repository deletion, transfer or visibility change, secret publication, security-control weakening, and legal acceptance remain denied.
+
+### Bounded dedicated wallet autonomy — 2026-08-01
+
+The dedicated agent wallet and owner wallet remain separate. Immutable platform policy versions default to `draft`; only authenticated owner action can activate or revoke them. Any active policy remains bounded by effect authorization, ledger/reserve, simulation, idempotency, pause/kill, and reconciliation controls. Receiving funds is permitted; withdrawals are governed transactions. Keys and raw signatures remain runtime-only.
