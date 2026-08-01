@@ -74,6 +74,7 @@ services:
     restart: unless-stopped
   supervisor:
     build: .
+    user: "0:0"
     environment:
       PGHOST: postgres
       PGPORT: 5432
@@ -82,12 +83,17 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       SUPERVISOR_POLL_MS: ${SUPERVISOR_POLL_MS:-1000}
       SUPERVISOR_ID: compose-supervisor
+      NEAR_AGENT_CREDENTIAL_FILE: /run/goofy-near-agent/credential
     depends_on:
       postgres:
         condition: service_healthy
       app:
         condition: service_healthy
-    command: ["node", "--experimental-strip-types", "src/supervisor.ts"]
+    command: ["sh", "-c", "install -d -m 0700 -o agent -g agent /run/goofy-near-agent; install -m 0400 -o agent -g agent /run/secrets/near_agent /run/goofy-near-agent/credential; exec su-exec agent node --experimental-strip-types src/supervisor.ts"]
+    secrets:
+      - source: near_agent
+        target: near_agent
+        mode: 0400
     healthcheck:
       test: ["CMD", "node", "-e", "import('pg').then(async({default:p})=>{const c=new p.Client();await c.connect();const r=await c.query(\"select 1 from supervisor_heartbeats where worker_id='compose-supervisor' and status='running' and heartbeat_at>now()-interval '30 seconds'\");await c.end();process.exit(r.rowCount===1?0:1)}).catch(()=>process.exit(1))"]
       interval: 10s
@@ -99,3 +105,5 @@ secrets:
     file: /home/goofy/.hermes/agent-os-token
   approval_token_secret:
     file: /home/goofy/.hermes/approval-token-secret
+  near_agent:
+    file: /home/goofy/.hermes/near-agent.json

@@ -4,6 +4,7 @@ import { evaluateAction } from './policy.ts';
 import { actorContext } from './actor.ts';
 import { authorizeEffect } from './effects.ts';
 import { buildDailyBriefData } from './daily-brief.ts';
+import { fetchNearBidStatus, loadNearAgentCredential, shouldAlertForBidStatus } from './near-bid-monitor.ts';
 
 export type Job = { id: string; action_kind: 'job'; payload: Record<string, unknown>; idempotency_key: string; current_occurrence_key: string; attempts: number; max_attempts: number; interval_seconds: number | null };
 export type ClaimedJob = { job: Job; runId: string };
@@ -91,8 +92,27 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
     const dailyBrief = claim.job.payload?.kind === 'daily_owner_brief_snapshot'
       ? await buildDailyBriefData(client)
       : null;
+    const nearBid = claim.job.payload?.kind === 'near_bid_status_monitor'
+      ? await fetchNearBidStatus({
+          bidId: String(claim.job.payload.bid_id ?? ''),
+          apiKey: (await loadNearAgentCredential(process.env.NEAR_AGENT_CREDENTIAL_FILE ?? '')).apiKey,
+          signal: AbortSignal.timeout(10_000),
+        })
+      : null;
+    const previousNearRun = nearBid
+      ? await client.query<{ status: string }>(
+          `SELECT output->'bid'->>'status' AS status FROM job_runs
+           WHERE job_id=$1 AND id<>$2 AND status='completed' AND output->'bid'->>'status' IS NOT NULL
+           ORDER BY finished_at DESC,id DESC LIMIT 1`,
+          [claim.job.id, claim.runId],
+        )
+      : null;
+    const previousNearStatus = previousNearRun?.rows[0]?.status;
+    const nearAlert = nearBid ? shouldAlertForBidStatus(previousNearStatus, nearBid.status) : false;
     const effectResult = dailyBrief
       ? { report: 'daily_owner_brief', route: '/daily-brief', generated_at: dailyBrief.generatedAt, snapshot: dailyBrief }
+      : nearBid
+        ? { monitor: 'near_bid_status', bid: nearBid, previous_status: previousNearStatus ?? null, alert: nearAlert }
       : { result: 'internal_job_completed' };
     const effect = await client.query<{ id: string }>(
       `INSERT INTO job_effects(job_id,run_id,effect_key,effect_type,status,result) VALUES($1,$2,$3,'internal','completed',$4)
@@ -107,6 +127,13 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
       [intent.id, JSON.stringify(runOutput)],
     );
     await finishRun(client, claim.runId, 'completed', runOutput, null);
+    if (nearBid && nearAlert) {
+      await client.query(
+        `INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload)
+         VALUES('worker','near-bid-monitor','near_bid_status_alert','job',$1,$2)`,
+        [claim.job.id, JSON.stringify({ bid_id: nearBid.id, job_id: nearBid.jobId, previous_status: previousNearStatus ?? null, status: nearBid.status, amount: nearBid.amount, budget_token: nearBid.budgetToken })],
+      );
+    }
     await client.query(
       `UPDATE jobs SET status=CASE WHEN interval_seconds IS NULL THEN 'completed' ELSE 'queued' END,
        next_run_at=CASE WHEN interval_seconds IS NULL THEN next_run_at ELSE now()+(interval_seconds * interval '1 second') END,
@@ -118,6 +145,7 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
     await client.query('COMMIT');
     await audit('job_completed', 'job', claim.job.id, { idempotency_key: claim.job.idempotency_key, outcome });
     if (dailyBrief) await audit('daily_owner_brief_generated', 'job', claim.job.id, { route: '/daily-brief', generated_at: dailyBrief.generatedAt });
+    if (nearBid) await audit('near_bid_status_checked', 'job', claim.job.id, { bid_id: nearBid.id, status: nearBid.status, alert: nearAlert });
     return outcome;
   } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
 }

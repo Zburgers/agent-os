@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-02 — Persistent NEAR bid monitor
+
+- Added a five-minute durable supervisor job for bid `09d31f07-ca9f-4039-8e78-992b6efe5c29`.
+- Each provider check is recorded in job runs and audit activity; a non-pending status transition creates a deduplicated `near_bid_status_alert` event visible in Agent OS.
+- Mounted the existing protected NEAR credential as a read-only Compose secret, copied it to an ephemeral mode-0400 agent-owned runtime path before dropping privileges, and ensured the monitor returns and persists no credential material.
+
 ## 2026-08-02
 
 - Added a dedicated `/decisions` owner dashboard page that exposes the durable PostgreSQL decision journal with selected options, evidence, expected results, outcomes, lessons, confidence, and review dates.
