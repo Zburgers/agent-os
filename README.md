@@ -38,3 +38,13 @@ Production operation uses Docker Compose, PostgreSQL migrations, and the
 documented private deployment runbook. Secrets belong in runtime injection;
 never commit them or place them in memory or issue text.
 
+## Daily operations
+
+Revenue Paths is available at `/revenue-paths`. The scheduled Codex operating
+block resumes the exact configured thread at 09:00 Asia/Kolkata through the
+checked-in systemd units. Read-only run evidence and owner controls are at
+`/codex-operating-block`; wallet policy versions are visible at `/wallet`.
+
+The timer remains disabled until `scripts/test-codex-resume-smoke.sh` and the
+complete verification gate pass. Dedicated wallet policy versions begin as
+draft and implementation/tests broadcast no public-network transaction.

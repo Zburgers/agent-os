@@ -2,6 +2,8 @@
 
 ## 2026-08-01
 
+- Added hierarchical Revenue Paths, the daily 09:00 Asia/Kolkata Codex operating block, exact-thread smoke verification, owner run/pause/results controls, and draft-by-default dedicated-wallet platform policies with simulation-only transaction execution.
+
 - Added an owner-authorized dedicated Goofy wallet with protected mode-0600 key storage, separate from the owner's MetaMask and payment credentials.
 - Added default-deny autonomous BountyBook message signing with provider/message allowlists, pause/kill enforcement, derived-address verification, durable rate limits, denial records, and raw-signature exclusion from PostgreSQL/logs/dashboard.
 - Added PostgreSQL wallet policy and operation history, Base ETH/USDC balance reporting, authenticated provisioning/signing APIs, wallet and finance dashboard visibility, restart-safe secret mounting, and an idempotent provisioning workflow.

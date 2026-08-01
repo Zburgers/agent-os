@@ -41,3 +41,12 @@ message records require an existing approval plus an executed or
 reconciliation-required message effect; the CRM is an observer of the external
 effect lifecycle, not an alternate sending path. See
 `docs/COMMERCIAL_OPERATIONS.md`.
+
+The Revenue Paths workspace links hierarchical PostgreSQL tracks to operational
+records and derives settled money from ledger entries. The Codex operating block
+uses systemd as its only clock at 09:00 IST; PostgreSQL stores the exact thread,
+deduplicated date occurrences, immutable run evidence, checksums, and redacted
+summaries. The runner sends SIGINT at 58 minutes and allows a 60-second graceful
+boundary. Dedicated wallet policies are immutable and draft by default; owner
+activation/revocation is audited, and transactions remain simulation-only without
+separate live authorization.
