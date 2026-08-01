@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-02
+
+- Added a dedicated `/decisions` owner dashboard page that exposes the durable PostgreSQL decision journal with selected options, evidence, expected results, outcomes, lessons, confidence, and review dates.
+- Added the Decisions route to primary dashboard navigation, authenticated page routing, and regression coverage so material business decisions are no longer hidden behind the raw API or Telegram command.
+- Fixed Compose database authentication after container recreation by removing password interpolation from `DATABASE_URL` and passing Postgres credentials through structured `PG*` environment variables.
+- Aligned the existing Postgres role password with the protected Compose runtime secret without deleting or mutating business data.
+- Mounted the protected approval-token signing secret into the app container and copied it to a strict agent-owned runtime path before startup, matching the existing protected wallet-key pattern.
+
 ## 2026-08-01
 
 - Added an owner-authorized dedicated Goofy wallet with protected mode-0600 key storage, separate from the owner's MetaMask and payment credentials.
