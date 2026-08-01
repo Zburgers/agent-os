@@ -1,0 +1,26 @@
+[Unit]
+Description=Goofy Agent OS daily Codex operating block
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/goofy/agent-os
+ExecStart=/usr/bin/node --experimental-strip-types /home/goofy/agent-os/scripts/run-codex-operating-block.mjs
+Environment=CODEX_OUTPUT_DIRECTORY=/home/goofy/.codex/operating-blocks
+RuntimeMaxSec=1h
+TimeoutStopSec=30s
+KillMode=mixed
+KillSignal=SIGINT
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryMax=1G
+TasksMax=128
+CPUQuota=100%
+ReadWritePaths=/home/goofy/.codex/operating-blocks

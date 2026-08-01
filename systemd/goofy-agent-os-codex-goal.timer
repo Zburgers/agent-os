@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Goofy Agent OS Codex operating block at 09:00 IST
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 Asia/Kolkata
+Persistent=true
+Unit=goofy-agent-os-codex-goal.service
+
+[Install]
+WantedBy=timers.target

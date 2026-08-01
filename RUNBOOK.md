@@ -51,6 +51,19 @@ Only the authenticated dashboard is published. PostgreSQL has no host port and i
 ## Recovery
 On startup run abandoned-job recovery, then claim only jobs permitted by live controls. Failed jobs stop at their retry cap and become dead-letter records. Investigate via audit and job-run tables.
 
+## Daily Codex operating block
+
+The singleton Codex operating block resumes thread `019faa3e-b7af-7e13-8335-4f651c989e27` daily at 09:00 Asia/Kolkata through systemd. It uses a 58-minute graceful boundary, a 60-second child-stop allowance, and a one-hour service limit. PostgreSQL occurrence and run records are authoritative; the owner-only JSONL directory is `/home/goofy/.codex/operating-blocks`.
+
+Install only after the exact-thread smoke test and all verification gates pass:
+
+```sh
+systemctl --user enable --now goofy-agent-os-codex-goal.timer
+systemctl --user list-timers goofy-agent-os-codex-goal.timer
+```
+
+Pause the schedule by setting the persisted schedule pause control through the authenticated dashboard. Global pause or kill skips new starts and interrupts an active child within the five-second control polling interval. Disable the timer before rollback, then inspect PostgreSQL run evidence and retain the immutable audit trail.
+
 `npm run test:restart` kills the Compose supervisor, restarts it, and proves one recovered completion and one internal effect. `npm run experiment:internal` idempotently creates the real zero-cost readiness experiment and its checksummed evidence chain.
 
 ## Hermes
