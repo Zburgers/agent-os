@@ -1,6 +1,4 @@
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { audit, controls, pool } from './db.ts';
@@ -33,7 +31,7 @@ import { ChannelOutboxError, ChannelOutboxService } from './channel-outbox.ts';
 import { ReadinessEvidenceError, ReadinessEvidenceService } from './readiness.ts';
 import { AgentWalletTransactionError, AgentWalletTransactionService } from './agent-wallet-transactions.ts';
 import { RevenueTrackService, RevenueTrackValidationError } from './revenue-tracks.ts';
-import { codexOperatingBlockSnapshot, createManualCodexOccurrence, setCodexSchedulePaused } from './codex-operating-block-control.ts';
+import { codexOperatingBlockSnapshot, createManualCodexOccurrence, launchManualCodexOccurrence, setCodexSchedulePaused } from './codex-operating-block-control.ts';
 import { classifyTerminalCommand } from './hermes-effect-policy.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
@@ -347,9 +345,7 @@ const server = createServer(async (req, res) => {
       if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
       const result = await createManualCodexOccurrence(pool);
       if (result.status === 'queued') {
-        const runner = fileURLToPath(new URL('../scripts/run-codex-operating-block.mjs', import.meta.url));
-        const child = spawn(process.execPath, [runner], { cwd: '/home/goofy/agent-os', detached: true, stdio: 'ignore', env: { ...process.env, CODEX_OCCURRENCE_KEY: result.occurrenceKey, CODEX_TRIGGER_KIND: 'manual' } });
-        child.unref();
+        await launchManualCodexOccurrence({ database: pool, occurrence: result });
       }
       return respond(res, result.status === 'conflict' ? 409 : 202, result);
     }
