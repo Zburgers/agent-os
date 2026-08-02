@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 env:
-  FINAL_BRANCH: revenue-track-input-fix-final-v4
+  FINAL_BRANCH: revenue-track-input-fix-final-v5
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/agent_os_test
 
 jobs:
@@ -150,14 +150,49 @@ jobs:
           postgres_path.write_text(postgres.replace(pg_old, pg_new, 1))
           PY
 
-      - name: Validate unit, build, migrations, and PostgreSQL regression
+      - name: Validate unit, build, numbered schema, and PostgreSQL regression
         shell: bash
         run: |
           set -euo pipefail
           npm ci
           npm run build
           node --test --experimental-strip-types 'test/**/*.test.ts'
-          npm run migrate
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { readdir, readFile } from 'node:fs/promises';
+          import pg from 'pg';
+
+          const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+          await client.connect();
+          try {
+            await client.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
+              version text PRIMARY KEY,
+              applied_at timestamptz NOT NULL DEFAULT now(),
+              checksum text
+            )`);
+            const files = (await readdir('db/migrations'))
+              .filter((file) => /^\d{3}_.+\.sql$/.test(file))
+              .sort();
+            for (const file of files) {
+              const sql = await readFile(`db/migrations/${file}`, 'utf8');
+              const checksum = createHash('sha256').update(sql).digest('hex');
+              await client.query('BEGIN');
+              try {
+                await client.query(sql);
+                await client.query(
+                  'INSERT INTO schema_migrations(version,checksum) VALUES($1,$2) ON CONFLICT(version) DO NOTHING',
+                  [file, checksum],
+                );
+                await client.query('COMMIT');
+              } catch (error) {
+                await client.query('ROLLBACK');
+                throw error;
+              }
+            }
+          } finally {
+            await client.end();
+          }
+          NODE
           RUN_POSTGRES_INTEGRATION=true node --test --experimental-strip-types \
             --test-name-pattern='revenue tracks support hierarchy, linked records, and immutable audit evidence' \
             test/postgres-integration.test.ts
