@@ -91,10 +91,19 @@ export class RevenueTrackService {
   async detail(id: string) {
     const client = await this.database.connect();
     try {
-      const result = await client.query<RevenueTrack & { child_count: string; owner_handoff_count: string; settled_revenue_minor: string; settled_expense_minor: string; settled_net_minor: string }>('SELECT rt.*, (SELECT count(*) FROM revenue_tracks child WHERE child.parent_track_id=rt.id)::text AS child_count, (SELECT count(*) FROM tasks t WHERE t.track_id=rt.id AND t.status=\'waiting_for_owner\')::text AS owner_handoff_count, (SELECT COALESCE(sum(l.net_minor),0) FROM ledger_entries l WHERE l.track_id=rt.id AND l.entry_type=\'revenue\' AND l.payment_status=\'settled\')::text AS settled_revenue_minor, (SELECT COALESCE(sum(l.gross_minor),0) FROM ledger_entries l WHERE l.track_id=rt.id AND l.entry_type=\'expense\' AND l.payment_status=\'settled\')::text AS settled_expense_minor, ((SELECT COALESCE(sum(l.net_minor),0) FROM ledger_entries l WHERE l.track_id=rt.id AND l.entry_type=\'revenue\' AND l.payment_status=\'settled\')-(SELECT COALESCE(sum(l.gross_minor),0) FROM ledger_entries l WHERE l.track_id=rt.id AND l.entry_type=\'expense\' AND l.payment_status=\'settled\'))::text AS settled_net_minor FROM revenue_tracks rt WHERE rt.id=$1', [id]);
+      const result = await client.query<any>(`SELECT rt.*,
+        (SELECT count(*) FROM revenue_tracks child WHERE child.parent_track_id=rt.id)::text AS child_count,
+        (SELECT count(*) FROM tasks t WHERE t.track_id=rt.id AND t.status='waiting_for_owner')::text AS owner_handoff_count,
+        (SELECT COALESCE(jsonb_object_agg(currency, jsonb_build_object('settledRevenueMinor', revenue, 'settledExpenseMinor', expense, 'settledNetMinor', revenue-expense)), '{}'::jsonb)
+          FROM (SELECT currency, COALESCE(sum(net_minor) FILTER (WHERE entry_type='revenue'),0)::bigint AS revenue, COALESCE(sum(gross_minor) FILTER (WHERE entry_type='expense'),0)::bigint AS expense FROM ledger_entries WHERE track_id=rt.id AND payment_status='settled' GROUP BY currency) grouped) AS currency_metrics
+        FROM revenue_tracks rt WHERE rt.id=$1`, [id]);
       const row = result.rows[0];
       if (!row) return null;
-      return { ...row, metrics: { childCount: Number(row.child_count), ownerHandoffCount: Number(row.owner_handoff_count), settledRevenueMinor: Number(row.settled_revenue_minor), settledExpenseMinor: Number(row.settled_expense_minor), settledNetMinor: Number(row.settled_net_minor) } };
+      const byCurrency = row.currency_metrics ?? {};
+      const first = Object.values(byCurrency)[0] as any ?? { settledRevenueMinor: Number(row.settled_revenue_minor ?? 0), settledExpenseMinor: Number(row.settled_expense_minor ?? 0), settledNetMinor: Number(row.settled_net_minor ?? 0) };
+      const metrics = { childCount: Number(row.child_count), ownerHandoffCount: Number(row.owner_handoff_count), ...first } as Record<string, unknown>;
+      if (Object.keys(byCurrency).length) metrics.byCurrency = byCurrency;
+      return { ...row, metrics };
     } finally { client.release(); }
   }
 

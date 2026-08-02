@@ -112,7 +112,20 @@ export class AgentWalletService {
   private async transitionPlatformPolicy(policyId: string, status: 'active' | 'revoked', actor: { type: string; id: string }) {
     if (actor.type !== 'owner') throw new AgentWalletError('owner_authority_required');
     const client = await this.database.connect();
-    try { await client.query('BEGIN'); const record = (await client.query('SELECT id,wallet_id,status,policy FROM agent_wallet_platform_policies WHERE id=$1 FOR SHARE', [policyId])).rows[0]; if (!record || (status === 'active' && record.status !== 'draft') || (status === 'revoked' && record.status !== 'active')) throw new AgentWalletError('invalid_policy_transition'); const updated = (await client.query(`INSERT INTO agent_wallet_platform_policies(wallet_id,version,status,policy,supersedes_id,created_by,activated_by,activated_at,revoked_by,revoked_at) SELECT wallet_id,version+1,$2,policy,id,created_by,CASE WHEN $2='active' THEN $3 END,CASE WHEN $2='active' THEN now() END,CASE WHEN $2='revoked' THEN $3 END,CASE WHEN $2='revoked' THEN now() END FROM agent_wallet_platform_policies WHERE id=$1 RETURNING id,status,version,policy`, [policyId, status, actor.id])).rows[0]; await client.query('INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload) VALUES($1,$2,$3,$4,$5,$6)', ['owner', actor.id, `agent_wallet_policy_${status}`, 'agent_wallet_platform_policy', updated.id, JSON.stringify({ supersedes_id: policyId })]); await client.query('COMMIT'); return updated; } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+    try {
+      await client.query('BEGIN');
+      const record = (await client.query('SELECT id,wallet_id,status,policy FROM agent_wallet_platform_policies WHERE id=$1 FOR UPDATE', [policyId])).rows[0];
+      if (!record || (status === 'active' && record.status !== 'draft') || (status === 'revoked' && record.status !== 'active')) throw new AgentWalletError('invalid_policy_transition');
+      if (status === 'active') {
+        const current = (await client.query("SELECT policy_id FROM agent_wallet_policy_current WHERE wallet_id=$1 FOR UPDATE", [record.wallet_id])).rows[0];
+        if (current) throw new AgentWalletError('active_policy_already_exists');
+      }
+      const updated = (await client.query(`INSERT INTO agent_wallet_platform_policies(wallet_id,version,status,policy,supersedes_id,created_by,activated_by,activated_at,revoked_by,revoked_at) SELECT wallet_id,version+1,$2,policy,id,created_by,CASE WHEN $2='active' THEN $3 END,CASE WHEN $2='active' THEN now() END,CASE WHEN $2='revoked' THEN $3 END,CASE WHEN $2='revoked' THEN now() END FROM agent_wallet_platform_policies WHERE id=$1 RETURNING id,status,version,policy,wallet_id`, [policyId, status, actor.id])).rows[0];
+      if (status === 'active') await client.query('INSERT INTO agent_wallet_policy_current(wallet_id,policy_id,status) VALUES($1,$2,\'active\')', [record.wallet_id, updated.id]);
+      else await client.query('UPDATE agent_wallet_policy_current SET status=\'revoked\',updated_at=now() WHERE wallet_id=$1', [record.wallet_id]);
+      await client.query('INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload) VALUES($1,$2,$3,$4,$5,$6)', ['owner', actor.id, `agent_wallet_policy_${status}`, 'agent_wallet_platform_policy', updated.id, JSON.stringify({ supersedes_id: policyId, effective_status: status })]);
+      await client.query('COMMIT'); return updated;
+    } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
   }
 
   async provision(actorId = 'owner') {

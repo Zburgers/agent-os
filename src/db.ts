@@ -11,7 +11,9 @@ export async function audit(eventType: string, entityType: string, entityId: str
 }
 
 export async function controls() {
-  const { rows } = await pool.query<{ paused: boolean; killed: boolean; commercial_lock: boolean }>('SELECT paused, killed, commercial_lock FROM system_controls WHERE singleton = true');
+  const { rows } = await pool.query<{ paused: boolean; killed: boolean; commercial_lock: boolean }>(`SELECT c.paused, c.killed, c.commercial_lock
+    FROM system_controls c CROSS JOIN codex_operating_block_config b WHERE c.singleton = true AND b.singleton = true
+    AND NOT b.schedule_paused`);
   return rows[0] ?? { paused: false, killed: true, commercial_lock: true };
 }
 

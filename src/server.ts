@@ -1,4 +1,6 @@
 import { createServer } from 'node:http';
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { audit, controls, pool } from './db.ts';
@@ -32,6 +34,7 @@ import { ReadinessEvidenceError, ReadinessEvidenceService } from './readiness.ts
 import { AgentWalletTransactionError, AgentWalletTransactionService } from './agent-wallet-transactions.ts';
 import { RevenueTrackService, RevenueTrackValidationError } from './revenue-tracks.ts';
 import { codexOperatingBlockSnapshot, createManualCodexOccurrence, setCodexSchedulePaused } from './codex-operating-block-control.ts';
+import { classifyTerminalCommand } from './hermes-effect-policy.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -89,8 +92,7 @@ function inferredEffectKind(toolName: string, args: Record<string, unknown>) {
   if (/browser/.test(lowered) && /(submit|click|type|upload|login)/.test(lowered)) return 'account_change';
   if (/terminal|shell|exec/.test(lowered)) {
     const command = String(args.command ?? args.cmd ?? '');
-    if (/\b(curl|wget)\b.*\s(-X|--request)\s*(POST|PUT|PATCH|DELETE)\b/i.test(command)) return 'account_change';
-    if (/\b(hermes\s+send|git\s+push|npm\s+publish|docker\s+(push|login)|stripe|razorpay)\b/i.test(command)) return 'deployment';
+    return classifyTerminalCommand(command);
   }
   return null;
 }
@@ -311,11 +313,12 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/agent-wallet/transactions/simulate') {
       if (!mutationAllowed(auth, req) || auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
       const input = await body(req);
-      const policy = (await pool.query(`SELECT policy FROM agent_wallet_platform_policies WHERE status='active' ORDER BY version DESC LIMIT 1`)).rows[0]?.policy;
+      const policyRow = (await pool.query(`SELECT p.id,p.wallet_id,p.policy FROM agent_wallet_policy_current c JOIN agent_wallet_platform_policies p ON p.id=c.policy_id WHERE c.status='active' LIMIT 1`)).rows[0];
+      const policy = policyRow?.policy;
       if (!policy) return respond(res, 403, { error: 'policy_not_active' });
       const state = await controls();
       const transactions = new AgentWalletTransactionService(pool, { sign: async () => { throw new AgentWalletTransactionError('signing_not_enabled'); } }, { broadcast: async () => { throw new AgentWalletTransactionError('broadcast_not_enabled'); } });
-      return respond(res, 201, await transactions.createDraft({ idempotencyKey: String(input.idempotency_key ?? req.headers['idempotency-key'] ?? ''), chainId: Number(input.chain_id), recipient: String(input.recipient ?? ''), valueMinor: Number(input.value_minor ?? 0), gasMinor: Number(input.gas_minor ?? 0) }, { policy, controls: state, dailyUsedMinor: Number(input.daily_used_minor ?? 0), totalUsedMinor: Number(input.total_used_minor ?? 0) }));
+      return respond(res, 201, await transactions.createDraft({ idempotencyKey: String(input.idempotency_key ?? req.headers['idempotency-key'] ?? ''), chainId: Number(input.chain_id), recipient: String(input.recipient ?? ''), valueMinor: Number(input.value_minor ?? 0), gasMinor: Number(input.gas_minor ?? 0) }, { policy: { ...policy, id: policyRow.id }, policyId: policyRow.id, walletId: policyRow.wallet_id, controls: state }));
     }
     if (req.method === 'POST' && url.pathname === '/api/agent-wallet/policies') {
       if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
@@ -343,6 +346,11 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/codex-operating-block/run-now') {
       if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
       const result = await createManualCodexOccurrence(pool);
+      if (result.status === 'queued') {
+        const runner = fileURLToPath(new URL('../scripts/run-codex-operating-block.mjs', import.meta.url));
+        const child = spawn(process.execPath, [runner], { cwd: '/home/goofy/agent-os', detached: true, stdio: 'ignore', env: { ...process.env, CODEX_OCCURRENCE_KEY: result.occurrenceKey, CODEX_TRIGGER_KIND: 'manual' } });
+        child.unref();
+      }
       return respond(res, result.status === 'conflict' ? 409 : 202, result);
     }
     if (req.method === 'POST' && url.pathname === '/api/codex-operating-block/schedule-pause') {

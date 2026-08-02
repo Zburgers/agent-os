@@ -23,4 +23,6 @@ LockPersonality=true
 MemoryMax=1G
 TasksMax=128
 CPUQuota=100%
-ReadWritePaths=/home/goofy/.codex/operating-blocks
+# ProtectSystem remains enabled; these are the narrowly scoped paths required
+# by the documented operating contract for checked-in work and Codex state.
+ReadWritePaths=/home/goofy/agent-os /home/goofy/.codex
