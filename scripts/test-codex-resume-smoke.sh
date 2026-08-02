@@ -22,7 +22,7 @@ SMOKE_KEY="$smoke_key" THREAD_ID="$THREAD_ID" DATABASE_URL="$DATABASE_URL" node 
     if (!row.events_path || !row.final_path) throw new Error("production runner did not persist output paths");
     const events = (await readFile(row.events_path, "utf8")).trim().split(/\n+/).filter(Boolean).map(JSON.parse);
     if (!events.some((event) => event.type === "thread.started" && event.thread_id === process.env.THREAD_ID)) throw new Error("runner did not resume the exact thread");
-    for (const path of [row.events_path, row.final_path]) if ((await stat(path)).mode & 0o777 !== 0o600) throw new Error("runner output mode is not 0600");
+    for (const path of [row.events_path, row.final_path]) if (((await stat(path)).mode & 0o777) !== 0o600) throw new Error("runner output mode is not 0600");
     const active = await pool.query(`SELECT count(*)::int AS active FROM codex_operating_block_runs r WHERE r.status=$q$running$q$ AND NOT EXISTS (SELECT 1 FROM codex_operating_block_run_events e WHERE e.run_id=r.id AND e.event_type IN ($q$completed$q$,$q$failed$q$,$q$timeboxed$q$,$q$cancelled$q$))`);
     if (active.rows[0].active !== 0) throw new Error("smoke run remains active");
     await pool.end();
