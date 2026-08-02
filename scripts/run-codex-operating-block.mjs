@@ -13,17 +13,20 @@ const outputFile = join(outputDirectory, `${new Date().toISOString().replaceAll(
 const eventFile = outputFile.replace(/\.final\.txt$/, '.events.jsonl');
 const occurrenceKey = process.env.CODEX_OCCURRENCE_KEY ?? `scheduled:${new Date().toISOString().slice(0, 10)}`;
 const lockClient = await pool.connect();
+let transactionOpen = false;
+try {
 await lockClient.query('BEGIN');
+transactionOpen = true;
 const lock = await lockClient.query('SELECT pg_try_advisory_xact_lock(hashtextextended($1, 0)) AS acquired', ['codex-operating-block']);
-if (!lock.rows[0]?.acquired) { await lockClient.query('ROLLBACK'); lockClient.release(); console.log(JSON.stringify({ status: 'skipped', exitReason: 'lock_collision', threadId: CODEX_THREAD_ID })); await closeDatabase(); process.exit(0); }
-const occurrence = await pool.query<{ id: string; status: string }>(`INSERT INTO codex_operating_block_occurrences(occurrence_key,intended_date,trigger_kind) VALUES($1,current_date,$2) ON CONFLICT(occurrence_key) DO UPDATE SET occurrence_key=EXCLUDED.occurrence_key RETURNING id,status`, [occurrenceKey, process.env.CODEX_TRIGGER_KIND === 'manual' ? 'manual' : 'scheduled']);
+if (!lock.rows[0]?.acquired) { await lockClient.query('ROLLBACK'); transactionOpen = false; lockClient.release(); console.log(JSON.stringify({ status: 'skipped', exitReason: 'lock_collision', threadId: CODEX_THREAD_ID })); await closeDatabase(); process.exit(0); }
+const occurrence = await pool.query(`INSERT INTO codex_operating_block_occurrences(occurrence_key,intended_date,trigger_kind) VALUES($1,current_date,$2) ON CONFLICT(occurrence_key) DO UPDATE SET occurrence_key=EXCLUDED.occurrence_key RETURNING id,status`, [occurrenceKey, process.env.CODEX_TRIGGER_KIND === 'manual' ? 'manual' : 'scheduled']);
 const occurrenceId = occurrence.rows[0].id;
-if (occurrence.rows[0].status !== 'queued') { await lockClient.query('COMMIT'); lockClient.release(); console.log(JSON.stringify({ status: 'skipped', exitReason: 'duplicate_occurrence', threadId: CODEX_THREAD_ID })); await closeDatabase(); process.exit(0); }
+if (occurrence.rows[0].status !== 'queued') { await lockClient.query('COMMIT'); transactionOpen = false; lockClient.release(); console.log(JSON.stringify({ status: 'skipped', exitReason: 'duplicate_occurrence', threadId: CODEX_THREAD_ID })); await closeDatabase(); process.exit(0); }
 const occurrenceMeta = await pool.query('SELECT trigger_kind FROM codex_operating_block_occurrences WHERE id=$1', [occurrenceId]);
 const paused = await pool.query('SELECT schedule_paused FROM codex_operating_block_config WHERE singleton=true');
 if (occurrenceMeta.rows[0]?.trigger_kind === 'scheduled' && paused.rows[0]?.schedule_paused) {
   await pool.query('UPDATE codex_operating_block_occurrences SET status=$1,finished_at=now() WHERE id=$2', ['skipped', occurrenceId]);
-  await lockClient.query('COMMIT'); lockClient.release();
+  await lockClient.query('COMMIT'); transactionOpen = false; lockClient.release();
   console.log(JSON.stringify({ status: 'skipped', exitReason: 'schedule_paused', threadId: CODEX_THREAD_ID })); await closeDatabase(); process.exit(0);
 }
 await pool.query('UPDATE codex_operating_block_occurrences SET status=$1,started_at=now() WHERE id=$2', ['running', occurrenceId]);
@@ -38,5 +41,12 @@ await pool.query('INSERT INTO codex_operating_block_run_events(run_id,event_type
 await pool.query('UPDATE codex_operating_block_occurrences SET status=$1,finished_at=now() WHERE id=$2', [result.status, occurrenceId]);
 console.log(JSON.stringify({ ...result, output: undefined, outputFile, eventFile, runId }));
 await lockClient.query('COMMIT');
+transactionOpen = false;
 lockClient.release();
 await closeDatabase();
+} catch (error) {
+  if (transactionOpen) { try { await lockClient.query('ROLLBACK'); } catch {} }
+  try { lockClient.release(); } catch {}
+  try { await closeDatabase(); } catch {}
+  throw error;
+}

@@ -26,6 +26,8 @@ ALTER TABLE agent_wallet_operations
   ADD COLUMN IF NOT EXISTS value_minor bigint,
   ADD COLUMN IF NOT EXISTS gas_minor bigint,
   ADD COLUMN IF NOT EXISTS simulation_evidence jsonb;
+ALTER TABLE agent_wallet_operations DROP CONSTRAINT IF EXISTS agent_wallet_operations_outcome_check;
+ALTER TABLE agent_wallet_operations ADD CONSTRAINT agent_wallet_operations_outcome_check CHECK (outcome IN ('succeeded','denied','failed','simulated'));
 CREATE INDEX agent_wallet_drafts_budget_idx ON agent_wallet_transaction_drafts(wallet_id, created_at, status);
 CREATE TRIGGER agent_wallet_policy_current_audit AFTER INSERT OR UPDATE OR DELETE ON agent_wallet_policy_current
 FOR EACH ROW EXECUTE FUNCTION audit_state_change();

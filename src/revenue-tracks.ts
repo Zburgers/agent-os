@@ -102,7 +102,10 @@ export class RevenueTrackService {
       const byCurrency = row.currency_metrics ?? {};
       const first = Object.values(byCurrency)[0] as any ?? { settledRevenueMinor: Number(row.settled_revenue_minor ?? 0), settledExpenseMinor: Number(row.settled_expense_minor ?? 0), settledNetMinor: Number(row.settled_net_minor ?? 0) };
       const metrics = { childCount: Number(row.child_count), ownerHandoffCount: Number(row.owner_handoff_count), ...first } as Record<string, unknown>;
-      if (Object.keys(byCurrency).length) metrics.byCurrency = byCurrency;
+      if (Object.keys(byCurrency).length) {
+        metrics.byCurrency = byCurrency;
+        metrics.currencyMetrics = byCurrency;
+      }
       return { ...row, metrics };
     } finally { client.release(); }
   }
