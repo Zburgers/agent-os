@@ -238,7 +238,7 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   const approvalPage = await listApprovals({ status: 'pending', search: 'integration request', limit: 5, offset: 0 });
   assert.equal(approvalPage.total, 1); assert.equal(approvalPage.items[0].ticket_id, ticket.id);
 
-  const job = await pool.query<{ id: string }>("INSERT INTO jobs(name,purpose,action_kind,idempotency_key,status,related_ticket_id) VALUES('integration job','prove job browser records','job','integration-job-1','queued',$1) RETURNING id", [ticket.id]);
+  const job = await pool.query<{ id: string }>("INSERT INTO jobs(name,purpose,action_kind,idempotency_key,status,next_run_at,related_ticket_id) VALUES('integration job','prove job browser records','job','integration-job-1','queued','2000-01-01T00:00:00Z',$1) RETURNING id", [ticket.id]);
   const run = await pool.query<{ id: string }>("INSERT INTO job_runs(job_id,status,attempt,worker_id,output) VALUES($1,'completed',1,'integration-worker',$2) RETURNING id", [job.rows[0].id, JSON.stringify({ ok: true })]);
   await pool.query("INSERT INTO job_logs(run_id,level,message,payload) VALUES($1,'info','integration log',$2)", [run.rows[0].id, JSON.stringify({ source: 'integration' })]);
   const jobPage = await listJobs({ status: 'queued', search: 'integration job', limit: 5, offset: 0 });
@@ -723,7 +723,7 @@ test('dedicated wallet policy lifecycle permits simulation only while the relati
 });
 
 
-test('migration 021 checksum remains stable while migration 022 adds transaction simulation', { skip: !enabled }, async () => {
+test('a clean database migrates through the NEAR bid monitor without a pre-existing ticket', { skip: !enabled }, async () => {
   const { createHash, randomBytes } = await import('node:crypto');
   const { execFile } = await import('node:child_process');
   const { readdir, readFile } = await import('node:fs/promises');
@@ -772,12 +772,6 @@ test('migration 021 checksum remains stable while migration 022 adds transaction
       "SELECT checksum FROM schema_migrations WHERE version='021_pr_review_remediations.sql'",
     )).rows[0].checksum, original021Checksum);
 
-    await isolatedPool.query(
-      `INSERT INTO tasks(id,title,status)
-       VALUES('440de021-f284-4a5b-8ed2-1d7b9fc871cd','NEAR bid monitor migration fixture','backlog')
-       ON CONFLICT(id) DO NOTHING`,
-    );
-
     await promisify(execFile)(
       process.execPath,
       ['--experimental-strip-types', 'src/migrate.ts'],
@@ -793,6 +787,10 @@ test('migration 021 checksum remains stable while migration 022 adds transaction
     assert.equal((await isolatedPool.query(
       "SELECT checksum FROM schema_migrations WHERE version='021_pr_review_remediations.sql'",
     )).rows[0].checksum, original021Checksum);
+
+    assert.equal((await isolatedPool.query(
+      "SELECT count(*) FROM jobs WHERE idempotency_key='near-bid-monitor:09d31f07-ca9f-4039-8e78-992b6efe5c29'",
+    )).rows[0].count, '1');
 
     const wallet = await isolatedPool.query<{ id: string }>(
       `INSERT INTO agent_wallets(address,key_backend,key_reference,status)

@@ -2,16 +2,21 @@ name: CI
 
 on:
   pull_request:
+  push:
+    branches: [main]
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
-  FINAL_BRANCH: revenue-track-input-fix-final-v6
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/agent_os_test
 
 jobs:
-  apply-test-publish:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -31,7 +36,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: feat/revenue-paths-codex-autonomy
           fetch-depth: 0
 
       - uses: actions/setup-node@v4
@@ -39,180 +43,20 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Derive and verify the clean concurrent head
-        shell: bash
-        run: |
-          set -euo pipefail
-          root_sha="$(git log --first-parent --diff-filter=A --format=%H -- .github/workflows/apply-revenue-track-input-fix-v2.yml | head -n 1)"
-          test -n "$root_sha"
-          safe_base_sha="$(git rev-parse "${root_sha}^")"
-          unexpected="$(git diff --name-only "${safe_base_sha}..HEAD" | grep -Ev '^\.github/workflows/(apply-revenue-track-input-fix-v2\.yml|ci\.yml)$' || true)"
-          if [[ -n "$unexpected" ]]; then
-            echo "unexpected changes after clean base:" >&2
-            echo "$unexpected" >&2
-            exit 1
-          fi
-          echo "SAFE_BASE_SHA=$safe_base_sha" >> "$GITHUB_ENV"
-          git checkout --detach "$safe_base_sha"
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Apply focused implementation and tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
+      - name: Build
+        run: npm run build
 
-          source_path = Path('src/revenue-tracks.ts')
-          source = source_path.read_text()
-          optional_text = """function optionalText(value: unknown, field: string, max = 10_000) {
-            if (value === undefined || value === null || value === '') return null;
-            if (typeof value !== 'string' || value.trim().length > max) throw new RevenueTrackValidationError(`invalid_${field}`);
-            return value.trim();
-          }
-          """
-          stored_helper = optional_text + """function optionalStoredText(value: unknown, field: string, max = 10_000) {
-            return optionalText(value, field, max) ?? '';
-          }
-          """
-          if source.count(optional_text) != 1:
-              raise SystemExit('optionalText anchor changed')
-          source = source.replace(optional_text, stored_helper, 1)
+      - name: Run unit tests
+        run: npm test
 
-          create_old = "optionalText(input.strategy, 'strategy'), optionalText(input.targetCustomer, 'target_customer'), optionalText(input.monetizationModel, 'monetization_model')"
-          create_new = "optionalStoredText(input.strategy, 'strategy'), optionalStoredText(input.targetCustomer, 'target_customer'), optionalStoredText(input.monetizationModel, 'monetization_model')"
-          if source.count(create_old) != 1:
-              raise SystemExit('create descriptive field bindings changed')
-          source = source.replace(create_old, create_new, 1)
+      - name: Migrate clean PostgreSQL database
+        run: npm run migrate
 
-          update_old = """    for (const [key, column, max] of textFields) if (input[key] !== undefined) fields.push([column, key === 'name' || key === 'stage' ? requiredText(input[key], column, max) : optionalText(input[key], column, max)]);
-          """
-          update_new = """    for (const [key, column, max] of textFields) {
-              if (input[key] === undefined) continue;
-              const value = key === 'name' || key === 'stage'
-                ? requiredText(input[key], column, max)
-                : key === 'strategy' || key === 'targetCustomer' || key === 'monetizationModel'
-                  ? optionalStoredText(input[key], column, max)
-                  : optionalText(input[key], column, max);
-              fields.push([column, value]);
-            }
-          """
-          if source.count(update_old) != 1:
-              raise SystemExit('update text field binding changed')
-          source_path.write_text(source.replace(update_old, update_new, 1))
-
-          unit_path = Path('test/revenue-tracks.test.ts')
-          unit = unit_path.read_text()
-          marker = "test('required Revenue Track descriptions use empty strings while nullable actions retain null'"
-          if marker in unit:
-              raise SystemExit('unit regression test already exists')
-          unit_path.write_text(unit + """
-
-          test('required Revenue Track descriptions use empty strings while nullable actions retain null', async () => {
-            const { calls, service } = fixture();
-            const actor = { type: 'agent' as const, id: 'goofy' };
-            const created = await service.create({ name: 'Test' }, actor);
-            const createCall = calls.find((call) => call.sql.startsWith('INSERT INTO revenue_tracks'));
-            assert.ok(createCall);
-            assert.equal(createCall.values?.[4], '');
-            assert.equal(createCall.values?.[5], '');
-            assert.equal(createCall.values?.[6], '');
-
-            await service.update(created.id, { strategy: '', nextAction: '' }, actor);
-            const updateCall = calls.find((call) => call.sql.startsWith('UPDATE revenue_tracks'));
-            assert.ok(updateCall);
-            assert.match(updateCall.sql, /strategy=\$1,next_action=\$2/);
-            assert.equal(updateCall.values?.[0], '');
-            assert.equal(updateCall.values?.[1], null);
-          });
-          """)
-
-          postgres_path = Path('test/postgres-integration.test.ts')
-          postgres = postgres_path.read_text()
-          pg_old = """test('revenue tracks support hierarchy, linked records, and immutable audit evidence', { skip: !enabled }, async () => {
-            const { pool } = await import('../src/db.ts');
-            const parent = await pool.query<{ id: string }>(
-          """
-          pg_new = """test('revenue tracks support hierarchy, linked records, and immutable audit evidence', { skip: !enabled }, async () => {
-            const { pool } = await import('../src/db.ts');
-            const { RevenueTrackService } = await import('../src/revenue-tracks.ts');
-            const service = new RevenueTrackService(pool as never);
-            const minimal = await service.create({ name: 'Integration minimal revenue track' }, { type: 'agent', id: 'integration-agent' });
-            const storedDescriptions = await pool.query<{
-              strategy: string; target_customer: string; monetization_model: string;
-            }>('SELECT strategy,target_customer,monetization_model FROM revenue_tracks WHERE id=$1', [minimal.id]);
-            assert.deepEqual(storedDescriptions.rows[0], {
-              strategy: '', target_customer: '', monetization_model: '',
-            });
-            const parent = await pool.query<{ id: string }>(
-          """
-          if postgres.count(pg_old) != 1:
-              raise SystemExit('PostgreSQL revenue track test anchor changed')
-          postgres_path.write_text(postgres.replace(pg_old, pg_new, 1))
-          PY
-
-      - name: Validate unit, build, schema, and PostgreSQL regression
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm ci
-          npm run build
-          node --test --experimental-strip-types 'test/**/*.test.ts'
-          node --input-type=module <<'NODE'
-          import { createHash } from 'node:crypto';
-          import { readdir, readFile } from 'node:fs/promises';
-          import pg from 'pg';
-
-          const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
-          await client.connect();
-          try {
-            await client.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
-              version text PRIMARY KEY,
-              applied_at timestamptz NOT NULL DEFAULT now(),
-              checksum text
-            )`);
-            const files = (await readdir('db/migrations'))
-              .filter((file) => /^\d{3}_.+\.sql$/.test(file))
-              .sort();
-            for (const file of files) {
-              const sql = await readFile(`db/migrations/${file}`, 'utf8');
-              if (sql.includes("'NEAR bid award monitor'") && sql.includes('related_ticket_id')) {
-                console.log(`skipped operational seed ${file}`);
-                continue;
-              }
-              const checksum = createHash('sha256').update(sql).digest('hex');
-              await client.query('BEGIN');
-              try {
-                await client.query(sql);
-                await client.query(
-                  'INSERT INTO schema_migrations(version,checksum) VALUES($1,$2) ON CONFLICT(version) DO NOTHING',
-                  [file, checksum],
-                );
-                await client.query('COMMIT');
-              } catch (error) {
-                await client.query('ROLLBACK');
-                throw error;
-              }
-            }
-          } finally {
-            await client.end();
-          }
-          NODE
-          RUN_POSTGRES_INTEGRATION=true node --test --experimental-strip-types \
-            --test-name-pattern='revenue tracks support hierarchy, linked records, and immutable audit evidence' \
-            test/postgres-integration.test.ts
-
-      - name: Publish one focused commit
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add src/revenue-tracks.ts test/revenue-tracks.test.ts test/postgres-integration.test.ts
-          expected=$'src/revenue-tracks.ts\ntest/postgres-integration.test.ts\ntest/revenue-tracks.test.ts'
-          actual="$(git diff --cached --name-only | sort)"
-          test "$actual" = "$expected"
-          git diff --cached --check
-          git commit -m 'fix(revenue-tracks): normalize required descriptive fields'
-          final_sha="$(git rev-parse HEAD)"
-          echo "FINAL_COMMIT_SHA=${final_sha}"
-          git push --force origin "HEAD:refs/heads/${FINAL_BRANCH}"
+      - name: Run PostgreSQL integration tests
+        run: >-
+          RUN_POSTGRES_INTEGRATION=true node --test --test-concurrency=1
+          --experimental-strip-types test/postgres-integration.test.ts
+          test/external-effect-crash.test.ts test/codex-operating-block-api.test.ts
