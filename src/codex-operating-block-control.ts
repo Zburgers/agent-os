@@ -30,7 +30,7 @@ export async function setCodexSchedulePaused(database: Database = pool, paused: 
 export async function codexOperatingBlockSnapshot(database: Database = pool) {
   const [config, active, latest] = await Promise.all([
     database.query('SELECT schedule_paused FROM codex_operating_block_config WHERE singleton=true'),
-    database.query("SELECT id,status,started_at,thread_id FROM codex_operating_block_runs WHERE status='running' ORDER BY started_at DESC LIMIT 1"),
+    database.query("SELECT r.id,r.status,r.started_at,r.thread_id FROM codex_operating_block_runs r WHERE r.status='running' AND NOT EXISTS (SELECT 1 FROM codex_operating_block_run_events e WHERE e.run_id=r.id AND e.event_type IN ('completed','failed','cancelled','timeboxed')) ORDER BY r.started_at DESC LIMIT 1"),
     database.query("SELECT r.id,COALESCE(e.payload->>'status',r.status) AS status,e.payload->>'exit_reason' AS exit_reason,e.payload->>'summary' AS summary,e.payload->>'next_action' AS next_action,e.payload->>'git_before_sha' AS git_before_sha,e.payload->>'git_after_sha' AS git_after_sha,e.payload->'changed_files' AS changed_files,e.payload->'usage' AS usage FROM codex_operating_block_runs r LEFT JOIN LATERAL (SELECT payload FROM codex_operating_block_run_events WHERE run_id=r.id AND event_type='completed' ORDER BY occurred_at DESC LIMIT 1) e ON true ORDER BY r.started_at DESC LIMIT 1"),
   ]);
   const row = latest.rows[0];

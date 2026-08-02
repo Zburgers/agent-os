@@ -16,3 +16,12 @@ test('Codex systemd units enforce the exact schedule and one-hour boundary', () 
   assert.match(timer, /Persistent=true/);
   assert.doesNotMatch(timer, /RandomizedDelaySec=(?!0s)/);
 });
+
+test('Codex smoke test separates stdout events from final output and executes the production runner', () => {
+  const text = readFileSync('scripts/test-codex-resume-smoke.sh', 'utf8');
+  assert.match(text, /scripts\/run-codex-operating-block\.mjs/);
+  assert.match(text, /CODEX_OUTPUT_DIRECTORY/);
+  assert.match(text, /events_path/);
+  assert.match(text, /final_path/);
+  assert.doesNotMatch(text, /INSERT INTO codex_operating_block_runs/);
+});

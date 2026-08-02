@@ -704,3 +704,20 @@ test('dedicated wallet platform policies are immutable, draft by default, and li
   assert.ok(operation.rows[0].id);
   await assert.rejects(pool.query(`UPDATE agent_wallet_platform_policies SET status='active' WHERE id=$1`, [policy.rows[0].id]), /append-only table/);
 });
+
+test('dedicated wallet policy lifecycle permits simulation only while the relational pointer is active', { skip: !enabled }, async () => {
+  const { pool } = await import('../src/db.ts');
+  const { AgentWalletService, evaluateWalletPolicy } = await import('../src/agent-wallet.ts');
+  const wallet = await pool.query<{ id: string }>(`INSERT INTO agent_wallets(address,key_backend,key_reference,status) VALUES('0x2222222222222222222222222222222222222222','protected_file','lifecycle-policy','active') RETURNING id`);
+  const service = new AgentWalletService(pool, {} as never);
+  const draft = await service.createPlatformPolicy({ chainIds: [8453], recipientAllowlist: ['0xrecipient'], maxTransactionValueMinor: 100, maxGasMinor: 10, dailyBudgetMinor: 100, totalBudgetMinor: 100 }, { type: 'owner', id: 'integration-owner' });
+  assert.equal(evaluateWalletPolicy(draft.policy, { chainId: 8453, recipient: '0xrecipient', valueMinor: 1, gasMinor: 1 }, { lifecycleStatus: 'draft' }).code, 'policy_not_active');
+  const active = await service.activatePlatformPolicy(draft.id, { type: 'owner', id: 'integration-owner' });
+  assert.equal(evaluateWalletPolicy(active.policy, { chainId: 8453, recipient: '0xrecipient', valueMinor: 1, gasMinor: 1 }, { lifecycleStatus: 'active' }).allowed, true);
+  await service.revokePlatformPolicy(active.id, { type: 'owner', id: 'integration-owner' });
+  const current = await pool.query('SELECT * FROM agent_wallet_policy_current WHERE wallet_id=$1', [wallet.rows[0].id]);
+  assert.equal(current.rowCount, 0);
+  const replacement = await service.createPlatformPolicy({ chainIds: [8453] }, { type: 'owner', id: 'integration-owner' });
+  const replacementActive = await service.activatePlatformPolicy(replacement.id, { type: 'owner', id: 'integration-owner' });
+  assert.equal(replacementActive.status, 'active');
+});

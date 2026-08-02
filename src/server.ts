@@ -318,7 +318,7 @@ const server = createServer(async (req, res) => {
       if (!policy) return respond(res, 403, { error: 'policy_not_active' });
       const state = await controls();
       const transactions = new AgentWalletTransactionService(pool, { sign: async () => { throw new AgentWalletTransactionError('signing_not_enabled'); } }, { broadcast: async () => { throw new AgentWalletTransactionError('broadcast_not_enabled'); } });
-      return respond(res, 201, await transactions.createDraft({ idempotencyKey: String(input.idempotency_key ?? req.headers['idempotency-key'] ?? ''), chainId: Number(input.chain_id), recipient: String(input.recipient ?? ''), valueMinor: Number(input.value_minor ?? 0), gasMinor: Number(input.gas_minor ?? 0) }, { policy: { ...policy, id: policyRow.id }, policyId: policyRow.id, walletId: policyRow.wallet_id, controls: state }));
+      return respond(res, 201, await transactions.createDraft({ idempotencyKey: String(input.idempotency_key ?? req.headers['idempotency-key'] ?? ''), chainId: Number(input.chain_id), recipient: String(input.recipient ?? ''), valueMinor: Number(input.value_minor ?? 0), gasMinor: Number(input.gas_minor ?? 0) }, { policy: policy, policyId: policyRow.id, walletId: policyRow.wallet_id, lifecycleStatus: 'active', controls: state }));
     }
     if (req.method === 'POST' && url.pathname === '/api/agent-wallet/policies') {
       if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });

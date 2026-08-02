@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createManualCodexOccurrence, setCodexSchedulePaused, summarizeCodexRun } from '../src/codex-operating-block-control.ts';
+import { codexOperatingBlockSnapshot, createManualCodexOccurrence, setCodexSchedulePaused, summarizeCodexRun } from '../src/codex-operating-block-control.ts';
 
 test('Codex control creates one manual occurrence and reports collision without starting a process', async () => {
   const calls: string[] = [];
@@ -18,4 +18,11 @@ test('Codex schedule pause is owner-controlled and run summaries expose timeout 
   assert.equal(summary.statusLabel, 'Timeboxed at 58 minutes');
   assert.equal(summary.git, 'a → b');
   assert.equal(calls.length, 1);
+});
+
+test('Codex active-run query derives completion from terminal events', async () => {
+  const calls: string[] = [];
+  const db = { query: async (sql: string) => { calls.push(sql); return { rows: [] }; } };
+  await codexOperatingBlockSnapshot(db as never);
+  assert.match(calls[1], /NOT EXISTS[\s\S]*codex_operating_block_run_events/);
 });

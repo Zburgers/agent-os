@@ -1,34 +1,30 @@
 #!/usr/bin/env sh
 set -eu
 THREAD_ID='019faa3e-b7af-7e13-8335-4f651c989e27'
-PROMPT='Owner-authorized scheduler smoke test. Resume this exact existing thread and inspect current authoritative Agent OS goal/control/approval state. Confirm whether the previously blocked goal can now resume. Do not modify files, Git, database state, services, accounts, wallets, deployments, or external systems; do not send messages or spend. Return only a concise state summary and next permitted action.'
-CODEX_BIN="$(command -v codex)"
-case "$CODEX_BIN" in /*) ;; *) echo 'codex executable is not absolute' >&2; exit 2 ;; esac
-test -f "/home/goofy/.codex/sessions/2026/07/29/rollout-2026-07-29T01-11-04-$THREAD_ID.jsonl"
+PROMPT='Owner-authorized scheduler smoke test. Resume the exact existing thread, inspect authoritative Agent OS state, and return only a concise state summary and next permitted action. Do not make external changes.'
 out_dir="${CODEX_SMOKE_OUTPUT_DIRECTORY:-/tmp/goofy-codex-smoke}"
+smoke_key="smoke:$THREAD_ID:$(date -u +%Y%m%dT%H%M%S):$$"
 umask 077
 mkdir -p "$out_dir"
 chmod 700 "$out_dir"
-out_file="$out_dir/$THREAD_ID.jsonl"
-timeout --signal=INT --kill-after=5s 120s "$CODEX_BIN" exec resume "$THREAD_ID" "$PROMPT" --json -o "$out_file"
-test "$(stat -c '%a' "$out_file")" = 600
-THREAD_ID="$THREAD_ID" OUTPUT_FILE="$out_file" node --input-type=module -e '
-  import { readFile } from "node:fs/promises";
-  const expected = process.env.THREAD_ID;
-  const events = (await readFile(process.env.OUTPUT_FILE, "utf8")).trim().split(/\n+/).filter(Boolean).map((line) => JSON.parse(line));
-  const started = events.find((event) => event.type === "thread.started" || event.event === "thread.started");
-  if (!started || started.thread_id !== expected && started.thread?.id !== expected) process.exit(1);
-'
-if test -n "${DATABASE_URL:-}"; then
-  SMOKE_KEY="smoke:$THREAD_ID:$(date -u +%F)" THREAD_ID="$THREAD_ID" DATABASE_URL="$DATABASE_URL" node --input-type=module -e '
+if test -z "${DATABASE_URL:-}"; then
+  echo 'DATABASE_URL is required to verify production runner persistence' >&2
+  exit 2
+fi
+CODEX_OCCURRENCE_KEY="$smoke_key" CODEX_TRIGGER_KIND=manual CODEX_OUTPUT_DIRECTORY="$out_dir" node --experimental-strip-types scripts/run-codex-operating-block.mjs
+SMOKE_KEY="$smoke_key" THREAD_ID="$THREAD_ID" DATABASE_URL="$DATABASE_URL" node --input-type=module -e '
     import pg from "pg";
+    import { readFile, stat } from "node:fs/promises";
     const pool = new pg.Pool({connectionString: process.env.DATABASE_URL});
-    const key = process.env.SMOKE_KEY;
-    const occurrence = await pool.query(`INSERT INTO codex_operating_block_occurrences(occurrence_key,intended_date,trigger_kind,status,started_at,finished_at) VALUES($1,current_date,'manual','completed',now(),now()) ON CONFLICT(occurrence_key) DO NOTHING RETURNING id`, [key]);
-    if (occurrence.rows[0]) { const run = await pool.query(`INSERT INTO codex_operating_block_runs(occurrence_id,thread_id,status,finished_at,duration_ms) VALUES($1,$2,'completed',now(),0) RETURNING id`, [occurrence.rows[0].id, process.env.THREAD_ID]); await pool.query(`INSERT INTO codex_operating_block_run_events(run_id,event_type,payload) VALUES($1,'completed',$2)`, [run.rows[0].id, JSON.stringify({smoke:true, thread_id:process.env.THREAD_ID})]); }
-    const evidence = await pool.query(`SELECT count(*)::int AS runs FROM codex_operating_block_runs r JOIN codex_operating_block_occurrences o ON o.id=r.occurrence_id WHERE o.occurrence_key=$1 AND r.thread_id=$2`, [key, process.env.THREAD_ID]);
-    if (evidence.rows[0]?.runs !== 1) throw new Error("expected exactly one persisted smoke run");
+    const result = await pool.query(`SELECT count(*) FILTER (WHERE e.event_type=$q$started$q$)::int AS started, count(*) FILTER (WHERE e.event_type IN ($q$completed$q$,$q$failed$q$,$q$timeboxed$q$,$q$cancelled$q$))::int AS terminal, count(*)::int AS events, count(DISTINCT r.id)::int AS runs, count(DISTINCT o.id)::int AS occurrences, max(e.payload->>$q$log_path$q$) AS events_path, max(e.payload->>$q$final_output_path$q$) AS final_path FROM codex_operating_block_occurrences o JOIN codex_operating_block_runs r ON r.occurrence_id=o.id JOIN codex_operating_block_run_events e ON e.run_id=r.id WHERE o.occurrence_key=$1 AND r.thread_id=$2`, [process.env.SMOKE_KEY, process.env.THREAD_ID]);
+    const row = result.rows[0];
+    if (row.occurrences !== 1 || row.runs !== 1 || row.started !== 1 || row.terminal !== 1) throw new Error("production runner did not persist one complete smoke run");
+    if (!row.events_path || !row.final_path) throw new Error("production runner did not persist output paths");
+    const events = (await readFile(row.events_path, "utf8")).trim().split(/\n+/).filter(Boolean).map(JSON.parse);
+    if (!events.some((event) => event.type === "thread.started" && event.thread_id === process.env.THREAD_ID)) throw new Error("runner did not resume the exact thread");
+    for (const path of [row.events_path, row.final_path]) if ((await stat(path)).mode & 0o777 !== 0o600) throw new Error("runner output mode is not 0600");
+    const active = await pool.query(`SELECT count(*)::int AS active FROM codex_operating_block_runs r WHERE r.status=$q$running$q$ AND NOT EXISTS (SELECT 1 FROM codex_operating_block_run_events e WHERE e.run_id=r.id AND e.event_type IN ($q$completed$q$,$q$failed$q$,$q$timeboxed$q$,$q$cancelled$q$))`);
+    if (active.rows[0].active !== 0) throw new Error("smoke run remains active");
     await pool.end();
   '
-fi
-printf 'exact_thread=%s output_file_mode=600 result=passed\n' "$THREAD_ID"
+printf 'exact_thread=%s events_file_mode=600 final_file_mode=600 result=passed\n' "$THREAD_ID"

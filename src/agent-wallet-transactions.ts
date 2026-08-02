@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { evaluateWalletPolicy, type WalletPolicy } from './agent-wallet.ts';
 
 export class AgentWalletTransactionError extends Error { readonly code: string; constructor(code: string) { super(code); this.code = code; } }
-type Database = { query: (sql: string, values?: unknown[]) => Promise<{ rows: any[]; rowCount?: number }> };
+type Query = (sql: string, values?: unknown[]) => Promise<{ rows: any[]; rowCount?: number }>;
+type Client = { query: Query; release: () => void };
+type Database = { query?: Query; connect?: () => Promise<Client> };
 type Signer = { sign: (envelope: Record<string, unknown>) => Promise<string> };
 type Broadcaster = { broadcast: (signature: string) => Promise<string> };
 type Draft = { id: string; idempotencyKey: string; status: 'simulated' | 'reconciliation_required' | 'submitted'; envelope: Record<string, unknown> };
@@ -16,25 +18,36 @@ export class AgentWalletTransactionService {
   private readonly database: Database; private readonly signer: Signer; private readonly broadcaster: Broadcaster;
   constructor(database: Database, signer: Signer, broadcaster: Broadcaster) { this.database = database; this.signer = signer; this.broadcaster = broadcaster; }
 
-  async createDraft(input: { idempotencyKey: string; chainId: number; recipient: string; valueMinor: number; gasMinor: number }, context: { policy: WalletPolicy & { id?: string }; policyId?: string; walletId?: string; controls: { paused: boolean; killed: boolean }; dailyUsedMinor?: number; totalUsedMinor?: number }) {
+  async createDraft(input: { idempotencyKey: string; chainId: number; recipient: string; valueMinor: number; gasMinor: number }, context: { policy: WalletPolicy; policyId: string; walletId: string; lifecycleStatus: 'active'; controls: { paused: boolean; killed: boolean } }) {
     if (!input.idempotencyKey?.trim()) throw new AgentWalletTransactionError('idempotency_key_required');
     if (!Number.isSafeInteger(input.chainId) || input.chainId <= 0 || typeof input.recipient !== 'string' || !input.recipient.trim()) throw new AgentWalletTransactionError('invalid_transaction_envelope');
     const valueMinor = nonNegative(input.valueMinor, 'invalid_value_minor'); const gasMinor = nonNegative(input.gasMinor, 'invalid_gas_minor');
-    const prior = await this.database.query('SELECT id,status,envelope FROM agent_wallet_transaction_drafts WHERE idempotency_key=$1', [input.idempotencyKey]);
-    if (prior.rows[0]) return { id: prior.rows[0].id, idempotencyKey: input.idempotencyKey, status: prior.rows[0].status, envelope: prior.rows[0].envelope } as Draft;
     if (context.controls.killed) throw new AgentWalletTransactionError('system_killed');
     if (context.controls.paused) throw new AgentWalletTransactionError('system_paused');
-    const usage = context.dailyUsedMinor === undefined || context.totalUsedMinor === undefined
-      ? (await this.database.query(`SELECT COALESCE(SUM(value_minor),0)::bigint AS total_used, COALESCE(SUM(value_minor) FILTER (WHERE created_at>=date_trunc('day',now())),0)::bigint AS daily_used FROM agent_wallet_transaction_drafts WHERE status IN ('simulated','submitted')`)).rows[0] ?? { daily_used: 0, total_used: 0 }
-      : { daily_used: context.dailyUsedMinor, total_used: context.totalUsedMinor };
-    const decision = evaluateWalletPolicy(context.policy, { chainId: input.chainId, recipient: input.recipient, valueMinor, gasMinor, dailyUsedMinor: Number(usage.daily_used), totalUsedMinor: Number(usage.total_used) });
-    if (!decision.allowed) throw new AgentWalletTransactionError(decision.code);
-    const id = randomUUID(); const envelope = { chainId: input.chainId, recipient: input.recipient, valueMinor, gasMinor };
-    const evidence = { outcome: 'success', broadcast: false, policyId: context.policyId ?? context.policy.id ?? null, dailyUsedMinor: Number(usage.daily_used), totalUsedMinor: Number(usage.total_used) };
-    const inserted = await this.database.query(`INSERT INTO agent_wallet_transaction_drafts(id,wallet_id,policy_id,idempotency_key,chain_id,recipient,value_minor,gas_minor,status,envelope,simulation_evidence) VALUES($1,COALESCE($2,(SELECT id FROM agent_wallets WHERE status='active')),$3,$4,$5,$6,$7,$8,'simulated',$9,$10) ON CONFLICT(idempotency_key) DO UPDATE SET idempotency_key=EXCLUDED.idempotency_key RETURNING id,status,envelope`, [id, context.walletId ?? null, context.policyId ?? context.policy.id ?? null, input.idempotencyKey, input.chainId, input.recipient, valueMinor, gasMinor, JSON.stringify(envelope), JSON.stringify(evidence)]);
-    const row = inserted.rows[0] ?? { id, status: 'simulated', envelope };
-    await this.database.query("INSERT INTO agent_wallet_operations(wallet_id,provider,operation_type,outcome,idempotency_key,policy_id,draft_id,value_minor,gas_minor,simulation_evidence) VALUES((SELECT id FROM agent_wallets WHERE status='active'),'platform','transaction_sign','simulated',$1,$2,$3,$4,$5,$6) ON CONFLICT(idempotency_key) DO NOTHING", [input.idempotencyKey, context.policyId ?? context.policy.id ?? null, row.id, valueMinor, gasMinor, JSON.stringify(evidence)]);
-    return { id: row.id, idempotencyKey: input.idempotencyKey, status: row.status, envelope: row.envelope } as Draft;
+    const client = this.database.connect ? await this.database.connect() : { query: this.database.query!, release() {} };
+    const envelope = { chainId: input.chainId, recipient: input.recipient, valueMinor, gasMinor };
+    try {
+      await client.query('BEGIN');
+      await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`wallet-policy:${context.walletId}:${context.policyId}`]);
+      const activePolicy = await client.query("SELECT policy_id FROM agent_wallet_policy_current WHERE wallet_id=$1 AND policy_id=$2 AND status='active' FOR SHARE", [context.walletId, context.policyId]);
+      if (!activePolicy.rows[0]) throw new AgentWalletTransactionError('policy_not_active');
+      const prior = await client.query('SELECT id,status,envelope FROM agent_wallet_transaction_drafts WHERE idempotency_key=$1 FOR UPDATE', [input.idempotencyKey]);
+      if (prior.rows[0]) {
+        if (JSON.stringify(prior.rows[0].envelope) !== JSON.stringify(envelope)) throw new AgentWalletTransactionError('idempotency_key_reused_with_different_request');
+        await client.query('COMMIT');
+        return { id: prior.rows[0].id, idempotencyKey: input.idempotencyKey, status: prior.rows[0].status, envelope: prior.rows[0].envelope } as Draft;
+      }
+      const usage = (await client.query(`SELECT COALESCE(SUM(value_minor + gas_minor),0)::bigint AS total_used, COALESCE(SUM(value_minor + gas_minor) FILTER (WHERE created_at>=date_trunc('day',now())),0)::bigint AS daily_used FROM agent_wallet_transaction_drafts WHERE wallet_id=$1 AND policy_id=$2 AND status IN ('simulated','submitted')`, [context.walletId, context.policyId])).rows[0] ?? { daily_used: 0, total_used: 0 };
+      const decision = evaluateWalletPolicy(context.policy, { chainId: input.chainId, recipient: input.recipient, valueMinor, gasMinor, dailyUsedMinor: Number(usage.daily_used), totalUsedMinor: Number(usage.total_used) }, { lifecycleStatus: context.lifecycleStatus });
+      if (!decision.allowed) throw new AgentWalletTransactionError(decision.code);
+      const id = randomUUID();
+      const evidence = { outcome: 'simulated', broadcast: false, policyId: context.policyId, dailyUsedMinor: Number(usage.daily_used), totalUsedMinor: Number(usage.total_used) };
+      const inserted = await client.query(`INSERT INTO agent_wallet_transaction_drafts(id,wallet_id,policy_id,idempotency_key,chain_id,recipient,value_minor,gas_minor,status,envelope,simulation_evidence) VALUES($1,$2,$3,$4,$5,$6,$7,$8,'simulated',$9,$10) RETURNING id,status,envelope`, [id, context.walletId, context.policyId, input.idempotencyKey, input.chainId, input.recipient, valueMinor, gasMinor, JSON.stringify(envelope), JSON.stringify(evidence)]);
+      const row = inserted.rows[0];
+      await client.query("INSERT INTO agent_wallet_operations(wallet_id,provider,operation_type,outcome,idempotency_key,policy_id,draft_id,value_minor,gas_minor,simulation_evidence) VALUES($1,'platform','transaction_simulation','simulated',$2,$3,$4,$5,$6,$7)", [context.walletId, input.idempotencyKey, context.policyId, row.id, valueMinor, gasMinor, JSON.stringify(evidence)]);
+      await client.query('COMMIT');
+      return { id: row.id, idempotencyKey: input.idempotencyKey, status: row.status, envelope: row.envelope } as Draft;
+    } catch (error) { try { await client.query('ROLLBACK'); } catch {} throw error; } finally { client.release(); }
   }
 
   async execute(_id: string, _options: { liveTestAuthorized?: boolean } = {}) { throw new AgentWalletTransactionError('live_broadcast_not_authorized'); }
