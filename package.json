@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test --experimental-strip-types 'test/**/*.test.ts'",
+    "test": "node --test --experimental-strip-types 'test/**/*.test.ts' && scripts/ci-codex-postgres-verification.sh",
     "test:watch": "node --test --watch --experimental-strip-types 'test/**/*.test.ts'",
     "test:integration": "scripts/test-postgres-integration.sh",
     "test:browser": "scripts/test-browser-workboard.sh",
