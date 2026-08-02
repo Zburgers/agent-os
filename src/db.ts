@@ -10,8 +10,18 @@ export async function audit(eventType: string, entityType: string, entityId: str
   );
 }
 
-export async function controls() {
-  const { rows } = await pool.query<{ paused: boolean; killed: boolean; commercial_lock: boolean }>('SELECT paused, killed, commercial_lock FROM system_controls WHERE singleton = true');
+type ControlDatabase = Pick<typeof pool, 'query'>;
+
+export async function controls(database: ControlDatabase = pool) {
+  const { rows } = await database.query<{
+    paused: boolean;
+    killed: boolean;
+    commercial_lock: boolean;
+  }>(
+    `SELECT paused, killed, commercial_lock
+     FROM system_controls
+     WHERE singleton = true`,
+  );
   return rows[0] ?? { paused: false, killed: true, commercial_lock: true };
 }
 

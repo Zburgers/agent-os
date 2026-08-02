@@ -11,6 +11,9 @@ function equals(left: string, right: string) {
 }
 
 export function ownerTokenMatches(supplied: string, ownerToken: string) { return equals(supplied, ownerToken); }
+export function revenueTrackMutationAllowed(authKind: string | null, idempotencyKey: string | undefined) {
+  return authKind === 'agent' && Boolean(idempotencyKey?.trim());
+}
 export function runtimeTokensFromEnvironment() {
   const tokens: string[] = [];
   const direct = process.env.AGENT_RUNTIME_TOKEN?.trim();

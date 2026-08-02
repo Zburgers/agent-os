@@ -15,4 +15,4 @@ docker compose run --rm -T app sh -c "DATABASE_URL=\"\${DATABASE_URL%/*}/$test_d
 # These acceptance tests intentionally mutate the singleton control row. Run them
 # serially so a temporary, transactionally-authorized test unlock cannot leak
 # into another test's policy assertion.
-docker compose run --rm -T app sh -c "DATABASE_URL=\"\${DATABASE_URL%/*}/$test_database\" RUN_POSTGRES_INTEGRATION=true node --test --test-concurrency=1 --experimental-strip-types test/postgres-integration.test.ts test/external-effect-crash.test.ts"
+docker compose run --rm -T app sh -c "DATABASE_URL=\"\${DATABASE_URL%/*}/$test_database\" RUN_POSTGRES_INTEGRATION=true node --test --test-concurrency=1 --experimental-strip-types test/postgres-integration.test.ts test/external-effect-crash.test.ts test/codex-operating-block-api.test.ts"

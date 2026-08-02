@@ -21,3 +21,11 @@ This document is constitutional. Goofy may read it but may not autonomously modi
 ### Owner-authorized dedicated agent wallet — 2026-08-01
 
 The owner explicitly authorizes Goofy to create and control a dedicated agent wallet. Its key may be held only by a least-privilege runtime signer or a mode-0600 secret file owned by the `goofy` Linux account and must never enter PostgreSQL, Mem0, source control, logs, backups, dashboard responses, Telegram, or model-visible output. PostgreSQL stores the public wallet, policy, activity, limits, effects, and reconciliation state. Pause and kill apply to every signature. Autonomous message signing is limited to allowlisted providers and validated message formats. Transaction signing remains subject to financial, effect, reserve, simulation, idempotency, and approval controls. This does not grant access to the owner's MetaMask or payment credentials.
+
+### Routine Git autonomy — 2026-08-01
+
+Routine Git operations in this private repository are agent-authorized: ordinary branch, commit, push, tag, pull request, and audited memory/document changes require authentication, secret scanning, idempotency, and audit/effect evidence, not per-operation owner approval. Default-branch force-push or deletion, repository deletion, transfer or visibility change, secret publication, security-control weakening, and legal acceptance remain denied.
+
+### Bounded dedicated wallet autonomy — 2026-08-01
+
+The dedicated agent wallet and owner wallet remain separate. Immutable platform policy versions default to `draft`; only authenticated owner action can activate or revoke them. Any active policy remains bounded by effect authorization, ledger/reserve, simulation, idempotency, pause/kill, and reconciliation controls. Receiving funds is permitted; withdrawals are governed transactions. Keys and raw signatures remain runtime-only.

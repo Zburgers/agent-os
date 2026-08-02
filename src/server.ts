@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { audit, controls, pool } from './db.ts';
-import { basicOwnerToken, bearerToken, createOwnerSession, expiredSessionCookie, getOwnerSession, ownerTokenMatches, parseCookies, revokeOwnerSession, runtimeTokensFromEnvironment, sessionCookie } from './auth.ts';
+import { basicOwnerToken, bearerToken, createOwnerSession, expiredSessionCookie, getOwnerSession, ownerTokenMatches, parseCookies, revenueTrackMutationAllowed, revokeOwnerSession, runtimeTokensFromEnvironment, sessionCookie } from './auth.ts';
 import { redactSecrets } from './redaction.ts';
 import { createEntity, isEntityName, listEntity, updateEntity } from './entities.ts';
 import { renderControlPlane, type ControlPlanePage } from './control-plane.ts';
@@ -19,15 +19,20 @@ import { applySystemControl } from './system-controls.ts';
 import { actorContext } from './actor.ts';
 import { authorizeEffect, claimAuthorizedEffect, recordExternalResult } from './effects.ts';
 import { CommercialOperationsService } from './commercial-operations.ts';
-import { buildDailyBriefData, renderDailyBrief } from './daily-brief.ts';
+import { buildDailyBriefData, renderDailyBrief, renderCodexOperatingBlockPage } from './daily-brief.ts';
 import { WalletService } from './wallet.ts';
 import { AgentWalletError, AgentWalletService } from './agent-wallet.ts';
 import { renderWalletPage } from './wallet-page.ts';
+import { renderRevenuePathsPage } from './revenue-paths-page.ts';
 import { PayPalService } from './paypal.ts';
 import { publicJavaScriptAsset } from './static-assets.ts';
 import { loadApprovalNotificationConfig } from './approval-notifications.ts';
 import { ChannelOutboxError, ChannelOutboxService } from './channel-outbox.ts';
 import { ReadinessEvidenceError, ReadinessEvidenceService } from './readiness.ts';
+import { AgentWalletTransactionError, AgentWalletTransactionService } from './agent-wallet-transactions.ts';
+import { RevenueTrackService, RevenueTrackValidationError } from './revenue-tracks.ts';
+import { codexOperatingBlockSnapshot, createManualCodexOccurrence, launchManualCodexOccurrence, setCodexSchedulePaused } from './codex-operating-block-control.ts';
+import { classifyTerminalCommand } from './hermes-effect-policy.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -51,6 +56,7 @@ const agentWallet = new AgentWalletService(pool);
 const paypal = new PayPalService(pool);
 const channelOutbox = new ChannelOutboxService(pool, { ownerTelegramIds: approvalNotificationConfig.ownerTelegramIds });
 const readinessEvidence = new ReadinessEvidenceService(pool);
+const revenueTracks = new RevenueTrackService(pool);
 type Auth = { kind: 'bearer' | 'basic' | 'session' | 'agent'; csrfToken?: string; sessionValue?: string } | null;
 
 function constantEqual(left: string, right: string) { const a = Buffer.from(left); const b = Buffer.from(right); return a.length === b.length && timingSafeEqual(a, b); }
@@ -84,8 +90,7 @@ function inferredEffectKind(toolName: string, args: Record<string, unknown>) {
   if (/browser/.test(lowered) && /(submit|click|type|upload|login)/.test(lowered)) return 'account_change';
   if (/terminal|shell|exec/.test(lowered)) {
     const command = String(args.command ?? args.cmd ?? '');
-    if (/\b(curl|wget)\b.*\s(-X|--request)\s*(POST|PUT|PATCH|DELETE)\b/i.test(command)) return 'account_change';
-    if (/\b(hermes\s+send|git\s+push|npm\s+publish|docker\s+(push|login)|stripe|razorpay)\b/i.test(command)) return 'deployment';
+    return classifyTerminalCommand(command);
   }
   return null;
 }
@@ -179,7 +184,7 @@ const server = createServer(async (req, res) => {
     const publicAsset = req.method === 'GET' ? publicJavaScriptAsset(url.pathname) : null;
     if (publicAsset) return respondBytes(res, 200, await readFile(new URL(`../public/${publicAsset}`, import.meta.url)), 'text/javascript; charset=utf-8');
     const auth = await authenticate(req.headers);
-    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/decisions', '/finance', '/jobs', '/health', '/daily-brief', '/wallet'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
+    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/decisions', '/finance', '/jobs', '/health', '/daily-brief', '/wallet', '/revenue-paths', '/codex-operating-block'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
     if (versioned && req.method !== 'GET' && !String(req.headers['idempotency-key'] ?? '').trim()) return respond(res, 400, { error: 'idempotency_key_required' });
     if (req.method === 'POST' && url.pathname === '/api/logout') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
@@ -286,7 +291,8 @@ const server = createServer(async (req, res) => {
       return respond(res, 200, { allowed, policy_code: policyCode, effect_kind: effectKind });
     }
     if (req.method === 'GET' && url.pathname === '/api/overview') return respond(res, 200, await overview());
-    if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID, await wallet.status(), await agentWallet.status()), 'text/html; charset=utf-8');
+    if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID, await wallet.status(), { ...(await agentWallet.status()), policyVersions: (await pool.query('SELECT id,version,status FROM agent_wallet_platform_policies ORDER BY version DESC LIMIT 20')).rows }), 'text/html; charset=utf-8');
+    if (req.method === 'GET' && url.pathname === '/revenue-paths') return respond(res, 200, renderRevenuePathsPage(auth.csrfToken), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/api/wallet/status') return respond(res, 200, await wallet.status());
     if (req.method === 'GET' && url.pathname === '/api/agent-wallet/status') return respond(res, 200, await agentWallet.status());
     if (req.method === 'POST' && url.pathname === '/api/agent-wallet/provision') {
@@ -301,6 +307,27 @@ const server = createServer(async (req, res) => {
         idempotencyKey: String(input.idempotency_key ?? req.headers['idempotency-key'] ?? ''),
       }));
     }
+    if (req.method === 'POST' && url.pathname === '/api/agent-wallet/transactions/broadcast') return respond(res, 403, { error: 'live_test_authorization_required' });
+    if (req.method === 'POST' && url.pathname === '/api/agent-wallet/transactions/simulate') {
+      if (!mutationAllowed(auth, req) || auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
+      const input = await body(req);
+      const policyRow = (await pool.query(`SELECT p.id,p.wallet_id,p.policy FROM agent_wallet_policy_current c JOIN agent_wallet_platform_policies p ON p.id=c.policy_id WHERE c.status='active' LIMIT 1`)).rows[0];
+      const policy = policyRow?.policy;
+      if (!policy) return respond(res, 403, { error: 'policy_not_active' });
+      const state = await controls();
+      const transactions = new AgentWalletTransactionService(pool, { sign: async () => { throw new AgentWalletTransactionError('signing_not_enabled'); } }, { broadcast: async () => { throw new AgentWalletTransactionError('broadcast_not_enabled'); } });
+      return respond(res, 201, await transactions.createDraft({ idempotencyKey: String(input.idempotency_key ?? req.headers['idempotency-key'] ?? ''), chainId: Number(input.chain_id), recipient: String(input.recipient ?? ''), valueMinor: Number(input.value_minor ?? 0), gasMinor: Number(input.gas_minor ?? 0) }, { policy: policy, policyId: policyRow.id, walletId: policyRow.wallet_id, lifecycleStatus: 'active', controls: state }));
+    }
+    if (req.method === 'POST' && url.pathname === '/api/agent-wallet/policies') {
+      if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
+      return respond(res, 201, await agentWallet.createPlatformPolicy(await body(req), { type: 'owner', id: 'owner' }));
+    }
+    const policyAction = url.pathname.match(/^\/api\/agent-wallet\/policies\/([0-9a-f-]+)\/(activate|revoke)$/);
+    if (req.method === 'POST' && policyAction) {
+      if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
+      const result = policyAction[2] === 'activate' ? await agentWallet.activatePlatformPolicy(policyAction[1], { type: 'owner', id: 'owner' }) : await agentWallet.revokePlatformPolicy(policyAction[1], { type: 'owner', id: 'owner' });
+      return respond(res, 200, result);
+    }
     if (req.method === 'GET' && url.pathname === '/api/paypal/status') return respond(res, 200, paypal.status());
     if (req.method === 'POST' && url.pathname === '/api/paypal/orders') { if(auth.kind!=='agent') return respond(res,403,{error:'agent_scope_required'}); return respond(res,201,await paypal.createOrder(await body(req))); }
     if (req.method === 'POST' && url.pathname === '/api/wallet/link-nonce') { if (!mutationAllowed(auth,req) || !ownerAuth(auth)) return respond(res,403,{error:'owner_authority_required'}); return respond(res,201,await wallet.nonce()); }
@@ -311,6 +338,21 @@ const server = createServer(async (req, res) => {
     const walletResult=url.pathname.match(/^\/api\/wallet\/intents\/([0-9a-f-]+)\/result$/); if(req.method==='POST'&&walletResult) { if(!mutationAllowed(auth,req)||!ownerAuth(auth)) return respond(res,403,{error:'owner_authority_required'}); return respond(res,200,await wallet.result(walletResult[1],await body(req))); }
     if (req.method === 'GET' && url.pathname === '/daily-brief') {
       return respond(res, 200, renderDailyBrief(await buildDailyBriefData(pool)), 'text/html; charset=utf-8');
+    }
+    if (req.method === 'GET' && url.pathname === '/codex-operating-block') return respond(res, 200, renderCodexOperatingBlockPage(await codexOperatingBlockSnapshot(pool), auth.csrfToken), 'text/html; charset=utf-8');
+    if (req.method === 'GET' && url.pathname === '/api/codex-operating-block') return respond(res, 200, await codexOperatingBlockSnapshot(pool));
+    if (req.method === 'POST' && url.pathname === '/api/codex-operating-block/run-now') {
+      if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
+      const result = await createManualCodexOccurrence(pool);
+      if (result.status === 'queued') {
+        await launchManualCodexOccurrence({ database: pool, occurrence: result });
+      }
+      return respond(res, result.status === 'conflict' ? 409 : 202, result);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/codex-operating-block/schedule-pause') {
+      if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
+      const input = await body(req);
+      return respond(res, 200, await setCodexSchedulePaused(pool, input.paused === true));
     }
     if (req.method === 'GET' && ['/assets/daily-brief-hero.png', '/assets/daily-brief-research.png'].includes(url.pathname)) {
       const filename = url.pathname.endsWith('hero.png') ? 'daily-brief-hero.png' : 'daily-brief-research.png';
@@ -334,6 +376,28 @@ const server = createServer(async (req, res) => {
       const input = await body(req);
       const record = await approvalRequests.request({ actionType: input.action_type as string, requestedAction: input.requested_action as string, reason: input.reason as string, risk: input.risk as string, recommendation: input.recommendation as string, idempotencyKey: input.idempotency_key as string, expiresAt: input.expires_at as string, costMinor: input.cost_minor as number | undefined, maximumExposureMinor: input.maximum_exposure_minor as number | undefined, currency: input.currency as string | undefined, alternatives: input.alternatives as string[] | undefined, evidence: input.evidence as unknown[] | undefined, defaultAction: input.default_action as string | undefined, objectiveId: input.objective_id as string | undefined, ventureId: input.venture_id as string | undefined, experimentId: input.experiment_id as string | undefined, ticketId: input.ticket_id as string | undefined, blocker: input.blocker as string | undefined }, actorFor(auth));
       return respond(res, record.duplicate ? 200 : 201, record);
+    }
+    const revenueTrackRead = url.pathname.match(/^\/api\/revenue-tracks(?:\/([0-9a-f-]+))?$/);
+    const revenueTrackAction = url.pathname.match(/^\/api\/revenue-tracks\/([0-9a-f-]+)\/(reparent|archive)$/);
+    if (req.method === 'GET' && revenueTrackRead) {
+      if (revenueTrackRead[1]) {
+        const record = await revenueTracks.detail(revenueTrackRead[1]);
+        return record ? respond(res, 200, record) : respond(res, 404, { error: 'not_found' });
+      }
+      return respond(res, 200, await revenueTracks.listTree());
+    }
+    if (((req.method === 'POST' && revenueTrackRead && !revenueTrackRead[1]) || (req.method === 'PATCH' && revenueTrackRead && revenueTrackRead[1]) || (req.method === 'POST' && revenueTrackAction))) {
+      const key = typeof req.headers['idempotency-key'] === 'string' ? req.headers['idempotency-key'] : undefined;
+      if (!revenueTrackMutationAllowed(auth.kind, key)) return respond(res, auth.kind === 'agent' ? 400 : 403, { error: auth.kind === 'agent' ? 'idempotency_key_required' : 'agent_scope_required' });
+      const actor = { type: 'agent' as const, id: 'goofy-runtime' };
+      const input = await body(req);
+      if (revenueTrackAction) {
+        if (revenueTrackAction[2] === 'reparent') return respond(res, 200, await revenueTracks.reparent(revenueTrackAction[1], typeof input.parent_track_id === 'string' ? input.parent_track_id : null, actor, key));
+        if (input.status !== 'completed' && input.status !== 'killed') return respond(res, 400, { error: 'invalid_archive_status' });
+        return respond(res, 200, await revenueTracks.archive(revenueTrackAction[1], input.status, actor, key));
+      }
+      if (req.method === 'POST') return respond(res, 201, await revenueTracks.create({ name: String(input.name ?? ''), parentTrackId: typeof input.parent_track_id === 'string' ? input.parent_track_id : null, ownerKind: input.owner_kind as any, status: input.status as any, strategy: input.strategy as string | undefined, targetCustomer: input.target_customer as string | undefined, monetizationModel: input.monetization_model as string | undefined, stage: input.stage as string | undefined, confidence: input.confidence as number | null | undefined, priority: input.priority as number | undefined, expectedValue: input.expected_value as number | string | null | undefined, plannedCostMinor: input.planned_cost_minor as number | undefined, currentAction: input.current_action as string | null | undefined, nextAction: input.next_action as string | null | undefined, reviewDate: input.review_date as string | null | undefined, successCriteria: input.success_criteria as string | null | undefined, killCriteria: input.kill_criteria as string | null | undefined }, actor, key));
+      return respond(res, 200, await revenueTracks.update(revenueTrackRead[1]!, { name: input.name as string | undefined, ownerKind: input.owner_kind as any, status: input.status as any, strategy: input.strategy as string | undefined, targetCustomer: input.target_customer as string | undefined, monetizationModel: input.monetization_model as string | undefined, stage: input.stage as string | undefined, confidence: input.confidence as number | null | undefined, priority: input.priority as number | undefined, expectedValue: input.expected_value as number | string | null | undefined, plannedCostMinor: input.planned_cost_minor as number | undefined, currentAction: input.current_action as string | null | undefined, nextAction: input.next_action as string | null | undefined, reviewDate: input.review_date as string | null | undefined, successCriteria: input.success_criteria as string | null | undefined, killCriteria: input.kill_criteria as string | null | undefined }, actor, key));
     }
     if (req.method === "GET" && url.pathname === "/api/tickets") return respond(res, 200, await listTickets({ status: url.searchParams.get("status") ?? undefined, search: url.searchParams.get("search") ?? undefined, limit: Number(url.searchParams.get("limit") ?? 50), offset: Number(url.searchParams.get("offset") ?? 0) }));
     const readPage = () => ({ status: url.searchParams.get("status") ?? undefined, search: url.searchParams.get("search") ?? undefined, eventType: url.searchParams.get("event_type") ?? undefined, source: url.searchParams.get("source") ?? undefined, dateFrom: url.searchParams.get("date_from") ?? undefined, dateTo: url.searchParams.get("date_to") ?? undefined, limit: Number(url.searchParams.get("limit") ?? 50), offset: Number(url.searchParams.get("offset") ?? 0) });
@@ -432,6 +496,7 @@ const server = createServer(async (req, res) => {
     return respond(res, 404, { error: 'not_found' });
   } catch (error) {
     if (error instanceof AgentWalletError) return respond(res, 400, { error: error.code });
+    if (error instanceof RevenueTrackValidationError) return respond(res, 400, { error: error.reason });
     if (error instanceof ChannelOutboxError || error instanceof ReadinessEvidenceError) return respond(res, 409, { error: error.code });
     const message = error instanceof Error ? error.message : 'unknown';
     console.error('request_failed', redactSecrets(message, [token, process.env.DATABASE_URL ?? '']));

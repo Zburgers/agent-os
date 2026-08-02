@@ -36,6 +36,14 @@ Mem0 provider. Agent OS integrates them through a mode-0600 shared credential,
 loopback-only API, native MCP registration, and a fail-closed tool hook; it does
 not install duplicate infrastructure. See `docs/HERMES_INTEGRATION.md`.
 
+## Dated Git autonomy amendment (2026-08-01)
+
+Routine Git operations are allowed only for authenticated repository work with secret scanning, idempotency, and audit/effect evidence. Ordinary branches, commits, pushes, tags, pull requests, and memory/document changes need no per-operation owner approval. Default-branch force-push or deletion, repository deletion, transfer or visibility changes, secret publication, security-control weakening, and legal acceptance remain denied.
+
+## Bounded dedicated wallet amendment — 2026-08-01
+
+The owner-linked MetaMask and dedicated Goofy wallet are separate trust boundaries. Policy records are immutable versions, default `draft`, and owner-activated/revoked only. Evaluation is independent of model instructions and denies unknown dimensions. Keys and raw signatures never enter PostgreSQL, logs, dashboard, Telegram, memory, or source control; receiving is allowed, while withdrawals require governed transaction controls.
+
 Controlled end-to-end delivery-receipt acceptance remains a release evidence
 gap until the exact deployment and owner-notification policy are approved. The
 Telegram readiness gate must remain non-passing until that live canary succeeds.

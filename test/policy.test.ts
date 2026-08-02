@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { evaluateAction } from '../src/policy.ts';
+import { readFileSync } from 'node:fs';
 
 test('kill switch rejects every new side effect while preserving read-only access', () => {
   const killed = { paused: false, killed: true };
@@ -18,4 +19,25 @@ test('pause rejects autonomous jobs without disabling read-only recovery', () =>
     reason: 'system_paused',
   });
   assert.deepEqual(evaluateAction(paused, { kind: 'read' }), { allowed: true });
+});
+
+test('dated Git autonomy amendment permits routine repository work and denies excluded operations', () => {
+  const documents = ['AUTONOMOUS_REVENUE_MISSION.md', 'AGENT_CONSTITUTION.md', 'OPERATING_POLICY.md', 'APPROVAL_MATRIX.md', 'SECURITY_MODEL.md', 'integrations/hermes/skills/os/SKILL.md'];
+  for (const document of documents) {
+    const text = readFileSync(document, 'utf8');
+    assert.match(text, /2026-08-01/);
+    assert.match(text, /routine Git|routine branch|ordinary branch|ordinary repository/i);
+    assert.match(text, /force-push|repository deletion|legal acceptance/i);
+  }
+});
+
+test('wallet governance amendment keeps dedicated and owner wallets separate and bounded', () => {
+  for (const document of ['AUTONOMOUS_REVENUE_MISSION.md', 'AGENT_CONSTITUTION.md', 'FINANCIAL_POLICY.md', 'APPROVAL_MATRIX.md', 'SECURITY_MODEL.md', 'MEMORY_POLICY.md', 'docs/WALLET_PAYPAL_TAILSCALE.md', 'integrations/hermes/skills/os/SKILL.md']) {
+    const text = readFileSync(document, 'utf8');
+    assert.match(text, /2026-08-01/);
+    assert.match(text, /dedicated.*wallet|agent wallet/i);
+    assert.match(text, /owner.*wallet|MetaMask/i);
+    assert.match(text, /draft|revok|policy/i);
+    assert.doesNotMatch(text, /COMPLETE autonomy/i);
+  }
 });

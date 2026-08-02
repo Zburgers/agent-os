@@ -127,3 +127,11 @@ evidence. Treat curated Markdown mutation as a durable, audited operation.
 
 For pause, resume, or kill, require the owner to use the authenticated dashboard
 or Telegram control and confirm the destructive action. Do not simulate success.
+
+## Dated Git autonomy amendment (2026-08-01)
+
+Routine authenticated Git operations in the private repository are agent-authorized: ordinary branch, commit, push, tag, pull request, and audited memory/document changes require secret scanning, idempotency, and audit/effect evidence, not per-operation owner approval. Default-branch force-push or deletion, repository deletion, transfer or visibility changes, secret publication, security-control weakening, and legal acceptance remain denied.
+
+## Bounded dedicated wallet autonomy — 2026-08-01
+
+The dedicated Goofy wallet is separate from owner-linked MetaMask. Platform policy versions begin as `draft` and only an authenticated owner may activate or revoke them. In-policy operations still require immutable policy evaluation, effect/ledger/reserve, simulation, idempotency, pause/kill, nonce/fee, and reconciliation controls. Receiving funds is allowed; withdrawals use governed transactions. Never expose or persist private keys or raw signatures.

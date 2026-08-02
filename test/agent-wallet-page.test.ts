@@ -20,3 +20,9 @@ test('wallet page exposes dedicated agent wallet policy and redacted signing act
   for (const value of ['Dedicated Goofy wallet', '0x1111111111111111111111111111111111111111', 'bountybook', 'personal_sign', 'protected_runtime_only']) assert.ok(html.includes(value), value);
   assert.doesNotMatch(html, /0x[0-9a-f]{128,}/i);
 });
+
+test('wallet page exposes draft policy controls, immutable versions, revocation, and governed withdrawals', () => {
+  const html = renderWalletPage('csrf', undefined, { link: null, balance_wei: null, intents: [] }, { wallet: { address: '0x1111111111111111111111111111111111111111', status: 'active', allowed_chain_ids: [8453], policy: {} }, policyVersions: [{ version: 1, status: 'draft' }] });
+  for (const value of ['Create policy draft', 'Activate', 'Revoke', 'immutable version', 'Owner-linked MetaMask', 'receiving funds', 'governed withdrawal']) assert.match(html, new RegExp(value, 'i'));
+  assert.doesNotMatch(html, /COMPLETE autonomy/i);
+});

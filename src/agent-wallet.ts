@@ -8,6 +8,30 @@ export class AgentWalletError extends Error {
   constructor(code: string) { super(code); this.code = code; }
 }
 
+export class WalletPolicyError extends Error { readonly code: string; constructor(code: string) { super(code); this.code = code; } }
+export type WalletPolicy = { expiresAt?: string | null; chainIds: number[]; providers: string[]; recipientAllowlist: string[]; contractAllowlist: string[]; messageTypes: string[]; selectors: string[]; maxTransactionValueMinor: number; maxGasMinor: number; dailyBudgetMinor: number; totalBudgetMinor: number };
+export type WalletPolicyRequest = { chainId?: number; provider?: string; recipient?: string; contract?: string; messageType?: string; selector?: string; valueMinor?: number; gasMinor?: number; dailyUsedMinor?: number; totalUsedMinor?: number; now?: Date; [key: string]: unknown };
+const POLICY_DIMENSIONS = new Set(['chainId','provider','recipient','contract','messageType','selector','valueMinor','gasMinor','dailyUsedMinor','totalUsedMinor','now']);
+export function evaluateWalletPolicy(policy: WalletPolicy, request: WalletPolicyRequest, lifecycle: { lifecycleStatus?: 'draft' | 'active' | 'revoked' | 'superseded' } = {}) {
+  for (const key of Object.keys(request)) if (!POLICY_DIMENSIONS.has(key)) throw new WalletPolicyError('unknown_policy_dimension');
+  if ((lifecycle.lifecycleStatus ?? 'active') !== 'active') return { allowed: false, code: 'policy_not_active' };
+  if (policy.expiresAt && new Date(policy.expiresAt).getTime() <= (request.now ?? new Date()).getTime()) return { allowed: false, code: 'policy_expired' };
+  const checks: Array<[boolean, string]> = [
+    [request.chainId === undefined || policy.chainIds.includes(request.chainId), 'chain_not_allowed'],
+    [request.provider === undefined || policy.providers.includes(request.provider), 'provider_not_allowed'],
+    [request.recipient === undefined || policy.recipientAllowlist.includes(request.recipient), 'recipient_not_allowed'],
+    [request.contract === undefined || policy.contractAllowlist.includes(request.contract), 'contract_not_allowed'],
+    [request.messageType === undefined || policy.messageTypes.includes(request.messageType), 'message_type_not_allowed'],
+    [request.selector === undefined || policy.selectors.includes(request.selector), 'selector_not_allowed'],
+    [request.valueMinor === undefined || request.valueMinor <= policy.maxTransactionValueMinor, 'transaction_value_exceeded'],
+    [request.gasMinor === undefined || request.gasMinor <= policy.maxGasMinor, 'gas_exceeded'],
+    [request.dailyUsedMinor === undefined || request.dailyUsedMinor + (request.valueMinor ?? 0) + (request.gasMinor ?? 0) <= policy.dailyBudgetMinor, 'daily_budget_exceeded'],
+    [request.totalUsedMinor === undefined || request.totalUsedMinor + (request.valueMinor ?? 0) + (request.gasMinor ?? 0) <= policy.totalBudgetMinor, 'total_budget_exceeded'],
+  ];
+  const failed = checks.find(([allowed]) => !allowed);
+  return failed ? { allowed: false, code: failed[1] } : { allowed: true as const };
+}
+
 const DEFAULT_KEY_PATH = '/home/goofy/.hermes/goofy-agent-wallet.key';
 const BOUNTYBOOK_NONCE = /^bounty:[0-9a-f]{32}:\d{10}$/;
 const BASE_USDC = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';
@@ -66,6 +90,45 @@ export class AgentWalletService {
   private database: any;
   private keyStore: FileAgentWalletKeyStore;
   constructor(database: any, keyStore = new FileAgentWalletKeyStore()) { this.database = database; this.keyStore = keyStore; }
+
+  async createPlatformPolicy(input: Partial<WalletPolicy>, actor: { type: string; id: string }) {
+    if (actor.type !== 'owner') throw new AgentWalletError('owner_authority_required');
+    const client = await this.database.connect();
+    try {
+      await client.query('BEGIN');
+      const wallet = (await client.query("SELECT id FROM agent_wallets WHERE status='active' FOR UPDATE")).rows[0];
+      if (!wallet) throw new AgentWalletError('agent_wallet_not_provisioned');
+      const next = (await client.query('SELECT COALESCE(MAX(version),0)+1 AS version FROM agent_wallet_platform_policies WHERE wallet_id=$1', [wallet.id])).rows[0].version;
+      const policy = { expiresAt: input.expiresAt ?? null, chainIds: input.chainIds ?? [], providers: input.providers ?? [], recipientAllowlist: input.recipientAllowlist ?? [], contractAllowlist: input.contractAllowlist ?? [], messageTypes: input.messageTypes ?? [], selectors: input.selectors ?? [], maxTransactionValueMinor: input.maxTransactionValueMinor ?? 0, maxGasMinor: input.maxGasMinor ?? 0, dailyBudgetMinor: input.dailyBudgetMinor ?? 0, totalBudgetMinor: input.totalBudgetMinor ?? 0 };
+      const record = (await client.query(`INSERT INTO agent_wallet_platform_policies(wallet_id,version,status,policy,created_by) VALUES($1,$2,'draft',$3,$4) RETURNING id,status,version,policy`, [wallet.id, next, JSON.stringify(policy), actor.id])).rows[0];
+      await client.query("INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload) VALUES('owner',$1,'agent_wallet_policy_created','agent_wallet_platform_policy',$2,$3)", [actor.id, record.id, JSON.stringify({ wallet_id: wallet.id, version: next, status: 'draft' })]);
+      await client.query('COMMIT');
+      return record;
+    } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+  }
+
+  async activatePlatformPolicy(policyId: string, actor: { type: string; id: string }) { return this.transitionPlatformPolicy(policyId, 'active', actor); }
+  async revokePlatformPolicy(policyId: string, actor: { type: string; id: string }) { return this.transitionPlatformPolicy(policyId, 'revoked', actor); }
+  private async transitionPlatformPolicy(policyId: string, status: 'active' | 'revoked', actor: { type: string; id: string }) {
+    if (actor.type !== 'owner') throw new AgentWalletError('owner_authority_required');
+    const client = await this.database.connect();
+    try {
+      await client.query('BEGIN');
+      const record = (await client.query('SELECT id,wallet_id,status,policy FROM agent_wallet_platform_policies WHERE id=$1 FOR UPDATE', [policyId])).rows[0];
+      if (!record || (status === 'active' && record.status !== 'draft') || (status === 'revoked' && record.status !== 'active')) throw new AgentWalletError('invalid_policy_transition');
+      await client.query('SELECT id FROM agent_wallets WHERE id=$1 FOR UPDATE', [record.wallet_id]);
+      if (status === 'active') {
+        const current = (await client.query("SELECT policy_id FROM agent_wallet_policy_current WHERE wallet_id=$1 AND status='active' FOR UPDATE", [record.wallet_id])).rows[0];
+        if (current) throw new AgentWalletError('active_policy_already_exists');
+      }
+      const nextVersion = (await client.query('SELECT COALESCE(MAX(version),0)+1 AS version FROM agent_wallet_platform_policies WHERE wallet_id=$1', [record.wallet_id])).rows[0].version;
+      const updated = (await client.query(`INSERT INTO agent_wallet_platform_policies(wallet_id,version,status,policy,supersedes_id,created_by,activated_by,activated_at,revoked_by,revoked_at) VALUES($1,$2,$3,$4,$5,$6,CASE WHEN $3='active' THEN $7 END,CASE WHEN $3='active' THEN now() END,CASE WHEN $3='revoked' THEN $7 END,CASE WHEN $3='revoked' THEN now() END) RETURNING id,status,version,policy,wallet_id`, [record.wallet_id, nextVersion, status, JSON.stringify(record.policy), policyId, actor.id, actor.id])).rows[0];
+      if (status === 'active') await client.query('INSERT INTO agent_wallet_policy_current(wallet_id,policy_id,status) VALUES($1,$2,\'active\')', [record.wallet_id, updated.id]);
+      else await client.query("DELETE FROM agent_wallet_policy_current WHERE wallet_id=$1 AND policy_id=$2 AND status='active'", [record.wallet_id, policyId]);
+      await client.query('INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload) VALUES($1,$2,$3,$4,$5,$6)', ['owner', actor.id, `agent_wallet_policy_${status}`, 'agent_wallet_platform_policy', updated.id, JSON.stringify({ supersedes_id: policyId, effective_status: status })]);
+      await client.query('COMMIT'); return updated;
+    } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
+  }
 
   async provision(actorId = 'owner') {
     const publicWallet = await this.keyStore.provision();

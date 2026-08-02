@@ -238,7 +238,7 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   const approvalPage = await listApprovals({ status: 'pending', search: 'integration request', limit: 5, offset: 0 });
   assert.equal(approvalPage.total, 1); assert.equal(approvalPage.items[0].ticket_id, ticket.id);
 
-  const job = await pool.query<{ id: string }>("INSERT INTO jobs(name,purpose,action_kind,idempotency_key,status,related_ticket_id) VALUES('integration job','prove job browser records','job','integration-job-1','queued',$1) RETURNING id", [ticket.id]);
+  const job = await pool.query<{ id: string }>("INSERT INTO jobs(name,purpose,action_kind,idempotency_key,status,next_run_at,related_ticket_id) VALUES('integration job','prove job browser records','job','integration-job-1','queued','2000-01-01T00:00:00Z',$1) RETURNING id", [ticket.id]);
   const run = await pool.query<{ id: string }>("INSERT INTO job_runs(job_id,status,attempt,worker_id,output) VALUES($1,'completed',1,'integration-worker',$2) RETURNING id", [job.rows[0].id, JSON.stringify({ ok: true })]);
   await pool.query("INSERT INTO job_logs(run_id,level,message,payload) VALUES($1,'info','integration log',$2)", [run.rows[0].id, JSON.stringify({ source: 'integration' })]);
   const jobPage = await listJobs({ status: 'queued', search: 'integration job', limit: 5, offset: 0 });
@@ -656,4 +656,162 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
   assert.equal((await pool.query('SELECT state FROM effect_intents WHERE id=$1', [cancellableEffect])).rows[0].state, 'cancelled');
   assert.equal((await pool.query('SELECT status FROM jobs WHERE id=$1', [killJob.rows[0].id])).rows[0].status, 'paused');
   assert.equal((await pool.query("SELECT count(*) FROM audit_events WHERE event_type='control_kill'")).rows[0].count, '1');
+});
+
+test('revenue tracks support hierarchy, linked records, and immutable audit evidence', { skip: !enabled }, async () => {
+  const { pool } = await import('../src/db.ts');
+  const parent = await pool.query<{ id: string }>(
+    `INSERT INTO revenue_tracks(name,stage,owner_kind,status) VALUES('Integration parent','discovery','agent','active') RETURNING id`,
+  );
+  const child = await pool.query<{ id: string }>(
+    `INSERT INTO revenue_tracks(parent_track_id,name,stage,owner_kind,status) VALUES($1,'Integration child','delivery','joint','proposed') RETURNING id`,
+    [parent.rows[0].id],
+  );
+  const venture = await pool.query<{ id: string }>(
+    `INSERT INTO ventures(name,thesis,target_user,problem,offer,revenue_model,distribution_strategy)
+     VALUES('Revenue track integration venture','thesis','buyer','problem','offer','service','direct') RETURNING id`,
+  );
+  await pool.query('UPDATE ventures SET track_id=$1 WHERE id=$2', [child.rows[0].id, venture.rows[0].id]);
+  await assert.rejects(
+    pool.query('UPDATE revenue_tracks SET parent_track_id=$1 WHERE id=$2', [child.rows[0].id, parent.rows[0].id]),
+    /revenue_tracks_no_cycle/,
+  );
+  const links = await pool.query<{ track_id: string }>('SELECT track_id FROM ventures WHERE id=$1', [venture.rows[0].id]);
+  assert.equal(links.rows[0].track_id, child.rows[0].id);
+  const audit = await pool.query<{ count: string }>(
+    `SELECT count(*) FROM pg_trigger WHERE tgrelid='revenue_tracks'::regclass AND tgname='revenue_tracks_audit_backstop' AND NOT tgisinternal`,
+  );
+  assert.equal(audit.rows[0].count, '1');
+});
+
+test('Codex operating blocks persist exact thread, deduplicated occurrences, terminal evidence, and redacted summaries', { skip: !enabled }, async () => {
+  const { pool } = await import('../src/db.ts');
+  const config = await pool.query<{ thread_id: string }>('SELECT thread_id FROM codex_operating_block_config WHERE singleton=true');
+  assert.equal(config.rows[0].thread_id, '019faa3e-b7af-7e13-8335-4f651c989e27');
+  const occurrence = await pool.query<{ id: string }>(`INSERT INTO codex_operating_block_occurrences(occurrence_key,intended_date,trigger_kind) VALUES('integration-codex-occurrence','2026-08-01','scheduled') RETURNING id`);
+  await assert.rejects(pool.query(`INSERT INTO codex_operating_block_occurrences(occurrence_key,intended_date,trigger_kind) VALUES('integration-codex-occurrence','2026-08-01','scheduled')`), /codex_occurrence_key_unique/);
+  const run = await pool.query<{ id: string }>(`INSERT INTO codex_operating_block_runs(occurrence_id,thread_id,status,exit_reason,summary,log_checksum) VALUES($1,'019faa3e-b7af-7e13-8335-4f651c989e27','timeboxed','graceful_timeout','redacted summary',$2) RETURNING id`, [occurrence.rows[0].id, 'a'.repeat(64)]);
+  assert.ok(run.rows[0].id);
+  await assert.rejects(pool.query('UPDATE codex_operating_block_runs SET summary=\'changed\' WHERE id=$1', [run.rows[0].id]), /append-only table/);
+});
+
+test('dedicated wallet platform policies are immutable, draft by default, and linked to operations', { skip: !enabled }, async () => {
+  const { pool } = await import('../src/db.ts');
+  const wallet = await pool.query<{ id: string }>(`INSERT INTO agent_wallets(address,key_backend,key_reference,status) VALUES('0x1111111111111111111111111111111111111111','protected_file','integration-policy','revoked') RETURNING id`);
+  const policy = await pool.query<{ id: string; status: string }>(`INSERT INTO agent_wallet_platform_policies(wallet_id,version,policy,created_by) VALUES($1,1,'{"chainIds":[8453],"maxTransactionValueMinor":0}','integration-owner') RETURNING id,status`, [wallet.rows[0].id]);
+  assert.equal(policy.rows[0].status, 'draft');
+  const operation = await pool.query<{ id: string }>(`INSERT INTO agent_wallet_operations(wallet_id,provider,operation_type,outcome,idempotency_key,policy_id) VALUES($1,'bountybook','transaction_sign','denied','integration-policy-operation',$2) RETURNING id`, [wallet.rows[0].id, policy.rows[0].id]);
+  assert.ok(operation.rows[0].id);
+  await assert.rejects(pool.query(`UPDATE agent_wallet_platform_policies SET status='active' WHERE id=$1`, [policy.rows[0].id]), /append-only table/);
+});
+
+test('dedicated wallet policy lifecycle permits simulation only while the relational pointer is active', { skip: !enabled }, async () => {
+  const { pool } = await import('../src/db.ts');
+  const { AgentWalletService, evaluateWalletPolicy } = await import('../src/agent-wallet.ts');
+  const wallet = await pool.query<{ id: string }>(`INSERT INTO agent_wallets(address,key_backend,key_reference,status) VALUES('0x2222222222222222222222222222222222222222','protected_file','lifecycle-policy','active') RETURNING id`);
+  const service = new AgentWalletService(pool, {} as never);
+  const draft = await service.createPlatformPolicy({ chainIds: [8453], recipientAllowlist: ['0xrecipient'], maxTransactionValueMinor: 100, maxGasMinor: 10, dailyBudgetMinor: 100, totalBudgetMinor: 100 }, { type: 'owner', id: 'integration-owner' });
+  assert.equal(evaluateWalletPolicy(draft.policy, { chainId: 8453, recipient: '0xrecipient', valueMinor: 1, gasMinor: 1 }, { lifecycleStatus: 'draft' }).code, 'policy_not_active');
+  const active = await service.activatePlatformPolicy(draft.id, { type: 'owner', id: 'integration-owner' });
+  assert.equal(evaluateWalletPolicy(active.policy, { chainId: 8453, recipient: '0xrecipient', valueMinor: 1, gasMinor: 1 }, { lifecycleStatus: 'active' }).allowed, true);
+  await service.revokePlatformPolicy(active.id, { type: 'owner', id: 'integration-owner' });
+  const current = await pool.query('SELECT * FROM agent_wallet_policy_current WHERE wallet_id=$1', [wallet.rows[0].id]);
+  assert.equal(current.rowCount, 0);
+  const replacement = await service.createPlatformPolicy({ chainIds: [8453] }, { type: 'owner', id: 'integration-owner' });
+  const replacementActive = await service.activatePlatformPolicy(replacement.id, { type: 'owner', id: 'integration-owner' });
+  assert.equal(replacementActive.status, 'active');
+});
+
+
+test('a clean database migrates through the NEAR bid monitor without a pre-existing ticket', { skip: !enabled }, async () => {
+  const { createHash, randomBytes } = await import('node:crypto');
+  const { execFile } = await import('node:child_process');
+  const { readdir, readFile } = await import('node:fs/promises');
+  const { promisify } = await import('node:util');
+  const pg = (await import('pg')).default;
+  const { pool } = await import('../src/db.ts');
+  const databaseUrl = process.env.DATABASE_URL;
+  assert.ok(databaseUrl, 'DATABASE_URL is required');
+
+  const schema = `migration_upgrade_${process.pid}_${randomBytes(6).toString('hex')}`;
+  const isolatedUrl = new URL(databaseUrl);
+  isolatedUrl.searchParams.set('options', `-csearch_path=${schema},public`);
+  await pool.query(`CREATE SCHEMA "${schema}"`);
+  const isolatedPool = new pg.Pool({ connectionString: isolatedUrl.toString() });
+
+  try {
+    const migrationDirectory = new URL('../db/migrations/', import.meta.url);
+    const migrationFiles = (await readdir(migrationDirectory))
+      .filter((file) => file.endsWith('.sql'))
+      .sort();
+    const original021Checksum = '75945bfb81f9adfd0a350ac239e5b9e9dffbddc970516f3d50bca124997c78c7';
+    const original021 = await readFile(new URL('021_pr_review_remediations.sql', migrationDirectory), 'utf8');
+    assert.equal(createHash('sha256').update(original021).digest('hex'), original021Checksum);
+
+    const client = await isolatedPool.connect();
+    try {
+      await client.query('CREATE TABLE schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now(), checksum text)');
+      for (const file of migrationFiles.filter((name) => name <= '021_pr_review_remediations.sql')) {
+        const sql = await readFile(new URL(file, migrationDirectory), 'utf8');
+        const checksum = createHash('sha256').update(sql).digest('hex');
+        await client.query('BEGIN');
+        try {
+          await client.query(sql);
+          await client.query('INSERT INTO schema_migrations(version,checksum) VALUES ($1,$2)', [file, checksum]);
+          await client.query('COMMIT');
+        } catch (error) {
+          await client.query('ROLLBACK');
+          throw error;
+        }
+      }
+    } finally {
+      client.release();
+    }
+
+    assert.equal((await isolatedPool.query(
+      "SELECT checksum FROM schema_migrations WHERE version='021_pr_review_remediations.sql'",
+    )).rows[0].checksum, original021Checksum);
+
+    await promisify(execFile)(
+      process.execPath,
+      ['--experimental-strip-types', 'src/migrate.ts'],
+      {
+        cwd: new URL('..', import.meta.url),
+        env: { ...process.env, DATABASE_URL: isolatedUrl.toString() },
+      },
+    );
+
+    assert.equal((await isolatedPool.query(
+      "SELECT count(*) FROM schema_migrations WHERE version='022_agent_wallet_transaction_simulation_type.sql'",
+    )).rows[0].count, '1');
+    assert.equal((await isolatedPool.query(
+      "SELECT checksum FROM schema_migrations WHERE version='021_pr_review_remediations.sql'",
+    )).rows[0].checksum, original021Checksum);
+
+    assert.equal((await isolatedPool.query(
+      "SELECT count(*) FROM jobs WHERE idempotency_key='near-bid-monitor:09d31f07-ca9f-4039-8e78-992b6efe5c29'",
+    )).rows[0].count, '1');
+
+    const wallet = await isolatedPool.query<{ id: string }>(
+      `INSERT INTO agent_wallets(address,key_backend,key_reference,status)
+       VALUES('0x3333333333333333333333333333333333333333','protected_file','migration-upgrade','revoked') RETURNING id`,
+    );
+    const accepted = await isolatedPool.query<{ id: string }>(
+      `INSERT INTO agent_wallet_operations(wallet_id,provider,operation_type,outcome,idempotency_key)
+       VALUES($1,'bountybook','transaction_simulation','simulated','migration-upgrade-accepted') RETURNING id`,
+      [wallet.rows[0].id],
+    );
+    assert.ok(accepted.rows[0].id);
+    await assert.rejects(
+      isolatedPool.query(
+        `INSERT INTO agent_wallet_operations(wallet_id,provider,operation_type,outcome,idempotency_key)
+         VALUES($1,'bountybook','unsupported_operation','denied','migration-upgrade-rejected')`,
+        [wallet.rows[0].id],
+      ),
+      /agent_wallet_operations_operation_type_check/,
+    );
+  } finally {
+    await isolatedPool.end();
+    await pool.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+  }
 });
