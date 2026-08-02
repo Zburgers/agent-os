@@ -28,6 +28,7 @@ import { publicJavaScriptAsset } from './static-assets.ts';
 import { loadApprovalNotificationConfig } from './approval-notifications.ts';
 import { ChannelOutboxError, ChannelOutboxService } from './channel-outbox.ts';
 import { ReadinessEvidenceError, ReadinessEvidenceService } from './readiness.ts';
+import { classifyProtectedGitCommand } from './hermes-effect-policy.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -85,7 +86,8 @@ function inferredEffectKind(toolName: string, args: Record<string, unknown>) {
   if (/terminal|shell|exec/.test(lowered)) {
     const command = String(args.command ?? args.cmd ?? '');
     if (/\b(curl|wget)\b.*\s(-X|--request)\s*(POST|PUT|PATCH|DELETE)\b/i.test(command)) return 'account_change';
-    if (/\b(hermes\s+send|git\s+push|npm\s+publish|docker\s+(push|login)|stripe|razorpay)\b/i.test(command)) return 'deployment';
+    if (/\b(hermes\s+send|npm\s+publish|docker\s+(push|login)|stripe|razorpay)\b/i.test(command)) return 'deployment';
+    if (classifyProtectedGitCommand(command)) return 'deployment';
   }
   return null;
 }
