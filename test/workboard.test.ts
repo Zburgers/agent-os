@@ -11,17 +11,22 @@ test('legacy work board exposes the shared ticket API controls and durable state
 
 test('command centre provides concise summaries and links to dedicated record pages', () => {
   const html = renderDashboard({ financial: {} }, 'csrf-test');
-  for (const value of ['/work', '/commercial', '/activity', '/approvals', '/finance', '/jobs', '/health', 'Latest meaningful activity', 'Owner attention required', 'data-page="command"']) assert.ok(html.includes(value), value);
+  for (const value of ['/work', '/commercial', '/activity', '/approvals', '/decisions', '/finance', '/jobs', '/health', 'Latest meaningful activity', 'Owner attention required', 'data-page="command"']) assert.ok(html.includes(value), value);
   assert.ok(!html.includes('Operations records'));
 });
 
 test('each owner control-plane route has a title, description, and active navigation item', () => {
-  for (const [page, title] of [['work', 'Work'], ['commercial', 'Commercial'], ['activity', 'Activity'], ['approvals', 'Approvals'], ['finance', 'Finance'], ['jobs', 'Jobs'], ['health', 'Health']] as const) {
+  for (const [page, title] of [['work', 'Work'], ['commercial', 'Commercial'], ['activity', 'Activity'], ['approvals', 'Approvals'], ['decisions', 'Decisions'], ['finance', 'Finance'], ['jobs', 'Jobs'], ['health', 'Health']] as const) {
     const html = renderControlPlane(page, {}, 'csrf-test');
     assert.match(html, new RegExp(`<h1>${title}</h1>`));
     assert.match(html, new RegExp(`data-page="${page}"`));
     assert.match(html, /aria-current="page"/);
   }
+});
+
+test('decisions route renders the durable business decision journal', () => {
+  const html = renderControlPlane('decisions', {}, 'csrf-test');
+  for (const value of ['loadDecisions', '/api/decisions?', 'Decision journal', 'Selected option', 'Expected result', 'Evidence']) assert.ok(html.includes(value), value);
 });
 
 test('commercial route renders the full revenue operations workspace', () => {

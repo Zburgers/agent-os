@@ -18,14 +18,18 @@ services:
     build: .
     user: "0:0"
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-goofy}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-goofy}
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-goofy}
+      PGUSER: ${POSTGRES_USER:-goofy}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       OWNER_DASHBOARD_TOKEN: ${OWNER_DASHBOARD_TOKEN:?set OWNER_DASHBOARD_TOKEN in .env}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
       PORT: 3000
       OWNER_TELEGRAM_IDS: ${OWNER_TELEGRAM_IDS:-}
       # Set after mounting a dedicated protected signing-secret file during the
       # separately approved production deployment. Never pass the secret value.
-      APPROVAL_TOKEN_SECRET_FILE: ${APPROVAL_TOKEN_SECRET_FILE:-}
+      APPROVAL_TOKEN_SECRET_FILE: /run/goofy-approval-token/secret
       TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID: ${TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID:-}
       AGENT_RUNTIME_TOKEN: ${AGENT_RUNTIME_TOKEN:-}
       AGENT_RUNTIME_TOKEN_FILE: /run/secrets/agent_os_hermes_token
@@ -48,10 +52,15 @@ services:
       # The dashboard is reachable only on the owner's private network.
       # PostgreSQL has no host port and remains on this Compose network.
       - "${AGENT_OS_BIND_ADDRESS:-127.0.0.1}:${AGENT_OS_PORT:-9999}:3000"
-    command: ["sh", "-c", "install -d -m 0700 -o agent -g agent /run/goofy-agent-wallet; install -m 0400 -o agent -g agent /run/secrets/goofy_agent_wallet_key /run/goofy-agent-wallet/key; export AGENT_RUNTIME_TOKEN=\"$$(cat /run/secrets/agent_os_hermes_token)\"; exec su-exec agent sh -c 'npm run migrate && npm start'"]
+    command: ["sh", "-c", "install -d -m 0700 -o agent -g agent /run/goofy-agent-wallet /run/goofy-approval-token; install -m 0400 -o agent -g agent /run/secrets/goofy_agent_wallet_key /run/goofy-agent-wallet/key; install -m 0400 -o agent -g agent /run/secrets/approval_token_secret /run/goofy-approval-token/secret; export AGENT_RUNTIME_TOKEN=\"$$(cat /run/secrets/agent_os_hermes_token)\"; exec su-exec agent sh -c 'npm run migrate && npm start'"]
     secrets:
       - source: agent_os_hermes_token
         target: agent_os_hermes_token
+        uid: "1003"
+        gid: "1003"
+        mode: 0400
+      - source: approval_token_secret
+        target: approval_token_secret
         uid: "1003"
         gid: "1003"
         mode: 0400
@@ -65,18 +74,28 @@ services:
     restart: unless-stopped
   supervisor:
     build: .
+    user: "0:0"
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-goofy}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-goofy}
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${POSTGRES_DB:-goofy}
+      PGUSER: ${POSTGRES_USER:-goofy}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       SUPERVISOR_POLL_MS: ${SUPERVISOR_POLL_MS:-1000}
       SUPERVISOR_ID: compose-supervisor
+      NEAR_AGENT_CREDENTIAL_FILE: /run/goofy-near-agent/credential
     depends_on:
       postgres:
         condition: service_healthy
       app:
         condition: service_healthy
-    command: ["node", "--experimental-strip-types", "src/supervisor.ts"]
+    command: ["sh", "-c", "install -d -m 0700 -o agent -g agent /run/goofy-near-agent; install -m 0400 -o agent -g agent /run/secrets/near_agent /run/goofy-near-agent/credential; exec su-exec agent node --experimental-strip-types src/supervisor.ts"]
+    secrets:
+      - source: near_agent
+        target: near_agent
+        mode: 0400
     healthcheck:
-      test: ["CMD", "node", "-e", "import('pg').then(async({default:p})=>{const c=new p.Client({connectionString:process.env.DATABASE_URL});await c.connect();const r=await c.query(\"select 1 from supervisor_heartbeats where worker_id='compose-supervisor' and status='running' and heartbeat_at>now()-interval '30 seconds'\");await c.end();process.exit(r.rowCount===1?0:1)}).catch(()=>process.exit(1))"]
+      test: ["CMD", "node", "-e", "import('pg').then(async({default:p})=>{const c=new p.Client();await c.connect();const r=await c.query(\"select 1 from supervisor_heartbeats where worker_id='compose-supervisor' and status='running' and heartbeat_at>now()-interval '30 seconds'\");await c.end();process.exit(r.rowCount===1?0:1)}).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 3s
       retries: 3
@@ -84,3 +103,7 @@ services:
 secrets:
   agent_os_hermes_token:
     file: /home/goofy/.hermes/agent-os-token
+  approval_token_secret:
+    file: /home/goofy/.hermes/approval-token-secret
+  near_agent:
+    file: /home/goofy/.hermes/near-agent.json

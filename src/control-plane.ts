@@ -1,4 +1,4 @@
-export type ControlPlanePage = 'command' | 'work' | 'commercial' | 'brief' | 'activity' | 'approvals' | 'finance' | 'jobs' | 'health';
+export type ControlPlanePage = 'command' | 'work' | 'commercial' | 'brief' | 'activity' | 'approvals' | 'decisions' | 'finance' | 'jobs' | 'health';
 
 const routes: Record<ControlPlanePage, { href: string; label: string; description: string }> = {
   command: { href: '/', label: 'Command Centre', description: 'A concise operational overview of Goofy Agent OS.' },
@@ -7,6 +7,7 @@ const routes: Record<ControlPlanePage, { href: string; label: string; descriptio
   brief: { href: '/daily-brief', label: 'Daily Brief', description: 'A print-ready owner deck built from the current operational and commercial record.' },
   activity: { href: '/activity', label: 'Activity', description: 'The complete operational activity stream, with readable event names and technical detail.' },
   approvals: { href: '/approvals', label: 'Approvals', description: 'Owner decisions requiring review, execution boundaries, and auditable decision history.' },
+  decisions: { href: '/decisions', label: 'Decisions', description: 'Durable business decisions, selected options, evidence, outcomes, lessons, and review dates.' },
   finance: { href: '/finance', label: 'Finance', description: 'Authoritative PostgreSQL-backed financial position and transaction ledger.' },
   jobs: { href: '/jobs', label: 'Jobs', description: 'Durable job runs, outcomes, failures, and supported owner controls.' },
   health: { href: '/health', label: 'Health', description: 'Runtime health, persisted checks, incidents, and recovery evidence.' },
@@ -233,6 +234,15 @@ function clientScript() {
     } catch (error) { content.innerHTML = empty(error.message); }
   }
 
+  async function loadDecisions() {
+    try {
+      const decisions = await api('/api/decisions?' + params());
+      content.innerHTML = '<section class="section"><h2>Decision journal</h2><p>Material choices recorded by Goofy. Approval decisions remain in the approval inbox; this journal tracks business and operating choices.</p>' +
+        table(['Decision','Selected option','Expected result','Evidence','Review'], decisions.map(decision => '<tr><td><strong>' + escape(decision.statement) + '</strong><span class="record-meta">' + escape(decision.context) + '</span>' + details({ risk:decision.risk, options:decision.options, rejected_options:decision.rejected_options, actual_outcome:decision.actual_outcome, lesson:decision.lesson }) + '</td><td>' + escape(decision.selected_option) + '<span class="record-meta">Confidence ' + escape(decision.confidence ?? 'not scored') + '</span></td><td>' + escape(decision.expected_result || 'Not recorded') + '</td><td>' + details(decision.evidence) + '</td><td>' + when(decision.review_at || decision.created_at) + '</td></tr>'), 'No durable decisions have been recorded yet.') +
+        '</section>';
+    } catch (error) { content.innerHTML = empty(error.message); }
+  }
+
   async function loadFinance() {
     try {
       const [records, overview, wallet, agentWallet] = await Promise.all([api('/api/ledger?' + params()), api('/api/overview'), api('/api/wallet/status'), api('/api/agent-wallet/status')]);
@@ -273,7 +283,7 @@ function clientScript() {
 
   function load() {
     $('banner').style.display = 'none';
-    ({ command:loadCommand, work:loadWork, commercial:loadCommercial, activity:loadActivity, approvals:loadApprovals, finance:loadFinance, jobs:loadJobs, health:loadHealth }[page])();
+    ({ command:loadCommand, work:loadWork, commercial:loadCommercial, activity:loadActivity, approvals:loadApprovals, decisions:loadDecisions, finance:loadFinance, jobs:loadJobs, health:loadHealth }[page])();
   }
 
   $('refresh').onclick = load;
