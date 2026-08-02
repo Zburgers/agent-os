@@ -7,8 +7,7 @@ permissions:
   contents: write
 
 env:
-  BASE_SHA: 6da8b86754004ac2bab5d8ad357b11c803dfd7e8
-  FINAL_BRANCH: revenue-track-input-fix-final-v3
+  FINAL_BRANCH: revenue-track-input-fix-final-v4
   DATABASE_URL: postgresql://postgres:postgres@localhost:5432/agent_os_test
 
 jobs:
@@ -40,18 +39,21 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Verify temporary workflow-only changes
+      - name: Derive and verify the clean concurrent head
         shell: bash
         run: |
           set -euo pipefail
-          git merge-base --is-ancestor "$BASE_SHA" HEAD
-          unexpected="$(git diff --name-only "${BASE_SHA}..HEAD" | grep -Ev '^\.github/workflows/(apply-revenue-track-input-fix-v2\.yml|ci\.yml)$' || true)"
+          root_sha="$(git log --first-parent --diff-filter=A --format=%H -- .github/workflows/apply-revenue-track-input-fix-v2.yml | head -n 1)"
+          test -n "$root_sha"
+          safe_base_sha="$(git rev-parse "${root_sha}^")"
+          unexpected="$(git diff --name-only "${safe_base_sha}..HEAD" | grep -Ev '^\.github/workflows/(apply-revenue-track-input-fix-v2\.yml|ci\.yml)$' || true)"
           if [[ -n "$unexpected" ]]; then
-            echo "unexpected changes after preserved base:" >&2
+            echo "unexpected changes after clean base:" >&2
             echo "$unexpected" >&2
             exit 1
           fi
-          git checkout --detach "$BASE_SHA"
+          echo "SAFE_BASE_SHA=$safe_base_sha" >> "$GITHUB_ENV"
+          git checkout --detach "$safe_base_sha"
 
       - name: Apply focused implementation and tests
         shell: bash
