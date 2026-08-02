@@ -721,3 +721,99 @@ test('dedicated wallet policy lifecycle permits simulation only while the relati
   const replacementActive = await service.activatePlatformPolicy(replacement.id, { type: 'owner', id: 'integration-owner' });
   assert.equal(replacementActive.status, 'active');
 });
+
+
+test('migration 021 checksum remains stable while migration 022 adds transaction simulation', { skip: !enabled }, async () => {
+  const { createHash, randomBytes } = await import('node:crypto');
+  const { execFile } = await import('node:child_process');
+  const { readdir, readFile } = await import('node:fs/promises');
+  const { promisify } = await import('node:util');
+  const pg = (await import('pg')).default;
+  const { pool } = await import('../src/db.ts');
+  const databaseUrl = process.env.DATABASE_URL;
+  assert.ok(databaseUrl, 'DATABASE_URL is required');
+
+  const schema = `migration_upgrade_${process.pid}_${randomBytes(6).toString('hex')}`;
+  const isolatedUrl = new URL(databaseUrl);
+  isolatedUrl.searchParams.set('options', `-csearch_path=${schema},public`);
+  await pool.query(`CREATE SCHEMA "${schema}"`);
+  const isolatedPool = new pg.Pool({ connectionString: isolatedUrl.toString() });
+
+  try {
+    const migrationDirectory = new URL('../db/migrations/', import.meta.url);
+    const migrationFiles = (await readdir(migrationDirectory))
+      .filter((file) => file.endsWith('.sql'))
+      .sort();
+    const original021Checksum = '75945bfb81f9adfd0a350ac239e5b9e9dffbddc970516f3d50bca124997c78c7';
+    const original021 = await readFile(new URL('021_pr_review_remediations.sql', migrationDirectory), 'utf8');
+    assert.equal(createHash('sha256').update(original021).digest('hex'), original021Checksum);
+
+    const client = await isolatedPool.connect();
+    try {
+      await client.query('CREATE TABLE schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now(), checksum text)');
+      for (const file of migrationFiles.filter((name) => name <= '021_pr_review_remediations.sql')) {
+        const sql = await readFile(new URL(file, migrationDirectory), 'utf8');
+        const checksum = createHash('sha256').update(sql).digest('hex');
+        await client.query('BEGIN');
+        try {
+          await client.query(sql);
+          await client.query('INSERT INTO schema_migrations(version,checksum) VALUES ($1,$2)', [file, checksum]);
+          await client.query('COMMIT');
+        } catch (error) {
+          await client.query('ROLLBACK');
+          throw error;
+        }
+      }
+    } finally {
+      client.release();
+    }
+
+    assert.equal((await isolatedPool.query(
+      "SELECT checksum FROM schema_migrations WHERE version='021_pr_review_remediations.sql'",
+    )).rows[0].checksum, original021Checksum);
+
+    await isolatedPool.query(
+      `INSERT INTO tasks(id,title,status)
+       VALUES('440de021-f284-4a5b-8ed2-1d7b9fc871cd','NEAR bid monitor migration fixture','backlog')
+       ON CONFLICT(id) DO NOTHING`,
+    );
+
+    await promisify(execFile)(
+      process.execPath,
+      ['--experimental-strip-types', 'src/migrate.ts'],
+      {
+        cwd: new URL('..', import.meta.url),
+        env: { ...process.env, DATABASE_URL: isolatedUrl.toString() },
+      },
+    );
+
+    assert.equal((await isolatedPool.query(
+      "SELECT count(*) FROM schema_migrations WHERE version='022_agent_wallet_transaction_simulation_type.sql'",
+    )).rows[0].count, '1');
+    assert.equal((await isolatedPool.query(
+      "SELECT checksum FROM schema_migrations WHERE version='021_pr_review_remediations.sql'",
+    )).rows[0].checksum, original021Checksum);
+
+    const wallet = await isolatedPool.query<{ id: string }>(
+      `INSERT INTO agent_wallets(address,key_backend,key_reference,status)
+       VALUES('0x3333333333333333333333333333333333333333','protected_file','migration-upgrade','revoked') RETURNING id`,
+    );
+    const accepted = await isolatedPool.query<{ id: string }>(
+      `INSERT INTO agent_wallet_operations(wallet_id,provider,operation_type,outcome,idempotency_key)
+       VALUES($1,'bountybook','transaction_simulation','simulated','migration-upgrade-accepted') RETURNING id`,
+      [wallet.rows[0].id],
+    );
+    assert.ok(accepted.rows[0].id);
+    await assert.rejects(
+      isolatedPool.query(
+        `INSERT INTO agent_wallet_operations(wallet_id,provider,operation_type,outcome,idempotency_key)
+         VALUES($1,'bountybook','unsupported_operation','denied','migration-upgrade-rejected')`,
+        [wallet.rows[0].id],
+      ),
+      /agent_wallet_operations_operation_type_check/,
+    );
+  } finally {
+    await isolatedPool.end();
+    await pool.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+  }
+});
