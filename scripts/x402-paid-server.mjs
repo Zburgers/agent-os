@@ -6,7 +6,7 @@ import { ExactEvmScheme } from '@x402/evm/exact/server';
 import { paymentMiddleware } from '@x402/express';
 import { parseCheckRequest } from '../src/x402-reliability-service.ts';
 import { probeReliabilityTarget } from '../src/x402-reliability.ts';
-import { createReliabilityPaymentConfig } from '../src/x402-paid.ts';
+import { createReliabilityDiscoveryManifest, createReliabilityPaymentConfig } from '../src/x402-paid.ts';
 
 const port = Number(process.env.X402_RELIABILITY_PORT ?? 8787);
 const host = process.env.X402_RELIABILITY_HOST ?? '127.0.0.1';
@@ -17,8 +17,10 @@ const facilitatorClient = process.env.X402_FACILITATOR_URL
 const payment = createReliabilityPaymentConfig(payTo);
 const resourceServer = new x402ResourceServer(facilitatorClient).register('eip155:8453', new ExactEvmScheme());
 const app = express();
+const publicBaseUrl = process.env.X402_PUBLIC_BASE_URL ?? `https://${host}:${port}`;
 
 app.get('/healthz', (_request, response) => response.json({ status: 'ok', service: 'x402-reliability' }));
+app.get('/.well-known/x402', (_request, response) => response.json(createReliabilityDiscoveryManifest(publicBaseUrl)));
 app.use(express.json({ limit: '4kb' }));
 app.use(paymentMiddleware({ 'POST /v1/check': payment }, resourceServer));
 app.post('/v1/check', async (request, response) => {

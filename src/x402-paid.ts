@@ -17,3 +17,22 @@ export function createReliabilityPaymentConfig(payTo: string): ReliabilityPaymen
     mimeType: 'application/json',
   };
 }
+
+export function createReliabilityDiscoveryManifest(baseUrl: string) {
+  const parsed = new URL(baseUrl);
+  if (parsed.protocol !== 'https:') throw new Error('invalid_discovery_base_url');
+  const origin = parsed.origin;
+  return {
+    version: '2',
+    name: 'Goofy Automation Reliability Check',
+    description: 'Bounded public HTTPS endpoint reliability report for agents',
+    services: [{
+      url: `${origin}/v1/check`,
+      method: 'POST',
+      input_schema: { type: 'object', required: ['target'], properties: { target: { type: 'string', format: 'uri' } } },
+      price: '$0.25',
+      network: 'eip155:8453',
+      asset: 'USDC',
+    }],
+  };
+}
