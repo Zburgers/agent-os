@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { normalizePayanRequests, rankMarketOpportunities } from '../src/market-scout.ts';
+import { normalizeBountyBookJobs, normalizePayanRequests, rankMarketOpportunities } from '../src/market-scout.ts';
 
 const timeoutMs = 10_000;
 const capabilities = ['research', 'code', 'testing', 'automation', 'security', 'fastapi', 'web-scraping', 'data-extraction'];
@@ -33,8 +33,9 @@ const results = await Promise.allSettled([
   getJson('https://sporeagent.com/api/tasks?status=open').then(sporeOpportunities),
   getJson('https://payanagent.com/api/v1/offers').then(payanAgentOpportunities),
   getJson('https://payanagent.com/api/v1/requests').then(normalizePayanRequests),
+  getJson('https://api.bountybook.ai/jobs?status=open&limit=20').then(normalizeBountyBookJobs),
 ]);
 const opportunities = results.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
 const failures = results.flatMap((result) => result.status === 'rejected' ? [String(result.reason?.message ?? result.reason)] : []);
 const ranked = rankMarketOpportunities(opportunities, new Date(), capabilities).slice(0, 20);
-console.log(JSON.stringify({ generatedAt: new Date().toISOString(), sources: ['sporeagent', 'payanagent/offers', 'payanagent/requests'], opportunities: ranked, failures }, null, 2));
+console.log(JSON.stringify({ generatedAt: new Date().toISOString(), sources: ['sporeagent', 'payanagent/offers', 'payanagent/requests', 'bountybook/jobs'], opportunities: ranked, failures }, null, 2));

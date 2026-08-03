@@ -11,6 +11,13 @@ export type MarketOpportunity = {
 
 export type RankedMarketOpportunity = MarketOpportunity & { score: number };
 
+function normalizeTimestamp(value: unknown): string {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return new Date(value < 1_000_000_000_000 ? value * 1000 : value).toISOString();
+  }
+  return String(value ?? '');
+}
+
 export function normalizePayanRequests(payload: unknown): MarketOpportunity[] {
   const requests = payload && typeof payload === 'object' && Array.isArray((payload as { requests?: unknown }).requests)
     ? (payload as { requests: unknown[] }).requests : [];
@@ -27,6 +34,22 @@ export function normalizePayanRequests(payload: unknown): MarketOpportunity[] {
       source: 'payanagent-request', id: String(record._id ?? ''), title: String(record.title ?? ''),
       budgetUsd: Number(record.budgetMaxCents ?? 0) / 100, postedAt: postedAt.toISOString(),
       bidCount: 0, assigned: false, capabilities,
+    }];
+  });
+}
+
+export function normalizeBountyBookJobs(payload: unknown): MarketOpportunity[] {
+  const jobs = payload && typeof payload === 'object' && Array.isArray((payload as { jobs?: unknown }).jobs)
+    ? (payload as { jobs: unknown[] }).jobs : [];
+  return jobs.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    if (String(record.status ?? '').toLowerCase() !== 'open') return [];
+    const capabilities = Array.isArray(record.tags) ? record.tags.map(String) : [];
+    return [{
+      source: 'bountybook', id: String(record.id ?? ''), title: String(record.title ?? ''),
+      budgetUsd: Number(record.budget_usdc ?? 0), postedAt: normalizeTimestamp(record.created_at),
+      bidCount: 0, assigned: Boolean(record.executor_address), capabilities,
     }];
   });
 }

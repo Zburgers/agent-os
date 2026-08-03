@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizePayanRequests, rankMarketOpportunities, type MarketOpportunity } from '../src/market-scout.ts';
+import { normalizeBountyBookJobs, normalizePayanRequests, rankMarketOpportunities, type MarketOpportunity } from '../src/market-scout.ts';
 
 test('market scout prioritizes fresh, unassigned, capability-matched paid work', () => {
   const opportunities: MarketOpportunity[] = [
@@ -26,5 +26,17 @@ test('market scout extracts paid PayanAgent requests as actionable bounty opport
     source: 'payanagent-request', id: 'request-1', title: 'Build endpoint health checker',
     budgetUsd: 0.04, postedAt: '2026-08-03T00:00:00.000Z', bidCount: 0, assigned: false,
     capabilities: ['tooling'],
+  });
+});
+
+test('market scout extracts open BountyBook jobs without treating them as settled revenue', () => {
+  const [job] = normalizeBountyBookJobs({ jobs: [{
+    id: 'job-1', title: 'Write parser', budget_usdc: '3.00', status: 'open',
+    created_at: 1785715200, tags: ['python', 'testing'],
+  }] });
+  assert.deepEqual(job, {
+    source: 'bountybook', id: 'job-1', title: 'Write parser', budgetUsd: 3,
+    postedAt: '2026-08-03T00:00:00.000Z', bidCount: 0, assigned: false,
+    capabilities: ['python', 'testing'],
   });
 });
