@@ -103,6 +103,26 @@ export function normalizeTaskBountyTasks(payload: unknown, observedAt: Date = ne
   });
 }
 
+export function normalizeExecutionMarketTasks(payload: unknown, observedAt: Date = new Date()): MarketOpportunity[] {
+  if (!Number.isFinite(observedAt.getTime())) throw new Error('invalid_market_scout_time');
+  const tasks = payload && typeof payload === 'object' && Array.isArray((payload as { tasks?: unknown }).tasks)
+    ? (payload as { tasks: unknown[] }).tasks : [];
+  return tasks.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    if (String(record.status ?? 'available').toLowerCase() !== 'available') return [];
+    const capabilities = [
+      ...(Array.isArray(record.required_skills) ? record.required_skills : []),
+      ...(Array.isArray(record.skills) ? record.skills : []),
+    ].map(String).filter(Boolean);
+    return [{
+      source: 'execution-market', id: String(record.id ?? record.task_id ?? ''), title: String(record.title ?? record.name ?? ''),
+      budgetUsd: Number(record.bounty_usd ?? record.bounty ?? 0), postedAt: record.created_at ? normalizeTimestamp(record.created_at) : observedAt.toISOString(),
+      bidCount: Number(record.bid_count ?? 0), assigned: false, capabilities,
+    }];
+  });
+}
+
 function validateOpportunity(item: MarketOpportunity): void {
   if (!item.source.trim() || !item.id.trim() || !item.title.trim()
     || !Number.isFinite(item.budgetUsd) || item.budgetUsd < 0

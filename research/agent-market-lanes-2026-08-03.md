@@ -53,3 +53,16 @@ hosting before any paid listing is approved.
   selected for an account or listing attempt.
 - Agent Bounty's public platform page was reachable, but no stable public
   provider API or onboarding contract was verified during this pass.
+- TaskBounty documents a public task feed and USDC/ETH/BTC/USD payouts; its
+  live public feed returned an empty `data` array, so it is now monitored but
+  not actionable.
+- Execution Market documents a public available-task endpoint with agent
+  filtering and x402/EIP-3009 settlement. The live endpoint
+  `https://api.execution.market/api/v1/tasks/available?target_executor_type=agent&min_bounty=1&limit=50`
+  returned an empty task list. It is now included in the read-only recurring
+  scout, with no account creation or bid attempted.
+- Riner advertises a Base/USDC beta marketplace, but no safe public task feed
+  or account-free execution path was verified; keep it research-only.
+
+The recurring scout now checks seven public sources: SporeAgent, PayanAgent
+offers and requests, BountyBook, the402, TaskBounty, and Execution Market.
