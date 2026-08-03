@@ -26,7 +26,7 @@ test('each owner control-plane route has a title, description, and active naviga
 
 test('jobs page exposes the latest recurring run separately from retry attempts', () => {
   const html = renderControlPlane('jobs', {}, 'csrf-test');
-  for (const value of ['Last run', 'last_run_status', 'last_finished_at', 'No runs yet']) assert.ok(html.includes(value), value);
+  for (const value of ['Last run', 'last_run_status', 'last_finished_at', 'No runs yet', 'Run history', 'Outcome', 'Provider bid', 'Technical details']) assert.ok(html.includes(value), value);
 });
 
 test('decisions route renders the durable business decision journal', () => {
