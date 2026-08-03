@@ -1,4 +1,5 @@
 import { pool } from './db.ts';
+import { writeHeartbeat } from './heartbeat.ts';
 
 export type Page = { limit?: number; offset?: number; status?: string; search?: string; eventType?: string; source?: string; dateFrom?: string; dateTo?: string };
 function bounded(value: number | undefined, fallback: number, maximum: number) {
@@ -170,14 +171,13 @@ export async function listHealthChecks(input: Page = {}) {
   return { items: rows, limit, offset, total: Number(rows[0]?.total_count ?? 0) };
 }
 
-type HealthDatabase = { query<T = Record<string, unknown>>(sql: string, values?: unknown[]): Promise<{ rows: T[] }> };
+type HealthDatabase = {
+  query<T = Record<string, unknown>>(sql: string, values?: unknown[]): Promise<{ rows: T[] }>;
+  query(input: { text: string; values: unknown[]; query_timeout: number }): Promise<unknown>;
+};
 
 export async function recordChannelRelayHeartbeat(database: HealthDatabase = pool) {
-  await database.query(
-    `INSERT INTO supervisor_heartbeats(worker_id,status,detail)
-     VALUES('channel-relay','running','{"channel":"telegram"}')
-     ON CONFLICT(worker_id) DO UPDATE SET heartbeat_at=now(),status='running',detail=EXCLUDED.detail`,
-  );
+  await writeHeartbeat(database, 'channel-relay', 'running', { channel: 'telegram' });
 }
 
 export async function telegramDeliveryHealth(database: HealthDatabase = pool, now = new Date()) {

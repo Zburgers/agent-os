@@ -3,6 +3,7 @@ import { pool } from './db.ts';
 import { claimNextJob, executeInternalJob, failJob, recoverAbandonedJobs } from './jobs.ts';
 import { ApprovalService } from './approvals.ts';
 import { reconcileApprovedOperatingTranches } from './finance.ts';
+import { writeHeartbeat } from './heartbeat.ts';
 
 const workerId = process.env.SUPERVISOR_ID?.trim() || `supervisor-${randomUUID()}`;
 const pollMs = Math.max(250, Number(process.env.SUPERVISOR_POLL_MS ?? 1000));
@@ -16,11 +17,7 @@ process.once('SIGTERM', stop);
 process.once('SIGINT', stop);
 
 async function heartbeat(status: 'starting' | 'running' | 'stopping' | 'stopped', detail: Record<string, unknown> = {}) {
-  await pool.query(
-    `INSERT INTO supervisor_heartbeats(worker_id,status,detail) VALUES($1,$2,$3)
-     ON CONFLICT(worker_id) DO UPDATE SET heartbeat_at=now(),status=EXCLUDED.status,detail=EXCLUDED.detail`,
-    [workerId, status, JSON.stringify(detail)],
-  );
+  await writeHeartbeat(pool, workerId, status, detail);
 }
 
 const delay = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
