@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeBountyBookJobs, normalizePayanRequests, rankMarketOpportunities, type MarketOpportunity } from '../src/market-scout.ts';
+import { normalizeBountyBookJobs, normalizePayanRequests, normalizeThe402Services, rankMarketOpportunities, type MarketOpportunity } from '../src/market-scout.ts';
 
 test('market scout prioritizes fresh, unassigned, capability-matched paid work', () => {
   const opportunities: MarketOpportunity[] = [
@@ -38,5 +38,18 @@ test('market scout extracts open BountyBook jobs without treating them as settle
     source: 'bountybook', id: 'job-1', title: 'Write parser', budgetUsd: 3,
     postedAt: '2026-08-03T00:00:00.000Z', bidCount: 0, assigned: false,
     capabilities: ['python', 'testing'],
+  });
+});
+
+test('market scout extracts the402 provider services from its free catalog', () => {
+  const [service] = normalizeThe402Services({ services: [{
+    id: 'svc-1', name: 'Public API QA and Reliability Check',
+    service_type: 'human_service', price: { fixed: '$3.00' },
+    category: 'testing', tags: ['api', 'reliability'], provider_name: 'Example Provider',
+  }] }, new Date('2026-08-03T00:00:00.000Z'));
+  assert.deepEqual(service, {
+    source: 'the402', id: 'svc-1', title: 'Public API QA and Reliability Check', budgetUsd: 3,
+    postedAt: '2026-08-03T00:00:00.000Z', bidCount: 0, assigned: false,
+    capabilities: ['testing', 'api', 'reliability', 'human_service'],
   });
 });

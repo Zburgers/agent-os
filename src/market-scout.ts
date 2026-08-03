@@ -54,6 +54,36 @@ export function normalizeBountyBookJobs(payload: unknown): MarketOpportunity[] {
   });
 }
 
+function parseThe402Price(value: unknown): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (!value || typeof value !== 'object') return 0;
+  const fixed = (value as Record<string, unknown>).fixed;
+  if (typeof fixed === 'number') return Number.isFinite(fixed) ? fixed : 0;
+  if (typeof fixed === 'string') {
+    const parsed = Number.parseFloat(fixed.replace(/[^0-9.]/g, ''));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+export function normalizeThe402Services(payload: unknown, observedAt: Date = new Date()): MarketOpportunity[] {
+  if (!Number.isFinite(observedAt.getTime())) throw new Error('invalid_market_scout_time');
+  const services = payload && typeof payload === 'object' && Array.isArray((payload as { services?: unknown }).services)
+    ? (payload as { services: unknown[] }).services : [];
+  return services.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    const capabilities = [record.category, ...(Array.isArray(record.tags) ? record.tags : []), record.service_type]
+      .map(String).filter((value) => value && value !== 'undefined' && value !== 'null');
+    const postedAt = record.created_at ? normalizeTimestamp(record.created_at) : observedAt.toISOString();
+    return [{
+      source: 'the402', id: String(record.id ?? ''), title: String(record.name ?? record.title ?? ''),
+      budgetUsd: parseThe402Price(record.price ?? record.price_usd), postedAt,
+      bidCount: 0, assigned: false, capabilities,
+    }];
+  });
+}
+
 function validateOpportunity(item: MarketOpportunity): void {
   if (!item.source.trim() || !item.id.trim() || !item.title.trim()
     || !Number.isFinite(item.budgetUsd) || item.budgetUsd < 0
