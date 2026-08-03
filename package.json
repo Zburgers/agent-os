@@ -25,7 +25,12 @@
     "@google/jules": "^0.1.42",
     "@metamask/connect-evm": "^2.1.1",
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "@payai/facilitator": "2.4.4",
+    "@x402/core": "2.20.0",
+    "@x402/evm": "2.20.0",
+    "@x402/express": "2.20.0",
     "ethers": "^6.17.0",
+    "express": "5.1.0",
     "pg": "^8.16.3"
   },
   "devDependencies": {

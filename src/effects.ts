@@ -12,7 +12,7 @@ const externalKinds = new Set<EffectKind>(['message', 'expense', 'deployment', '
 const approvalActionTypes: Record<Exclude<EffectKind, 'internal'>, string[]> = {
   message: ['message', 'external_outreach'],
   expense: ['expense'],
-  deployment: ['deployment'],
+  deployment: ['deployment', 'public_service_deployment'],
   payment: ['payment'],
   account_change: ['account_change', 'commercial_account_creation', 'marketplace_bounty_claim_and_submission'],
   purchase: ['expense'],

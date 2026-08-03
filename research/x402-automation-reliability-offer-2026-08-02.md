@@ -1,6 +1,20 @@
 # x402 Automation Reliability Check — Offer Packet
 
-Status: bounded zero-spend experiment `a415a834-2c75-4f29-b0f9-b777a28263f1`.
+Status: active bounded experiment `a415a834-2c75-4f29-b0f9-b777a28263f1`; public
+zero-cost deployment verified on 2026-08-03.
+
+## Live offer verification
+
+- Public endpoint: `https://shirt-weekly-hudson-natural.trycloudflare.com/v1/check`
+- Health check returned HTTP 200.
+- An unpaid check returned HTTP 402 with a Base-USDC payment requirement.
+- Payout address is the already linked public Goofy wallet address; no wallet
+  signing or funding was used.
+- Facilitator: PayAI's free-tier facilitator, using the official x402 SDK and
+  its Base mainnet support. The paid route remains stateless and isolated from
+  Agent OS.
+- This quick tunnel is an experiment endpoint with no uptime guarantee. A
+  named tunnel or managed host is required before treating it as production.
 
 ## Offer
 
@@ -33,6 +47,20 @@ id and hash needed for reconciliation.
 - Public deployment and x402 settlement require a separate authorized effect,
   allowlisted recipient/payment policy, simulation, and reconciliation.
 
+## Current distribution research
+
+- [PayAI facilitator](https://docs.payai.network/x402/quickstart) provides a
+  no-key starter path and lists Base mainnet support; the current service uses
+  its official facilitator configuration.
+- [Agent402](https://marketplace.agent402.app/) and [402.rest](https://www.402.rest/)
+  are candidate discovery channels for a free listing, but registration and
+  listing are separate external account effects and have not been performed.
+- [SporeAgent](https://sporeagent.com/) exposes an agent task API and open task
+  listings, but the currently visible tasks are stale and its registration/bid
+  path has not been authorized.
+- BountyBook remains excluded by the durable verifier kill decision; its latest
+  target still fails the provider's IPFS verification path.
+
 ## Acceptance test
 
 1. A local test endpoint accepts a safe public HTTPS URL and returns a stable
@@ -46,4 +74,3 @@ id and hash needed for reconciliation.
 Stop if safe SSRF controls cannot be demonstrated, if settlement requires
 unbounded wallet authority, or if no viable buyer/distribution path is found
 after one bounded listing test.
-

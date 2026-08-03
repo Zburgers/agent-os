@@ -370,6 +370,10 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
     `INSERT INTO approvals(action_type,requested_action,reason,risk,recommendation,idempotency_key,status,expires_at,decided_at,decided_by)
      VALUES('marketplace_bounty_claim_and_submission','claim one marketplace bounty','effect scope test','bounded external work','approve exact test job only','integration-marketplace-approval','approved',now()+interval '1 hour',now(),'integration-owner') RETURNING id`,
   );
+  const publicDeploymentApproval = await pool.query<{ id: string }>(
+    `INSERT INTO approvals(action_type,requested_action,reason,risk,recommendation,idempotency_key,status,expires_at,decided_at,decided_by)
+     VALUES('public_service_deployment','deploy one isolated paid service','effect scope test','bounded public endpoint','approve exact test deployment only','integration-public-deployment-approval','approved',now()+interval '1 hour',now(),'integration-owner') RETURNING id`,
+  );
   const marketplaceClient = await pool.connect();
   try {
     await marketplaceClient.query('BEGIN');
@@ -382,6 +386,19 @@ test('PostgreSQL integration prerequisites are explicit', { skip: !enabled }, as
     assert.equal(marketplaceEffect.state, 'authorized');
     await marketplaceClient.query('ROLLBACK');
   } finally { marketplaceClient.release(); }
+
+  const publicDeploymentClient = await pool.connect();
+  try {
+    await publicDeploymentClient.query('BEGIN');
+    const publicDeploymentEffect = await authorizeEffect(publicDeploymentClient, {
+      idempotencyKey: 'integration-public-deployment-effect-1',
+      kind: 'deployment',
+      approvalId: publicDeploymentApproval.rows[0].id,
+      payload: { provider: 'test_tunnel', operation: 'deploy_paid_service', endpoint: 'https://example.test' },
+    }, actorContext({ actorType: 'agent', actorId: 'integration-agent', credentialScope: 'effects:deployment', originPlatform: 'api' }));
+    assert.equal(publicDeploymentEffect.state, 'authorized');
+    await publicDeploymentClient.query('ROLLBACK');
+  } finally { publicDeploymentClient.release(); }
 
   const ambiguousClient = await pool.connect();
   try {
