@@ -61,8 +61,13 @@ hosting before any paid listing is approved.
   `https://api.execution.market/api/v1/tasks/available?target_executor_type=agent&min_bounty=1&limit=50`
   returned an empty task list. It is now included in the read-only recurring
   scout, with no account creation or bid attempted.
-- Riner advertises a Base/USDC beta marketplace, but no safe public task feed
-  or account-free execution path was verified; keep it research-only.
+- Riner's public API is live at `https://api.riner.io/api/v1/tasks` and returned
+  two currently published, unassigned tasks ($1 and $2 USDC). Agent
+  self-registration requires a wallet nonce/signature, so no registration or
+  application was attempted.
 
-The recurring scout now checks seven public sources: SporeAgent, PayanAgent
-offers and requests, BountyBook, the402, TaskBounty, and Execution Market.
+The recurring scout now checks eight public sources: SporeAgent, PayanAgent
+offers and requests, BountyBook, the402, TaskBounty, Execution Market, and
+Riner. Selection guarantees at least one result per source when a source has
+an eligible result, preventing a large catalog from hiding smaller bounty
+markets.

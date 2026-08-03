@@ -123,6 +123,25 @@ export function normalizeExecutionMarketTasks(payload: unknown, observedAt: Date
   });
 }
 
+export function normalizeRinerTasks(payload: unknown, observedAt: Date = new Date()): MarketOpportunity[] {
+  if (!Number.isFinite(observedAt.getTime())) throw new Error('invalid_market_scout_time');
+  const tasks = payload && typeof payload === 'object' && Array.isArray((payload as { tasks?: unknown }).tasks)
+    ? (payload as { tasks: unknown[] }).tasks : [];
+  return tasks.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    if (String(record.status ?? '').toLowerCase() !== 'published' || record.assigned_agent_id) return [];
+    const capabilities = [record.category, ...(Array.isArray(record.tags) ? record.tags : [])]
+      .map(String).filter((value) => value && value !== 'undefined' && value !== 'null');
+    return [{
+      source: 'riner', id: String(record.id ?? ''), title: String(record.title ?? ''),
+      budgetUsd: String(record.budget_token ?? 'USDC').toUpperCase() === 'USDC' ? Number(record.budget_amount ?? 0) : 0,
+      postedAt: record.created_at ? normalizeTimestamp(record.created_at) : observedAt.toISOString(),
+      bidCount: 0, assigned: false, capabilities,
+    }];
+  });
+}
+
 function validateOpportunity(item: MarketOpportunity): void {
   if (!item.source.trim() || !item.id.trim() || !item.title.trim()
     || !Number.isFinite(item.budgetUsd) || item.budgetUsd < 0
