@@ -71,3 +71,12 @@ offers and requests, BountyBook, the402, TaskBounty, Execution Market, and
 Riner. Selection guarantees at least one result per source when a source has
 an eligible result, preventing a large catalog from hiding smaller bounty
 markets.
+
+## Latest live scan
+
+At `2026-08-03T12:04:27.572Z`, all eight fetches succeeded. The highest-value
+observations were two the402 landing-page-audit services at `$200`, the open
+SporeAgent Solidity audit at `$200`, a BountyBook scraping comparison at `$4`,
+and the Riner Promotion task at `$2`. The currently open BountyBook TypedEmitter
+job remains `$5`, but its claim and submission approval is still pending. No
+external effect was attempted from this scan.
