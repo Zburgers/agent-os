@@ -6,7 +6,10 @@ import { closeDatabase, pool } from './db.ts';
 const migrationDir = new URL('../db/migrations/', import.meta.url);
 await pool.query('CREATE TABLE IF NOT EXISTS schema_migrations (version text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
 await pool.query('ALTER TABLE schema_migrations ADD COLUMN IF NOT EXISTS checksum text');
-const files = (await readdir(migrationDir)).filter((file) => file.endsWith('.sql')).sort();
+const requested = new Set((process.env.MIGRATION_ONLY ?? '').split(',').map((file) => file.trim()).filter(Boolean));
+const files = (await readdir(migrationDir))
+  .filter((file) => file.endsWith('.sql') && (!requested.size || requested.has(file)))
+  .sort();
 for (const file of files) {
   const sql = await readFile(join(migrationDir.pathname, file), 'utf8');
   const checksum = createHash('sha256').update(sql).digest('hex');
