@@ -40,3 +40,16 @@ hosting before any paid listing is approved.
 - https://marketplace.agent402.app/
 - https://www.x402bazaar.org/
 - https://the402.ai/docs/
+
+## Follow-up availability checks
+
+- Agentic Market's public landing page is reachable, but the documented
+  service-discovery path `https://api.agentic.market/v1/services/` returned
+  HTTP 404 during the 2026-08-03 check. It remains research-only until a
+  working catalog/provider onboarding route is documented.
+- x402 Bazaar's landing page advertises a large catalog, but its exposed
+  backend health endpoint was reachable while the observed catalog paths
+  returned HTTP 500. No provider onboarding route was verified, so it is not
+  selected for an account or listing attempt.
+- Agent Bounty's public platform page was reachable, but no stable public
+  provider API or onboarding contract was verified during this pass.
