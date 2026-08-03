@@ -90,13 +90,15 @@ id and hash needed for reconciliation.
 
 ### Repeatable read-only scout
 
-`npm run market:scout` now queries the public SporeAgent task API and PayanAgent
-offer API, normalizes both into one schema, rejects malformed records, and
-prioritizes fresh, unassigned, capability-matched opportunities. The first live
-run on 2026-08-03 found a current PayanAgent offer titled “Public API Endpoint
-Health and Integration Check” at USD 1 per call, alongside the SporeAgent
-testing and scraping tasks. The scout performs no registration, bidding,
-payment, or account mutation.
+`npm run market:scout` now queries the public SporeAgent task API, PayanAgent
+offer API, and PayanAgent request API, normalizes them into one schema, rejects
+malformed records, and prioritizes fresh, unassigned, capability-matched
+opportunities. The live request scan found a directly matching “Build a catalog
+endpoint-health checker” request with a USD 0.04 maximum, plus a separate
+security/x402 bug bounty. The scout performs no registration, bidding, payment,
+or account mutation. Approval `85ee0b5a-1ccf-4ed7-bad5-3a1da6065643` is pending
+for exactly one bid on the endpoint-health request, conditional on the
+separate PayanAgent identity approval.
 
 ## Acceptance test
 

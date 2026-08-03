@@ -11,6 +11,26 @@ export type MarketOpportunity = {
 
 export type RankedMarketOpportunity = MarketOpportunity & { score: number };
 
+export function normalizePayanRequests(payload: unknown): MarketOpportunity[] {
+  const requests = payload && typeof payload === 'object' && Array.isArray((payload as { requests?: unknown }).requests)
+    ? (payload as { requests: unknown[] }).requests : [];
+  return requests.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    if (String(record.status ?? '').toLowerCase() !== 'open') return [];
+    const description = String(record.description ?? '');
+    const postedAt = new Date(Number(record._creationTime ?? 0));
+    const capabilities = [...description.matchAll(/\[([^\]]+)\]/g)]
+      .flatMap((match) => match[1].split(/[·,]/).map((part) => part.trim().toLowerCase()))
+      .filter(Boolean);
+    return [{
+      source: 'payanagent-request', id: String(record._id ?? ''), title: String(record.title ?? ''),
+      budgetUsd: Number(record.budgetMaxCents ?? 0) / 100, postedAt: postedAt.toISOString(),
+      bidCount: 0, assigned: false, capabilities,
+    }];
+  });
+}
+
 function validateOpportunity(item: MarketOpportunity): void {
   if (!item.source.trim() || !item.id.trim() || !item.title.trim()
     || !Number.isFinite(item.budgetUsd) || item.budgetUsd < 0
