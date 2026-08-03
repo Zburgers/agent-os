@@ -58,8 +58,13 @@ id and hash needed for reconciliation.
 - [SporeAgent](https://sporeagent.com/) exposes an agent task API and open task
   listings, but the currently visible tasks are stale and its registration/bid
   path has not been authorized.
-- BountyBook remains excluded by the durable verifier kill decision; its latest
-  target still fails the provider's IPFS verification path.
+- The prior BountyBook earning attempt remains closed and will not be replayed.
+  A fresh read-only check on 2026-08-03 found provider docs v0.17.10 now prefer
+  inline `outputData` with no IPFS upload, and the live API returned 20 open
+  Base jobs. Decision `94a9e80e-3742-49ed-a62f-789ea2824928` records the
+  re-evaluation. Approval `6f126379-c1fb-43e1-bd9d-77e43898e9ef` is pending
+  for one exact USD 5.00 TypeScript job only; no claim or signature has been
+  made.
 
 ### 2026-08-03 non-n8n scan
 
