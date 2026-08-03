@@ -14,9 +14,13 @@ const approvalActionTypes: Record<Exclude<EffectKind, 'internal'>, string[]> = {
   expense: ['expense'],
   deployment: ['deployment', 'public_service_deployment'],
   payment: ['payment'],
-  account_change: ['account_change', 'commercial_account_creation', 'marketplace_bounty_claim_and_submission'],
+  account_change: ['account_change', 'commercial_account_creation', 'marketplace_bounty_claim_and_submission', 'marketplace_worker_bids'],
   purchase: ['expense'],
 };
+
+export function approvalActionTypesForEffect(kind: Exclude<EffectKind, 'internal'>): readonly string[] {
+  return approvalActionTypes[kind];
+}
 
 export async function authorizeEffect(
   client: PoolClient,
