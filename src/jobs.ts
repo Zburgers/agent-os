@@ -5,6 +5,7 @@ import { actorContext } from './actor.ts';
 import { authorizeEffect } from './effects.ts';
 import { buildDailyBriefData } from './daily-brief.ts';
 import { fetchNearBidStatus, loadNearAgentCredential, shouldAlertForBidStatus } from './near-bid-monitor.ts';
+import { runRevenueMarketScout } from './revenue-market-scout.ts';
 
 export type Job = { id: string; action_kind: 'job'; payload: Record<string, unknown>; idempotency_key: string; current_occurrence_key: string; attempts: number; max_attempts: number; interval_seconds: number | null };
 export type ClaimedJob = { job: Job; runId: string };
@@ -99,6 +100,9 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
           signal: AbortSignal.timeout(10_000),
         })
       : null;
+    const marketScout = claim.job.payload?.kind === 'revenue_market_scout'
+      ? await runRevenueMarketScout()
+      : null;
     const previousNearRun = nearBid
       ? await client.query<{ status: string }>(
           `SELECT output->'bid'->>'status' AS status FROM job_runs
@@ -113,6 +117,8 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
       ? { report: 'daily_owner_brief', route: '/daily-brief', generated_at: dailyBrief.generatedAt, snapshot: dailyBrief }
       : nearBid
         ? { monitor: 'near_bid_status', bid: nearBid, previous_status: previousNearStatus ?? null, alert: nearAlert }
+        : marketScout
+          ? { monitor: 'revenue_market_scout', ...marketScout }
       : { result: 'internal_job_completed' };
     const effect = await client.query<{ id: string }>(
       `INSERT INTO job_effects(job_id,run_id,effect_key,effect_type,status,result) VALUES($1,$2,$3,'internal','completed',$4)
@@ -146,6 +152,7 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
     await audit('job_completed', 'job', claim.job.id, { idempotency_key: claim.job.idempotency_key, outcome });
     if (dailyBrief) await audit('daily_owner_brief_generated', 'job', claim.job.id, { route: '/daily-brief', generated_at: dailyBrief.generatedAt });
     if (nearBid) await audit('near_bid_status_checked', 'job', claim.job.id, { bid_id: nearBid.id, status: nearBid.status, alert: nearAlert });
+    if (marketScout) await audit('revenue_market_scout_completed', 'job', claim.job.id, { source_count: marketScout.sources.length, opportunity_count: marketScout.opportunities.length, failure_count: marketScout.failures.length });
     return outcome;
   } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
 }
