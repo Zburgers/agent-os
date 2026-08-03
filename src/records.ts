@@ -112,11 +112,13 @@ export async function listJobs(input: Page = {}) {
     `SELECT j.id,j.name,j.purpose,j.action_kind,j.schedule,j.trigger_type,j.status,j.attempts,j.max_attempts,j.next_run_at,j.next_retry_at,
       j.lease_until,j.last_error,j.related_ticket_id,j.related_venture_id,j.created_at,j.updated_at,t.title AS ticket_title,v.name AS venture_name,
       latest.status AS last_run_status,latest.started_at AS last_started_at,latest.finished_at AS last_finished_at,latest.output AS result_summary,latest.error AS last_run_error,
+      run_stats.run_count,
       count(*) OVER() AS total_count
      FROM jobs j
      LEFT JOIN tasks t ON t.id=j.related_ticket_id
      LEFT JOIN ventures v ON v.id=j.related_venture_id
      LEFT JOIN LATERAL (SELECT status,started_at,finished_at,output,error FROM job_runs WHERE job_id=j.id ORDER BY started_at DESC,id DESC LIMIT 1) latest ON true
+     LEFT JOIN LATERAL (SELECT count(*)::int AS run_count FROM job_runs WHERE job_id=j.id) run_stats ON true
      WHERE ($1::text IS NULL OR j.status=$1)
        AND ($2::text IS NULL OR j.name ILIKE '%' || $2 || '%' OR j.purpose ILIKE '%' || $2 || '%' OR j.action_kind ILIKE '%' || $2 || '%')
      ORDER BY CASE j.status WHEN 'running' THEN 0 WHEN 'queued' THEN 1 WHEN 'paused' THEN 2 WHEN 'dead_letter' THEN 3 ELSE 4 END,j.next_run_at ASC,j.updated_at DESC
@@ -127,15 +129,16 @@ export async function listJobs(input: Page = {}) {
 }
 
 export async function jobDetail(id: string) {
-  const [job, runs, effects] = await Promise.all([
+  const [job, runs, effects, runCount] = await Promise.all([
     pool.query(`SELECT j.*,t.title AS ticket_title,v.name AS venture_name FROM jobs j LEFT JOIN tasks t ON t.id=j.related_ticket_id LEFT JOIN ventures v ON v.id=j.related_venture_id WHERE j.id=$1`, [id]),
     pool.query('SELECT * FROM job_runs WHERE job_id=$1 ORDER BY started_at DESC,id DESC LIMIT 100', [id]),
     pool.query('SELECT * FROM job_effects WHERE job_id=$1 ORDER BY completed_at DESC LIMIT 100', [id]),
+    pool.query('SELECT count(*)::int AS run_count FROM job_runs WHERE job_id=$1', [id]),
   ]);
   if (!job.rows[0]) return null;
   const runIds = runs.rows.map(row => row.id);
   const logs = runIds.length ? await pool.query('SELECT * FROM job_logs WHERE run_id = ANY($1::uuid[]) ORDER BY occurred_at DESC,id DESC LIMIT 200', [runIds]) : { rows: [] };
-  return { ...job.rows[0], runs: runs.rows, effects: effects.rows, logs: logs.rows };
+  return { ...job.rows[0], run_count: runCount.rows[0]?.run_count ?? 0, runs: runs.rows, effects: effects.rows, logs: logs.rows };
 }
 
 export async function listActivity(input: Page = {}) {
