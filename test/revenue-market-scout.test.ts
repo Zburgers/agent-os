@@ -9,13 +9,14 @@ test('scheduled revenue scout reads all configured public sources without side e
     ['requests', { requests: [] }],
     ['bounty', { jobs: [] }],
     ['the402', { services: [{ id: 'svc-1', name: 'API reliability audit', price: { fixed: '$3.00' }, category: 'testing', tags: ['api'], service_type: 'automated_service' }] }],
+    ['taskbounty', { data: [] }],
   ]);
   const result = await runRevenueMarketScout(async (url) => {
-    const key = url.includes('sporeagent') ? 'spore' : url.includes('offers') ? 'offers' : url.includes('requests') ? 'requests' : url.includes('bountybook') ? 'bounty' : 'the402';
+    const key = url.includes('sporeagent') ? 'spore' : url.includes('offers') ? 'offers' : url.includes('requests') ? 'requests' : url.includes('bountybook') ? 'bounty' : url.includes('task-bounty') ? 'taskbounty' : 'the402';
     return responses.get(key);
   }, new Date('2026-08-03T12:00:00.000Z'));
   assert.deepEqual(result.failures, []);
-  assert.equal(result.sources.length, 5);
+  assert.equal(result.sources.length, 6);
   assert.equal(result.opportunities[0].source, 'sporeagent');
   assert.equal(result.opportunities.some((item) => item.source === 'sporeagent'), true);
 });

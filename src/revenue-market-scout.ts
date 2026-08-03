@@ -1,4 +1,4 @@
-import { normalizeBountyBookJobs, normalizePayanRequests, normalizeThe402Services, rankMarketOpportunities } from './market-scout.ts';
+import { normalizeBountyBookJobs, normalizePayanRequests, normalizeTaskBountyTasks, normalizeThe402Services, rankMarketOpportunities } from './market-scout.ts';
 
 const timeoutMs = 10_000;
 const capabilities = ['research', 'code', 'testing', 'automation', 'security', 'fastapi', 'web-scraping', 'data-extraction'];
@@ -36,12 +36,13 @@ export async function runRevenueMarketScout(fetchJson: FetchJson = publicJson, n
     fetchJson('https://payanagent.com/api/v1/requests').then(normalizePayanRequests),
     fetchJson('https://api.bountybook.ai/jobs?status=open&limit=20').then(normalizeBountyBookJobs),
     fetchJson('https://api.the402.ai/v1/services/catalog?limit=100').then((payload) => normalizeThe402Services(payload, now)),
+    fetchJson('https://www.task-bounty.com/api/v1/tasks').then((payload) => normalizeTaskBountyTasks(payload, now)),
   ]);
   const opportunities = results.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
   const failures = results.flatMap((result) => result.status === 'rejected' ? [String(result.reason?.message ?? result.reason)] : []);
   return {
     generatedAt: now.toISOString(),
-    sources: ['sporeagent', 'payanagent/offers', 'payanagent/requests', 'bountybook/jobs', 'the402/services/catalog'],
+    sources: ['sporeagent', 'payanagent/offers', 'payanagent/requests', 'bountybook/jobs', 'the402/services/catalog', 'taskbounty/tasks'],
     opportunities: rankMarketOpportunities(opportunities, now, capabilities).slice(0, 20),
     failures,
   };

@@ -84,6 +84,25 @@ export function normalizeThe402Services(payload: unknown, observedAt: Date = new
   });
 }
 
+export function normalizeTaskBountyTasks(payload: unknown, observedAt: Date = new Date()): MarketOpportunity[] {
+  if (!Number.isFinite(observedAt.getTime())) throw new Error('invalid_market_scout_time');
+  const data = payload && typeof payload === 'object' && Array.isArray((payload as { data?: unknown }).data)
+    ? (payload as { data: unknown[] }).data : [];
+  return data.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    if (String(record.status ?? 'open').toLowerCase() !== 'open') return [];
+    const capabilities = [record.language, record.complexity_tag, ...(Array.isArray(record.tags) ? record.tags : [])]
+      .map(String).filter((value) => value && value !== 'undefined' && value !== 'null');
+    return [{
+      source: 'taskbounty', id: String(record.task_id ?? record.id ?? ''), title: String(record.title ?? ''),
+      budgetUsd: Number(record.bounty_cents ?? 0) / 100,
+      postedAt: record.created_at ? normalizeTimestamp(record.created_at) : observedAt.toISOString(),
+      bidCount: 0, assigned: false, capabilities,
+    }];
+  });
+}
+
 function validateOpportunity(item: MarketOpportunity): void {
   if (!item.source.trim() || !item.id.trim() || !item.title.trim()
     || !Number.isFinite(item.budgetUsd) || item.budgetUsd < 0

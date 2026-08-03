@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeBountyBookJobs, normalizePayanRequests, normalizeThe402Services, rankMarketOpportunities, type MarketOpportunity } from '../src/market-scout.ts';
+import { normalizeBountyBookJobs, normalizePayanRequests, normalizeTaskBountyTasks, normalizeThe402Services, rankMarketOpportunities, type MarketOpportunity } from '../src/market-scout.ts';
 
 test('market scout prioritizes fresh, unassigned, capability-matched paid work', () => {
   const opportunities: MarketOpportunity[] = [
@@ -51,5 +51,18 @@ test('market scout extracts the402 provider services from its free catalog', () 
     source: 'the402', id: 'svc-1', title: 'Public API QA and Reliability Check', budgetUsd: 3,
     postedAt: '2026-08-03T00:00:00.000Z', bidCount: 0, assigned: false,
     capabilities: ['testing', 'api', 'reliability', 'human_service'],
+  });
+});
+
+test('market scout extracts open TaskBounty coding bounties without accessing private repos', () => {
+  const [task] = normalizeTaskBountyTasks({ data: [{
+    task_id: 'tb-1', title: 'Fix pagination bug', bounty_cents: 4200,
+    status: 'open', language: 'typescript', complexity_tag: 'small',
+    created_at: '2026-08-03T00:00:00.000Z',
+  }] });
+  assert.deepEqual(task, {
+    source: 'taskbounty', id: 'tb-1', title: 'Fix pagination bug', budgetUsd: 42,
+    postedAt: '2026-08-03T00:00:00.000Z', bidCount: 0, assigned: false,
+    capabilities: ['typescript', 'small'],
   });
 });
