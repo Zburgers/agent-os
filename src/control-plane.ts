@@ -39,6 +39,10 @@ function clientScript() {
   modalStyles.id = 'job-modal-enhancements';
   modalStyles.textContent = '#detailDialog{width:min(1060px,calc(100% - 28px));padding:0;border-radius:14px}#detailDialog .dialog-top{position:sticky;top:0;z-index:1;padding:18px 22px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--panel) 94%,transparent);backdrop-filter:blur(12px)}#detailDialog #detailBody{padding:20px 22px 24px}#detailDialog h2{margin:0;font-size:18px;letter-spacing:-.02em}#detailDialog h3{margin:24px 0 8px;font-size:15px}#detailDialog .detail-grid{gap:12px 24px}#detailDialog .run-overview{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:18px}#detailDialog .run-overview div{padding:13px 14px;border:1px solid var(--line);border-radius:10px;background:linear-gradient(145deg,#1b2823,var(--bg))}#detailDialog .run-overview label{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}#detailDialog .run-overview strong{display:block;margin-top:8px;font-size:18px;overflow-wrap:anywhere}#detailDialog .run-card{padding:17px;border-radius:11px}#detailDialog .run-card-header{padding-bottom:2px}#detailDialog .technical{margin-top:13px}#detailDialog .job-modal-note{margin:8px 0 0;color:var(--muted);font-size:12px}#detailDialog [data-close]{min-width:76px}.job-expand{display:inline-grid;place-items:center;width:28px;height:28px;margin-right:7px;padding:0;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--accent);font-size:16px;line-height:1;cursor:pointer}.job-expand:hover{border-color:var(--accent);background:#1b2823}.job-expand:focus-visible,#detailDialog [data-close]:focus-visible{outline:2px solid var(--accent);outline-offset:3px}@media(max-width:700px){#detailDialog .run-overview{grid-template-columns:1fr 1fr}#detailDialog .dialog-top,#detailDialog #detailBody{padding-left:16px;padding-right:16px}}@media(prefers-reduced-motion:reduce){#detailDialog *{scroll-behavior:auto}}';
   document.head.append(modalStyles);
+  const tableStyles = document.createElement('style');
+  tableStyles.id = 'dashboard-table-spacing';
+  tableStyles.textContent = '.table .record-meta{display:block;margin-top:6px;line-height:1.35}.table td>.tag + .record-meta{margin-top:6px}.table td>details{margin-top:8px}';
+  document.head.append(tableStyles);
   const detailDialog = document.getElementById('detailDialog');
   detailDialog?.setAttribute('aria-labelledby', 'detailTitle');
   detailDialog?.setAttribute('aria-describedby', 'detailBody');
@@ -282,6 +286,19 @@ function clientScript() {
       const records = await api('/api/jobs?' + params());
       state.total = records.total;
       content.innerHTML = filterForm('<label>Status<select name="status"><option value="">All statuses</option>' + ['queued','running','paused','completed','dead_letter','cancelled'].map(status => '<option value="' + status + '">' + label(status) + '</option>').join('') + '</select></label>') + table(['Job','Status','Total runs','Retry attempts (current)','Timing','Last run','Related work / failure'], records.items.map(job => '<tr><td><button class="job-expand" title="Open run history" aria-label="Expand job details" data-detail="jobs" data-id="' + escape(job.id) + '">▸</button><button class="link" data-detail="jobs" data-id="' + escape(job.id) + '">' + escape(job.name) + '</button><span class="record-meta">Run ' + escape(job.id) + ' · ' + escape(job.purpose) + '</span></td><td>' + badge(job.status) + '</td><td><strong>' + escape(job.run_count ?? 0) + '</strong><span class="record-meta">Recorded executions</span></td><td><span class="job-attempts"><strong>' + escape(job.attempts) + ' / ' + escape(job.max_attempts) + '</strong><span class="record-meta">Current scheduler cycle</span></span></td><td>Created ' + when(job.created_at) + '<span class="record-meta">Next ' + when(job.next_run_at) + '</span></td><td>' + (job.last_run_status ? badge(job.last_run_status) + '<span class="record-meta">Finished ' + when(job.last_finished_at || job.last_started_at) + '</span>' + details(job.result_summary) : '<span class="record-meta">No runs yet</span>') + '</td><td>' + escape(job.ticket_title || job.venture_name || 'Not linked') + '<span class="record-meta error">' + escape(job.last_error || '') + '</span><div class="actions">' + jobButtons(job) + '</div></td></tr>'), 'No jobs match this filter.') + pagination(loadJobs);
+      document.querySelectorAll('.table tbody tr').forEach(row => {
+        const cells = row.children;
+        const metricCells = [cells[2], cells[3], cells[4], cells[5]];
+        metricCells.forEach(cell => { if (!cell) return; cell.classList.add('job-metric'); cell.style.display = 'grid'; cell.style.gap = '6px'; });
+        const jobCell = cells[0];
+        if (jobCell) {
+          jobCell.classList.add('job-cell'); jobCell.style.display = 'grid'; jobCell.style.gap = '6px';
+          const title = document.createElement('div'); title.className = 'job-title'; title.style.display = 'flex'; title.style.alignItems = 'center'; title.style.gap = '7px';
+          while (jobCell.firstElementChild?.matches('.job-expand, .link')) title.append(jobCell.firstElementChild);
+          jobCell.prepend(title);
+        }
+        cells[4]?.classList.add('job-timing'); cells[5]?.classList.add('job-last-run');
+      });
       bindFilters(loadJobs); bindPagination(loadJobs); bindDetails(); document.querySelectorAll('[data-job]').forEach(button => button.onclick = () => jobAction(button.dataset.id, button.dataset.job));
     } catch (error) { content.innerHTML = empty(error.message); }
   }
