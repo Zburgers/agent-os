@@ -88,6 +88,16 @@ id and hash needed for reconciliation.
   free SporeAgent identity and one capped bid on the verified pytest task. No
   registration, bid, contract, or delivery has been performed.
 
+### Repeatable read-only scout
+
+`npm run market:scout` now queries the public SporeAgent task API and PayanAgent
+offer API, normalizes both into one schema, rejects malformed records, and
+prioritizes fresh, unassigned, capability-matched opportunities. The first live
+run on 2026-08-03 found a current PayanAgent offer titled “Public API Endpoint
+Health and Integration Check” at USD 1 per call, alongside the SporeAgent
+testing and scraping tasks. The scout performs no registration, bidding,
+payment, or account mutation.
+
 ## Acceptance test
 
 1. A local test endpoint accepts a safe public HTTPS URL and returns a stable
