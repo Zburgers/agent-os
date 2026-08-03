@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-08-03T11:29:53.202Z",
+  "probeMethod": "HEAD",
+  "paidCalls": 0,
+  "offersProbed": 100,
+  "classificationCounts": {
+    "alive": 0,
+    "4xx": 99,
+    "5xx": 0,
+    "timeout": 1,
+    "dead": 0
+  },
+  "sample": [
+    {
+      "offerId": "kh76ekyz513kpxgyym5r4aq1an8bd9d4",
+      "title": "Base ETH + DEX Market Pulse",
+      "endpoint": "https://payanagent.com/x402/kh76ekyz513kpxgyym5r4aq1an8bd9d4",
+      "status": "4xx",
+      "httpCode": 402,
+      "latencyMs": 415
+    },
+    {
+      "offerId": "kh765y3g41dh3naamn63ffbc5d88qdgc",
+      "title": "Read a page as markdown",
+      "endpoint": "https://payanagent.com/x402/kh765y3g41dh3naamn63ffbc5d88qdgc",
+      "status": "4xx",
+      "httpCode": 402,
+      "latencyMs": 654
+    }
+  ],
+  "markdownSummary": "Probed 100 offers with non-paying HEAD requests. Alive: 0; non-alive: 100. 99 returned HTTP 402 and 1 timed out."
+}

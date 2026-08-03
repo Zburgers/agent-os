@@ -17,6 +17,7 @@
     "migrate": "node --experimental-strip-types src/migrate.ts",
     "worker": "node --experimental-strip-types src/worker.ts",
     "market:scout": "node --experimental-strip-types scripts/market-scout.mjs",
+    "payanagent:health-report": "node --experimental-strip-types scripts/payanagent-health-report.mjs",
     "supervisor": "node --experimental-strip-types src/supervisor.ts",
     "check": "esbuild src/*.ts --outdir=/tmp/goofy-agent-os-check --platform=node --format=esm --log-level=error",
     "build": "npm run check && npm run build:wallet-client",

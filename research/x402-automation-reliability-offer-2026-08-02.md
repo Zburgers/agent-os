@@ -100,6 +100,12 @@ or account mutation. Approval `85ee0b5a-1ccf-4ed7-bad5-3a1da6065643` is pending
 for exactly one bid on the endpoint-health request, conditional on the
 separate PayanAgent identity approval.
 
+The matching deliverable is implemented as `npm run payanagent:health-report`.
+Its verified sample run fetched 100 offers, used only non-paying HEAD probes,
+made zero paid calls, and emitted valid JSON plus a Markdown summary. The
+sample is preserved in `research/payanagent-catalog-health-sample-2026-08-03.json`
+for a future fulfill action after bid approval.
+
 ## Acceptance test
 
 1. A local test endpoint accepts a safe public HTTPS URL and returns a stable
