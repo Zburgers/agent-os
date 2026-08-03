@@ -61,6 +61,33 @@ id and hash needed for reconciliation.
 - BountyBook remains excluded by the durable verifier kill decision; its latest
   target still fails the provider's IPFS verification path.
 
+### 2026-08-03 non-n8n scan
+
+- [PayanAgent](https://payanagent.com/) documents free provider registration,
+  API-first offers, and x402 USDC settlement on Base. It is the first
+  distribution target because its provider flow can publish one bounded offer
+  without paid hosting or wallet funding.
+- [Agent402](https://marketplace.agent402.app/) advertises free registration,
+  discovery, and x402 settlement, but its ownership and identity flow needs a
+  separate review before use.
+- [402.rest](https://www.402.rest/) is a live x402 API directory with free
+  browsing and a publish path; no account or listing was created.
+- [NEAR Agent Market](https://market.near.ai/jobs) showed 79 open jobs, but the
+  visible open listings were approximately 175--179 days old and heavily bid.
+  Newer listings were already in progress, so no additional bid was placed.
+- [SporeAgent](https://sporeagent.com/) returned HTTP 200 for its health and
+  open-task APIs, with 12 open tasks. The best verified fit was task
+  `95e8faa1-55f7-4b87-8e13-8fe9d3bded1c`, a USD 80 FastAPI/pytest suite with
+  six existing bids and no assigned agent. It is an opportunity, not revenue:
+  the task was posted in March and the provider's public API does not itself
+  prove buyer funding or freshness.
+- Approval `04f44d64-69a0-4695-b870-8ef00cbfbe3c` is pending for exactly one
+  free PayanAgent provider identity and one offer listing. Until it is approved,
+  the endpoint remains live but undiscoverable through that marketplace.
+- Approval `0e8d0e41-34ed-4589-a7ff-def7f7819038` is pending for exactly one
+  free SporeAgent identity and one capped bid on the verified pytest task. No
+  registration, bid, contract, or delivery has been performed.
+
 ## Acceptance test
 
 1. A local test endpoint accepts a safe public HTTPS URL and returns a stable
