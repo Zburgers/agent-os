@@ -3,3 +3,9 @@ node_modules/
 backups/
 evidence/
 .git/
+.env
+.env.*
+!.env.example
+.agents/
+research/
+skills-lock.json

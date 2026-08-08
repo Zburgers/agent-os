@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-09 — Durable Telegram job-success notifications
+
+- Added a generic `job_success` notification path for successful supervisor jobs, delivered through the existing PostgreSQL channel outbox and Hermes Telegram relay.
+- Enqueued one owner-only, redacted message per job occurrence under the approved standing Telegram message policy; duplicate worker completion paths cannot create duplicate notices.
+- Notified on every successful job by default, with `notify_on_success=false` opt-out and meaningful-transition-only behavior for the five-minute NEAR bid monitor to prevent poller spam.
+- Passed Telegram recipient and policy configuration to the supervisor, added savepoint isolation so notification failures do not fail completed jobs, and documented the architecture and recovery procedure.
+
 ## 2026-08-02 — Persistent NEAR bid monitor
 
 - Added a five-minute durable supervisor job for bid `09d31f07-ca9f-4039-8e78-992b6efe5c29`.

@@ -84,6 +84,8 @@ services:
       SUPERVISOR_POLL_MS: ${SUPERVISOR_POLL_MS:-1000}
       SUPERVISOR_ID: compose-supervisor
       NEAR_AGENT_CREDENTIAL_FILE: /run/goofy-near-agent/credential
+      OWNER_TELEGRAM_IDS: ${OWNER_TELEGRAM_IDS:-}
+      TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID: ${TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID:-}
     depends_on:
       postgres:
         condition: service_healthy

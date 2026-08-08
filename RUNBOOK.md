@@ -60,6 +60,39 @@ in `docs/HERMES_INTEGRATION.md`. After changing integration code, run
 `hermes mcp test agent-os`, `hermes hooks doctor`, validate the risky fixture,
 and restart the gateway. Never use a real channel send as a health check.
 
+## Telegram job-success notifications
+
+The supervisor loads `OWNER_TELEGRAM_IDS` and
+`TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID` and passes them to the shared job
+executor. A successful occurrence creates one `job_success` message effect and
+one PostgreSQL outbox row per configured owner. The existing channel relay then
+delivers it through Hermes. The message contains only the job label and a
+short, allowlisted result summary; job output, credentials, provider tokens,
+and raw monitor payloads are not sent.
+
+All successful jobs notify by default. A job payload may set
+`notify_on_success=false` to suppress a nonessential notice. The NEAR bid
+monitor is the exception: it notifies only when its existing meaningful status
+transition criterion is true. Notification enqueue runs behind a database
+savepoint, so a missing/expired policy, malformed recipient, or outbox error is
+audited without changing a completed job to failed. A missing standing policy
+is fail-closed and does not authorize a direct send.
+
+To diagnose a missing notice:
+
+1. Inspect authenticated `/health` and confirm the relay heartbeat is fresh.
+2. Inspect the job run output and audit events for
+   `job_success_notification_not_enqueued` or
+   `job_success_notification_enqueue_failed`.
+3. Check the channel outbox for `message_kind='job_success'`. Explicit
+   provider failures retry only to the stored cap; `reconciliation_required`
+   must never be reset to pending or replayed automatically.
+4. Verify the standing approval is approved and unexpired, and that the owner
+   recipient allowlist is present in both `app` and `supervisor` environments.
+5. After a source or Compose change, rebuild the stack with the approved
+   deployment procedure; a plain restart does not copy new source into the
+   images.
+
 ### Telegram delivery recovery
 
 Inspect `/health` before touching an outbox row. A stale relay heartbeat means

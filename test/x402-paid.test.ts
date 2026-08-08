@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createReliabilityDiscoveryManifest, createReliabilityPaymentConfig } from '../src/x402-paid.ts';
+import { createPaidReliabilityApp } from '../scripts/x402-paid-server.mjs';
 
 test('paid reliability config is a bounded Base mainnet offer', () => {
   const config = createReliabilityPaymentConfig('0x01d5ad8af1f9aa7d18bfa305818f338d387b899b');
@@ -32,4 +33,29 @@ test('x402 discovery manifest describes the bounded paid check before payment', 
       asset: 'USDC',
     }],
   });
+});
+
+test('x402 challenge preserves the public HTTPS resource URL behind a reverse proxy', async () => {
+  const app = createPaidReliabilityApp({
+    payTo: '0x01d5ad8af1f9aa7d18bfa305818f338d387b899b',
+    publicBaseUrl: 'https://example.test',
+  });
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise<void>((resolve) => server.once('listening', resolve));
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address === 'object');
+    const response = await fetch(`http://127.0.0.1:${address.port}/v1/check`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', host: 'example.test', 'x-forwarded-proto': 'https' },
+      body: JSON.stringify({ target: 'https://example.com' }),
+    });
+    assert.equal(response.status, 402);
+    const header = response.headers.get('payment-required');
+    assert.ok(header);
+    const challenge = JSON.parse(Buffer.from(header, 'base64').toString('utf8')) as { resource?: { url?: string } };
+    assert.equal(challenge.resource?.url, `https://127.0.0.1:${address.port}/v1/check`);
+  } finally {
+    if (server.listening) await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
 });

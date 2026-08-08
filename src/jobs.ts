@@ -6,10 +6,12 @@ import { authorizeEffect } from './effects.ts';
 import { buildDailyBriefData } from './daily-brief.ts';
 import { fetchNearBidStatus, loadNearAgentCredential, shouldAlertForBidStatus } from './near-bid-monitor.ts';
 import { runRevenueMarketScout } from './revenue-market-scout.ts';
+import { enqueueJobSuccessNotifications, loadJobSuccessNotificationConfig } from './job-success-notifications.ts';
 
 export type Job = { id: string; action_kind: 'job'; payload: Record<string, unknown>; idempotency_key: string; current_occurrence_key: string; attempts: number; max_attempts: number; interval_seconds: number | null };
 export type ClaimedJob = { job: Job; runId: string };
 const retryDelaySeconds = 60;
+const jobSuccessNotificationConfig = loadJobSuccessNotificationConfig(process.env);
 
 async function finishRun(client: PoolClient, runId: string, status: 'completed' | 'failed', output: Record<string, unknown> | null, error: string | null) {
   await client.query(
@@ -126,7 +128,28 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
       [claim.job.id, claim.runId, claim.job.current_occurrence_key, JSON.stringify(effectResult)],
     );
     const outcome = effect.rowCount ? 'completed' : 'already_completed';
-    const runOutput = { result: outcome, ...effectResult };
+    let notification: Record<string, unknown> | undefined;
+    let notificationEnqueueFailed = false;
+    await client.query('SAVEPOINT job_success_notification');
+    try {
+      notification = await enqueueJobSuccessNotifications(
+        client,
+        claim.job,
+        claim.runId,
+        effectResult as Record<string, unknown>,
+        jobSuccessNotificationConfig,
+      );
+      await client.query('RELEASE SAVEPOINT job_success_notification');
+    } catch {
+      notificationEnqueueFailed = true;
+      await client.query('ROLLBACK TO SAVEPOINT job_success_notification');
+      await client.query('RELEASE SAVEPOINT job_success_notification');
+    }
+    const runOutput = {
+      result: outcome,
+      ...effectResult,
+      telegram_notification: notification ?? { enqueued: 0, duplicates: 0, denied: 1, reason: 'enqueue_failed' },
+    };
     await client.query(
       `UPDATE effect_intents SET state='succeeded',receipt=$2,finished_at=now(),updated_at=now()
        WHERE id=$1 AND state='authorized'`,
@@ -150,6 +173,9 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
     );
     await client.query('COMMIT');
     await audit('job_completed', 'job', claim.job.id, { idempotency_key: claim.job.idempotency_key, outcome });
+    if (notificationEnqueueFailed) {
+      await audit('job_success_notification_enqueue_failed', 'job', claim.job.id, { reason: 'notification_enqueue_failed' });
+    }
     if (dailyBrief) await audit('daily_owner_brief_generated', 'job', claim.job.id, { route: '/daily-brief', generated_at: dailyBrief.generatedAt });
     if (nearBid) await audit('near_bid_status_checked', 'job', claim.job.id, { bid_id: nearBid.id, status: nearBid.status, alert: nearAlert });
     if (marketScout) await audit('revenue_market_scout_completed', 'job', claim.job.id, { source_count: marketScout.sources.length, opportunity_count: marketScout.opportunities.length, failure_count: marketScout.failures.length });

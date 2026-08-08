@@ -27,6 +27,22 @@ implementation sprint can be scoped after the audit. Payment is issued only
 through a verified buyer-specific checkout and settlement is reconciled before
 delivery.
 
+## Offline job notifications
+
+The supervisor records each successful job occurrence in PostgreSQL and, when
+its success criterion is reached, transactionally creates a redacted
+`job_success` Telegram outbox message for the configured owner chats. Hermes
+delivers the outbox; the poller never sends directly and never receives the
+Telegram bot credential. Messages are deduplicated by job occurrence, governed
+by the approved Telegram message policy, and fail closed if that policy or the
+owner recipient allowlist is unavailable. The NEAR bid monitor only notifies on
+a meaningful non-pending status transition so a five-minute poll does not
+become a notification stream.
+
+See [`docs/adr/0005-job-success-telegram-notifications.md`](docs/adr/0005-job-success-telegram-notifications.md)
+and the [runbook notification section](RUNBOOK.md#telegram-job-success-notifications)
+for configuration and recovery details.
+
 ## Development
 
 ```bash
@@ -37,4 +53,3 @@ npm test
 Production operation uses Docker Compose, PostgreSQL migrations, and the
 documented private deployment runbook. Secrets belong in runtime injection;
 never commit them or place them in memory or issue text.
-
