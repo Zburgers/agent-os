@@ -13,9 +13,9 @@ recovery ambiguous, and expand Telegram credential exposure.
 
 ## Decision
 
-Use the existing PostgreSQL channel outbox and Hermes host relay for all
-job-success notices. `executeInternalJob` evaluates the job result and, in the
-same transaction as the completed run, authorizes a `message` effect under
+Use the existing PostgreSQL channel outbox and governed Telegram host relay for
+all job-success notices. The relay transport ownership is defined by ADR 0006.
+`executeInternalJob` evaluates the job result and, in the same transaction as the completed run, authorizes a `message` effect under
 `TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID` and inserts one `job_success` row
 per configured `OWNER_TELEGRAM_IDS` recipient.
 

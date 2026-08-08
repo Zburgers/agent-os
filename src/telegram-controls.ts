@@ -5,6 +5,7 @@ import { verifyApprovalToken } from './approval-token.ts';
 import { ApprovalService, ApprovalTransitionError } from './approvals.ts';
 
 type Options = { approvalSigningSecret?: string; now?: () => Date };
+type TelegramCallbackInput = { userId: string; chatId: string; data: string };
 const canonicalUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class TelegramControlService {
@@ -30,9 +31,11 @@ export class TelegramControlService {
     return { accepted: false, reason };
   }
 
-  private async decideApproval(userId: string, command: 'approve' | 'reject', token?: string) {
-    const value = token && this.approvalSigningSecret
-      ? verifyApprovalToken(token, this.approvalSigningSecret, this.now().valueOf()) : null;
+  private async decideApproval(userId: string, command: 'approve' | 'reject', token?: string, nativeApprovalId?: string) {
+    const value = nativeApprovalId
+      ? { approvalId: nativeApprovalId, action: command }
+      : token && this.approvalSigningSecret
+        ? verifyApprovalToken(token, this.approvalSigningSecret, this.now().valueOf()) : null;
     if (!value || !canonicalUuid.test(value.approvalId)) return this.auditDecisionRejection(userId, command, 'invalid_approval_token');
     if (value.action !== command) return this.auditDecisionRejection(userId, command, 'approval_action_mismatch', value.approvalId);
     try {
@@ -45,6 +48,26 @@ export class TelegramControlService {
         userId, command, reasons[error.reason as keyof typeof reasons] ?? 'approval_transition_rejected', value.approvalId,
       );
     }
+  }
+
+  async handleCallback(input: TelegramCallbackInput) {
+    const match = input.data.match(/^ao1:(approve|reject):([0-9a-f-]{36})$/i);
+    const command = match?.[1] as 'approve' | 'reject' | undefined;
+    const approvalId = match?.[2];
+    if (!command || !approvalId || !this.ownerIds.has(input.userId) || !this.ownerIds.has(input.chatId)) {
+      const result = await this.auditDecisionRejection(input.userId, command ?? 'approve', 'invalid_approval_callback', approvalId);
+      return { ...result, removeButtons: false, callbackText: 'Not authorized' };
+    }
+    const result = await this.decideApproval(input.userId, command, undefined, approvalId);
+    await this.database.query(
+      `INSERT INTO audit_events(actor_type,actor_id,event_type,entity_type,entity_id,payload)
+       VALUES('telegram',$1,'telegram_callback_processed','telegram_callback',$2,$3)`,
+      [input.userId, approvalId, JSON.stringify({ action: command, accepted: result.accepted, reason: result.accepted ? undefined : result.reason })],
+    );
+    const callbackText = result.accepted ? (command === 'approve' ? 'Approved' : 'Rejected')
+      : result.reason === 'approval_already_decided' ? 'Already decided'
+        : result.reason === 'approval_expired' ? 'Approval expired' : 'Decision not applied';
+    return { ...result, removeButtons: true, callbackText };
   }
 
   async handle(userId: string, text: string) {

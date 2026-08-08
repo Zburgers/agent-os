@@ -60,6 +60,31 @@ test('Telegram applies one valid signed approval with telegram actor attribution
   assert.equal(JSON.stringify(calls).includes(token), false);
 });
 
+test('Telegram applies a native callback decision from the configured owner chat', async () => {
+  const { calls, connects, service } = controlFixture();
+  assert.deepEqual(await service.handleCallback({
+    userId: '42', chatId: '42', data: `ao1:approve:${approvalId}`,
+  }), {
+    accepted: true, command: 'approve', approval: { id: approvalId, status: 'approved', action: 'approve' },
+    removeButtons: true, callbackText: 'Approved',
+  });
+  assert.equal(connects(), 1);
+  assert.equal(calls.some((call) => call.sql.startsWith('INSERT INTO audit_events')), true);
+});
+
+test('Telegram rejects malformed or foreign native callbacks before transition', async () => {
+  for (const input of [
+    { userId: '41', chatId: '42', data: `ao1:approve:${approvalId}` },
+    { userId: '42', chatId: '999', data: `ao1:approve:${approvalId}` },
+    { userId: '42', chatId: '42', data: 'ao1:approve:not-an-approval' },
+  ]) {
+    const { connects, service } = controlFixture();
+    const result = await service.handleCallback(input);
+    assert.equal(result.accepted, false);
+    assert.equal(connects(), 0);
+  }
+});
+
 test('Telegram rejects tampered, expired, and action-mismatched decision tokens before transition', async () => {
   const validApprove = issueApprovalToken({ approvalId, action: 'approve', expiresAt: now.valueOf() + 60_000 }, signingSecret);
   const expiredApprove = issueApprovalToken({ approvalId, action: 'approve', expiresAt: now.valueOf() }, signingSecret);

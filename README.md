@@ -31,13 +31,13 @@ delivery.
 
 The supervisor records each successful job occurrence in PostgreSQL and, when
 its success criterion is reached, transactionally creates a redacted
-`job_success` Telegram outbox message for the configured owner chats. Hermes
-delivers the outbox; the poller never sends directly and never receives the
-Telegram bot credential. Messages are deduplicated by job occurrence, governed
-by the approved Telegram message policy, and fail closed if that policy or the
-owner recipient allowlist is unavailable. The NEAR bid monitor only notifies on
-a meaningful non-pending status transition so a five-minute poll does not
-become a notification stream.
+`job_success` Telegram outbox message for the configured owner chats. The
+Agent OS host relay owns the Telegram Bot API send and callback loop; the
+poller never sends directly and never receives the Telegram bot credential.
+Messages are deduplicated by job occurrence, governed by the approved Telegram
+message policy, and fail closed if that policy or the owner recipient allowlist
+is unavailable. The NEAR bid monitor only notifies on a meaningful non-pending
+status transition so a five-minute poll does not become a notification stream.
 
 See [`docs/adr/0005-job-success-telegram-notifications.md`](docs/adr/0005-job-success-telegram-notifications.md)
 and the [runbook notification section](RUNBOOK.md#telegram-job-success-notifications)

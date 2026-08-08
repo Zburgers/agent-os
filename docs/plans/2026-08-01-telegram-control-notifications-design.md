@@ -1,5 +1,9 @@
 # Telegram Control Notifications Design
 
+> Historical baseline. ADR 0006 supersedes the Hermes-only Telegram transport
+> choice for native approval buttons: Agent OS now owns the host Bot API relay,
+> while the durable outbox and authorization model below remain authoritative.
+
 ## Objective and success criteria
 
 Agent OS must deliver approval requests and urgent operational notices to both
@@ -13,7 +17,7 @@ decision audit, secret-safe generated templates, and pause/kill enforcement.
 
 The first live end-to-end test must prove all of the following before the
 `telegram_controls` readiness gate returns to `PASS`: one generated notice is
-delivered to the configured owner chat through Hermes; the provider result is
+delivered to the configured owner chat through the Agent OS Telegram relay; the provider result is
 reconciled to `delivered`; a tampered or expired decision token is rejected; an
 allowlisted owner can decide an exact test approval once; a replay cannot decide
 it again; and kill prevents a new delivery claim. Merely having an inbound
@@ -21,21 +25,19 @@ webhook, outbox table, or successful CLI command is insufficient.
 
 ## Approaches considered
 
-### A. PostgreSQL outbox plus Hermes host relay — selected
+### A. PostgreSQL outbox plus Hermes host relay — historical baseline
 
 Agent OS owns policy, generated content, effects, durable state, claiming, and
 reconciliation. A small host relay calls authenticated loopback APIs, then uses
-`hermes send` with argument-array process spawning. Hermes retains the existing
-Telegram credential and home-channel configuration. This avoids copying the bot
-token into the app, keeps PostgreSQL authoritative, and survives application or
-relay restarts.
+the provider relay. This avoided copying the bot token into the app, kept
+PostgreSQL authoritative, and survived application or relay restarts. ADR 0006
+supersedes this transport choice for native approval buttons.
 
-### B. Telegram Bot API inside the app — rejected
+### B. Telegram Bot API inside the app — rejected for the application container
 
-This is mechanically direct but duplicates Hermes transport and requires a
-second injection path for the Telegram token. It expands secret exposure and
-contradicts the current architecture in which Hermes owns configured messaging
-transport.
+This remains rejected inside the application container. The shipped design
+uses the Bot API only in the host relay, where the token is protected and the
+application receives only authenticated, bounded update fields.
 
 ### C. Agent-triggered ad hoc `hermes send` calls — rejected
 
@@ -78,34 +80,34 @@ persistence; evidence arrays and credential values are never included.
 
 For each configured owner ID, approval creation calls `authorizeEffect` inside
 the same database transaction and inserts one uniquely keyed outbox row. The
-message includes `/approve <token>` and `/reject <token>` commands whose HMAC
-tokens are bound to approval ID, action, and the earlier of 30 minutes or the
-approval expiry. The signing secret is loaded from a mode-0400 runtime file and
-never enters PostgreSQL or output.
+message includes native Approve and Reject buttons with bounded hidden
+`ao1:<action>:<approval-uuid>` callback data. The visible text contains only a
+short reference. The legacy signed command path remains separately available;
+its signing secret is loaded from a mode-0400 runtime file and never enters
+PostgreSQL or output.
 
 The authenticated claim endpoint locks one eligible row with
 `FOR UPDATE SKIP LOCKED`, rechecks controls, consumes an authorized effect, and
-returns only recipient, message text, outbox ID, and attempt number. The host
-relay invokes `hermes send --to telegram:<owner-id> --json --file -` without a
-shell. Its result endpoint stores a sanitized provider receipt. Explicit
-failures retry with bounded backoff while the effect remains executing;
+returns only recipient, message text, optional inline keyboard, outbox ID, and
+attempt number. The host relay invokes the official Telegram Bot API and stores
+a sanitized provider receipt. Explicit failures retry with bounded backoff while the effect remains executing;
 ambiguous or abandoned delivery enters reconciliation without replay; success
 atomically marks both outbox and effect terminal.
 
 ## Telegram decisions
 
-`/approve` and `/reject` are added to the strict command parser. The webhook
-secret authenticates Telegram as the provider, the configured user allowlist
-authenticates the owner identity, and the HMAC token authenticates the exact
-approval/action/expiry tuple. The control service verifies all three before
-calling the existing `ApprovalService` as actor type `telegram`. Invalid,
-tampered, expired, action-mismatched, replayed, or already-decided commands
-return a safe rejection and remain audited without leaking token contents.
+Native callback queries carry the Telegram user and private chat identity to
+the authenticated Agent OS update endpoint. The configured owner allowlist
+authenticates the owner identity and chat, and the control service invokes the
+existing `ApprovalService` as actor type `telegram`. Invalid, expired,
+action-mismatched, replayed, or already-decided callbacks return a safe
+rejection and remain audited. The legacy signed `/approve` and `/reject`
+commands keep their HMAC verification for explicit manual use.
 
-No inline callback button is required for the first release. Text commands are
-smaller, independently testable, and avoid callback-query handling. Modify and
-cancel remain dashboard operations. Pause, resume, and kill keep their existing
-explicit confirmation behavior.
+Modify and cancel remain dashboard operations. Pause, resume, and kill keep
+their existing explicit confirmation behavior. Only one process may poll a
+Telegram bot token; Hermes's same-bot Telegram lane must be disabled before
+the Agent OS relay starts.
 
 ## Failure handling and observability
 
@@ -124,15 +126,15 @@ separate approval/effect and cannot be inferred from source-code completion.
 
 ## Security invariants
 
-- No Telegram bot token is copied into Agent OS; Hermes remains the transport.
+- No Telegram bot token enters Agent OS containers; the protected host relay is
+  the Telegram transport.
 - No signing secret, bearer token, raw decision token, or message body enters
   logs, audit payloads, health output, provider receipts, or error strings.
 - Recipients come only from configured owner IDs, never request input.
 - Templates are structured and allowlisted; untrusted free-form payloads are
   rejected.
 - Database writes use parameterized queries and transactional row locks.
-- Relay execution uses `spawn` argument arrays with `shell: false`.
+- Relay execution uses direct HTTPS JSON requests and never shells out.
 - Every notification has a unique outbox key and matching message effect.
 - Kill prevents claims; ambiguous delivery prevents replay.
 - Approval decisions use existing immutable transitions and audit attribution.
-

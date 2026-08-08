@@ -25,26 +25,32 @@ redacted outcome, tool name, and duration to close the durable effect. Both
 hooks fail closed or leave a visible reconcilable state when Agent OS is
 unavailable.
 
-Hermes remains responsible for Telegram/Discord transport and durable gateway
-operation. Agent OS remains authoritative for owner identity, approval,
-controls, effects, finance, audit, and channel delivery records. Bot tokens
-never enter Agent OS containers.
+Hermes remains responsible for its conversational gateway and Discord
+transport. Agent OS owns the Telegram owner-notification transport in
+`scripts/relay-channel-outbox.mjs`, while Agent OS remains authoritative for
+owner identity, approval, controls, effects, finance, audit, and channel
+delivery records. The Telegram bot token stays on the host relay in a protected
+mode-0600 file and never enters Agent OS containers.
 
 ## Owner notification relay
 
 `scripts/relay-channel-outbox.mjs` polls the authenticated loopback API and
-invokes the fixed Hermes CLI path with `shell:false`; notice text travels only
-over stdin. The host relay receives neither PostgreSQL nor Telegram
-credentials. Every claim updates the `channel-relay` heartbeat, and `/health`
-shows payload-free outbox counts, oldest pending age, reconciliation count,
-failures, and relay freshness.
+uses the official Telegram Bot API directly with JSON requests. It sends
+`sendMessage` payloads, long-polls `getUpdates` for messages and callback
+queries, forwards only bounded update fields to Agent OS, answers callback
+queries, and removes decision buttons after processing. Every claim updates
+the `channel-relay` heartbeat, and `/health` shows payload-free outbox counts,
+oldest pending age, reconciliation count, failures, and relay freshness.
 
-Approval notices are generated from fixed redacted fields and include separate
-short-lived, action-bound `/approve <token>` and `/reject <token>` commands.
-The HMAC key must be a dedicated absolute mode-0600 file, never an environment
-value or a reuse of the Agent OS bearer credential. Invalid, expired,
-action-mismatched, and replayed decisions fail closed and are audited without
-the token.
+Approval notices are generated from fixed redacted fields and include native
+Telegram Approve and Reject inline buttons. The visible notice contains only a
+short reference, never the full approval UUID or a copy-paste command. The
+hidden callback payload is bounded to `ao1:<action>:<approval-uuid>`; Agent OS
+validates the callback, configured owner user/chat, approval expiry, and the
+immutable approval transition before the relay acknowledges the tap. Invalid,
+expired, action-mismatched, and replayed decisions fail closed and are audited.
+The signed text-command path remains available for explicit legacy/manual
+controls, but approval notices no longer expose it.
 
 ### Job-success notices
 
@@ -62,7 +68,10 @@ job label and short result summary only. Notification errors are isolated with
 a PostgreSQL savepoint and recorded as audit evidence without failing the
 completed job. The supervisor receives only `OWNER_TELEGRAM_IDS` and
 `TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID`; Telegram and approval-token
-secrets remain outside it.
+secrets remain outside it. Only one process may poll a Telegram bot token.
+Before enabling the Agent OS relay, disable the same-bot Telegram polling lane
+in Hermes (or give Hermes a different bot token); running both consumers is
+not supported.
 
 Hermes' configured Mem0 provider remains the single contextual-memory provider.
 Agent OS stores scoped, policy-screened memory references and never treats

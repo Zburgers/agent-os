@@ -4,7 +4,6 @@ import { chmod, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildApprovalNotification, enqueueApprovalNotifications, loadApprovalNotificationConfig } from '../src/approval-notifications.ts';
-import { verifyApprovalToken } from '../src/approval-token.ts';
 
 const now = new Date('2026-08-01T00:00:00.000Z');
 const secret = 'notification-test-signing-secret-at-least-32-bytes';
@@ -21,16 +20,11 @@ const approval = {
   expiresAt: '2026-08-01T02:00:00.000Z',
 };
 
-function commandToken(text: string, action: 'approve' | 'reject') {
-  const match = text.match(new RegExp(`/${action} ([^\\s]+)`));
-  assert.ok(match, `missing ${action} command`);
-  return match[1];
-}
-
-test('approval notification contains exact safe fields and action-bound 30-minute commands', () => {
-  const notice = buildApprovalNotification(approval, secret, now);
+test('approval notification contains exact safe fields and native approve/reject buttons', () => {
+  const notice = buildApprovalNotification(approval, now);
   assert.match(notice.text, /Approval required/);
-  assert.match(notice.text, new RegExp(approval.id));
+  assert.match(notice.text, /Reference: 11111111/);
+  assert.doesNotMatch(notice.text, new RegExp(approval.id));
   assert.match(notice.text, /Type: expense/);
   assert.match(notice.text, /Action: Buy one validation domain/);
   assert.match(notice.text, /Reason: Test demand with a dedicated landing page/);
@@ -39,13 +33,12 @@ test('approval notification contains exact safe fields and action-bound 30-minut
   assert.match(notice.text, /Risk: The validation may produce no qualified leads/);
   assert.match(notice.text, /Recommendation: Approve only for the documented experiment/);
   assert.match(notice.text, /Expires: 2026-08-01T02:00:00\.000Z/);
+  assert.deepEqual(notice.inlineKeyboard, [[
+    { text: '✅ Approve', callbackData: `ao1:approve:${approval.id}` },
+    { text: '❌ Reject', callbackData: `ao1:reject:${approval.id}` },
+  ]]);
+  assert.doesNotMatch(notice.text, /\/(approve|reject) /);
   assert.ok(Buffer.byteLength(notice.text, 'utf8') <= 4096);
-
-  const approve = verifyApprovalToken(commandToken(notice.text, 'approve'), secret, now.valueOf());
-  const reject = verifyApprovalToken(commandToken(notice.text, 'reject'), secret, now.valueOf());
-  assert.deepEqual(approve, { approvalId: approval.id, action: 'approve', expiresAt: now.valueOf() + 30 * 60_000 });
-  assert.deepEqual(reject, { approvalId: approval.id, action: 'reject', expiresAt: now.valueOf() + 30 * 60_000 });
-  assert.equal(verifyApprovalToken(commandToken(notice.text, 'approve'), 'wrong-secret', now.valueOf()), null);
 });
 
 test('approval notification redacts generic credentials and remains within Telegram byte limit', () => {
@@ -54,12 +47,11 @@ test('approval notification redacts generic credentials and remains within Teleg
     requestedAction: `Configure API_KEY=should-never-persist ${'é'.repeat(8_000)}`,
     risk: 'Authorization: Bearer dangerous-runtime-token',
     recommendation: 'Use password="another-secret-value" only at runtime',
-  }, secret, now);
+  }, now);
   assert.doesNotMatch(notice.text, /should-never-persist|dangerous-runtime-token|another-secret-value/);
   assert.match(notice.text, /\[REDACTED\]/);
   assert.ok(Buffer.byteLength(notice.text, 'utf8') <= 4096);
-  assert.ok(verifyApprovalToken(commandToken(notice.text, 'approve'), secret, now.valueOf()));
-  assert.ok(verifyApprovalToken(commandToken(notice.text, 'reject'), secret, now.valueOf()));
+  assert.equal(notice.inlineKeyboard?.[0]?.[0]?.callbackData, `ao1:approve:${approval.id}`);
 });
 
 function databaseFixture(duplicate = false) {
@@ -98,7 +90,10 @@ test('approval notification enqueues one authorized idempotent effect per allowl
   assert.equal(effects.length, 2);
   assert.equal(outboxes.length, 2);
   assert.deepEqual(outboxes.map((call) => call.values?.[1]), ['123456', '987654']);
-  assert.ok(outboxes.every((call) => typeof (call.values?.[5] as { text?: unknown })?.text === 'string'));
+  assert.ok(outboxes.every((call) => {
+    const payload = call.values?.[5] as { text?: unknown; inlineKeyboard?: unknown };
+    return typeof payload?.text === 'string' && Array.isArray(payload.inlineKeyboard);
+  }));
   assert.ok(calls.every((call) => !JSON.stringify(call.values ?? []).includes(secret)));
 });
 

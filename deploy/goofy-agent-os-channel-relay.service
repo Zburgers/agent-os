@@ -10,8 +10,9 @@ WorkingDirectory=/home/goofy/agent-os
 ExecStart=/usr/bin/node /home/goofy/agent-os/scripts/relay-channel-outbox.mjs
 Environment=AGENT_OS_RELAY_BASE_URL=http://127.0.0.1:9999
 Environment=AGENT_OS_RELAY_TOKEN_FILE=/home/goofy/.hermes/agent-os-token
-Environment=HERMES_CLI_PATH=/home/goofy/.local/bin/hermes
+Environment=TELEGRAM_BOT_TOKEN_FILE=/home/goofy/.hermes/telegram-bot-token
 Environment=AGENT_OS_RELAY_POLL_MS=2000
+Environment=TELEGRAM_POLL_TIMEOUT_SECONDS=1
 Restart=on-failure
 RestartSec=5s
 TimeoutStopSec=35s

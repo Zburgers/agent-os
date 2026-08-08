@@ -9,7 +9,7 @@ type DeliveryRow = {
   channel: string;
   recipient_ref: string;
   message_kind: string;
-  redacted_payload: { text?: unknown };
+  redacted_payload: { text?: unknown; inlineKeyboard?: unknown };
   status: string;
   attempts: number;
   max_attempts: number;
@@ -43,6 +43,24 @@ function sanitizedReceipt(value: Record<string, unknown> | undefined) {
   if (/^-?\d{1,32}$/.test(messageId)) result.message_id = messageId;
   if (/^-?\d{1,32}$/.test(chatId)) result.chat_id = chatId;
   return result;
+}
+
+function inlineKeyboard(value: unknown) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length < 1 || value.length > 4) throw new ChannelOutboxError('invalid_delivery_buttons');
+  const keyboard = value.map((row) => {
+    if (!Array.isArray(row) || row.length < 1 || row.length > 3) throw new ChannelOutboxError('invalid_delivery_buttons');
+    return row.map((button) => {
+      if (!button || typeof button !== 'object') throw new ChannelOutboxError('invalid_delivery_buttons');
+      const text = String((button as { text?: unknown }).text ?? '');
+      const callbackData = String((button as { callbackData?: unknown }).callbackData ?? '');
+      if (!text || Buffer.byteLength(text, 'utf8') > 64 || !callbackData || Buffer.byteLength(callbackData, 'utf8') > 64) {
+        throw new ChannelOutboxError('invalid_delivery_buttons');
+      }
+      return { text, callbackData };
+    });
+  });
+  return keyboard;
 }
 
 async function auditDelivery(client: Client, id: string, eventType: string, payload: Record<string, unknown>) {
@@ -117,9 +135,10 @@ export class ChannelOutboxService {
     if (row.channel !== 'telegram' || typeof text !== 'string' || !text || Buffer.byteLength(text, 'utf8') > 4096) {
       throw new ChannelOutboxError('invalid_delivery_payload');
     }
+    const buttons = inlineKeyboard(row.redacted_payload?.inlineKeyboard);
     return {
       id: row.id, channel: row.channel, recipientRef: row.recipient_ref,
-      messageKind: row.message_kind, text, attempt: row.attempts,
+      messageKind: row.message_kind, text, ...(buttons ? { inlineKeyboard: buttons } : {}), attempt: row.attempts,
     };
   }
 

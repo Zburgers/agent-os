@@ -193,6 +193,25 @@ const server = createServer(async (req, res) => {
       await recordChannelRelayHeartbeat();
       return respond(res, 200, await channelOutbox.claim());
     }
+    if (req.method === 'POST' && url.pathname === '/api/telegram/update') {
+      if (auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
+      const input = await body(req);
+      if (!Number.isSafeInteger(Number(input.updateId)) || Number(input.updateId) < 0) return respond(res, 400, { error: 'invalid_telegram_update' });
+      if (input.type === 'callback_query') {
+        const userId = String(input.userId ?? '');
+        const chatId = String(input.chatId ?? '');
+        const data = String(input.data ?? '');
+        if (!/^\d{1,20}$/.test(userId) || !/^\d{1,20}$/.test(chatId) || Buffer.byteLength(data, 'utf8') > 128) return respond(res, 400, { error: 'invalid_telegram_callback' });
+        return respond(res, 200, await telegram.handleCallback({ userId, chatId, data }));
+      }
+      if (input.type === 'message') {
+        const userId = String(input.userId ?? '');
+        const text = String(input.text ?? '');
+        if (!/^\d{1,20}$/.test(userId) || !text || Buffer.byteLength(text, 'utf8') > 4096) return respond(res, 400, { error: 'invalid_telegram_message' });
+        return respond(res, 200, await telegram.handle(userId, text));
+      }
+      return respond(res, 202, { accepted: false, reason: 'unsupported_telegram_update' });
+    }
     if (req.method === 'POST' && url.pathname === '/api/readiness/telegram-controls/pass') {
       if (auth.kind !== 'agent') return respond(res, 403, { error: 'agent_scope_required' });
       const input = await body(req);

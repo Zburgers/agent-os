@@ -1,12 +1,17 @@
 # Telegram Control Notifications Implementation Plan
 
+> Transport update: ADR 0006 supersedes the original Hermes CLI delivery and
+> signed-command notice UX. The implementation tasks below remain useful for
+> the durable outbox and approval lifecycle; native buttons and the Agent OS
+> Bot API relay are now the shipped path.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use shipyard:shipyard-executing-plans to implement this plan task-by-task.
 
-**Goal:** Deliver durable owner-only Telegram control notifications through Hermes and support signed, audited `/approve` and `/reject` decisions.
+**Goal:** Deliver durable owner-only Telegram control notifications through Agent OS and support native, audited approval callbacks.
 
-**Architecture:** Agent OS generates allowlisted redacted notices, authorizes one message effect per recipient, and owns a PostgreSQL outbox plus authenticated claim/result APIs. A least-complexity host relay uses the existing Agent OS bearer credential and Hermes CLI transport without receiving database or Telegram credentials.
+**Architecture:** Agent OS generates allowlisted redacted notices, authorizes one message effect per recipient, and owns a PostgreSQL outbox plus authenticated claim/result APIs. A host relay uses the existing Agent OS bearer credential and a protected host-only Telegram Bot API token, while the application and supervisor containers receive neither Telegram credentials nor raw provider updates.
 
-**Tech Stack:** Node.js 22, TypeScript, PostgreSQL 16, Node test runner, Hermes CLI, Docker Compose, HMAC-SHA256.
+**Tech Stack:** Node.js 22, TypeScript, PostgreSQL 16, Node test runner, Telegram Bot API, Docker Compose, HMAC-SHA256 for the retained manual command path.
 
 ---
 
@@ -77,17 +82,17 @@
   </verification>
 </task>
 
-### Task 4: Build the Hermes host relay
+### Task 4: Build the Agent OS Telegram host relay
 
 <task id="4" name="Hermes relay">
-  <description>Poll the loopback claim API and deliver with Hermes using shell-free spawning and sanitized receipts.</description>
+  <description>Poll the loopback claim API and deliver through the Telegram Bot API with native keyboard markup, callback polling, and sanitized receipts.</description>
   <files>
     <create>scripts/relay-channel-outbox.mjs</create>
     <create>test/channel-relay.test.ts</create>
     <create>deploy/goofy-agent-os-channel-relay.service</create>
   </files>
   <steps>
-    <step>Write tests around injected fetch/spawn behavior for argument safety, stdin delivery, no body logging, success receipt sanitization, explicit failure, timeout ambiguity, and graceful shutdown.</step>
+    <step>Write tests around injected fetch behavior for native keyboard payloads, callback identity forwarding, keyboard removal, no body/token logging, success receipt sanitization, explicit failure, timeout ambiguity, and graceful shutdown.</step>
     <step>Run the focused test and observe the missing-relay failure.</step>
     <step>Implement minimal polling relay and user-service unit with loopback URL and existing mode-0600 Agent OS token file.</step>
     <step>Run focused tests and inspect the service with systemd-analyze verify where available.</step>
@@ -172,4 +177,3 @@
     <expected>One delivered and reconciled canary; signed decision checks proven; kill claim denial proven; no secret exposure; gate PASS only with linked evidence.</expected>
   </verification>
 </task>
-

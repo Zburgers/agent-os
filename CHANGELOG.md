@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-09 — Agent OS-owned Telegram native approval buttons
+
+- Replaced copy-paste approval commands in Telegram notices with native Approve and Reject inline buttons carrying bounded, hidden callback data.
+- Moved Telegram owner-notification delivery from Hermes CLI invocation into the Agent OS host relay using the official Bot API, including callback polling, owner validation, callback acknowledgement, and keyboard removal.
+- Added an authenticated Agent OS callback-update endpoint, immutable approval transition/audit handling, protected token-file configuration, and a one-poller Hermes migration boundary.
+- Added ADR 0006 and updated integration, runbook, and historical plan documentation.
+
 ## 2026-08-09 — Durable Telegram job-success notifications
 
 - Added a generic `job_success` notification path for successful supervisor jobs, delivered through the existing PostgreSQL channel outbox and Hermes Telegram relay.

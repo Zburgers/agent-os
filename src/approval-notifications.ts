@@ -2,7 +2,6 @@ import type { PoolClient } from 'pg';
 import { readFile, stat } from 'node:fs/promises';
 import { isAbsolute } from 'node:path';
 import { actorContext } from './actor.ts';
-import { issueApprovalToken } from './approval-token.ts';
 import { authorizeEffect } from './effects.ts';
 
 export type ApprovalNotificationInput = {
@@ -24,6 +23,8 @@ export type ApprovalNotificationConfig = {
   signingSecret?: string;
   now?: () => Date;
 };
+
+export type TelegramInlineButton = { text: string; callbackData: string };
 
 type NotificationEnvironment = Record<string, string | undefined>;
 
@@ -77,9 +78,8 @@ function money(amountMinor: number, currency: string) {
   return `${currency} ${amount / 100n}.${String(amount % 100n).padStart(2, '0')}`;
 }
 
-export function buildApprovalNotification(input: ApprovalNotificationInput, signingSecret: string, now = new Date()) {
+export function buildApprovalNotification(input: ApprovalNotificationInput, now = new Date()) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.id)) throw new Error('invalid_notification_approval_id');
-  if (Buffer.byteLength(signingSecret, 'utf8') < 32) throw new Error('invalid_notification_signing_secret');
   const expiresAt = new Date(input.expiresAt);
   if (Number.isNaN(expiresAt.valueOf()) || expiresAt <= now) throw new Error('invalid_notification_expiry');
   const currency = String(input.currency).toUpperCase();
@@ -91,12 +91,9 @@ export function buildApprovalNotification(input: ApprovalNotificationInput, sign
   const recommendation = field(input.recommendation, 700);
   if (!actionType || !requestedAction || !reason || !risk || !recommendation) throw new Error('invalid_notification_field');
 
-  const tokenExpiry = Math.min(expiresAt.valueOf(), now.valueOf() + 30 * 60_000);
-  const approve = issueApprovalToken({ approvalId: input.id, action: 'approve', expiresAt: tokenExpiry }, signingSecret);
-  const reject = issueApprovalToken({ approvalId: input.id, action: 'reject', expiresAt: tokenExpiry }, signingSecret);
   const text = [
     'Approval required',
-    `ID: ${input.id}`,
+    `Reference: ${input.id.slice(0, 8)}`,
     `Type: ${actionType}`,
     `Action: ${requestedAction}`,
     `Reason: ${reason}`,
@@ -106,12 +103,17 @@ export function buildApprovalNotification(input: ApprovalNotificationInput, sign
     `Recommendation: ${recommendation}`,
     `Expires: ${expiresAt.toISOString()}`,
     '',
-    'Review the exact scope in Agent OS before deciding.',
-    `/approve ${approve}`,
-    `/reject ${reject}`,
+    'Review the exact scope in Agent OS, then tap Approve or Reject.',
   ].join('\n');
   if (Buffer.byteLength(text, 'utf8') > 4096) throw new Error('notification_too_large');
-  return { text, expiresAt: tokenExpiry };
+  const inlineKeyboard: TelegramInlineButton[][] = [[
+    { text: '✅ Approve', callbackData: `ao1:approve:${input.id}` },
+    { text: '❌ Reject', callbackData: `ao1:reject:${input.id}` },
+  ]];
+  if (inlineKeyboard.some((row) => row.some((button) => Buffer.byteLength(button.callbackData, 'utf8') > 64))) {
+    throw new Error('notification_button_too_large');
+  }
+  return { text, inlineKeyboard, expiresAt: expiresAt.valueOf() };
 }
 
 async function auditUnavailable(client: QueryClient, approvalId: string, reason: string) {
@@ -124,7 +126,6 @@ async function auditUnavailable(client: QueryClient, approvalId: string, reason:
 
 function unavailableReason(config: ApprovalNotificationConfig) {
   if (!config.policyApprovalId) return 'notification_policy_unavailable';
-  if (!config.signingSecret || Buffer.byteLength(config.signingSecret, 'utf8') < 32) return 'notification_signing_secret_unavailable';
   if (config.ownerTelegramIds.length === 0) return 'owner_recipient_unavailable';
   return null;
 }
@@ -132,9 +133,10 @@ function unavailableReason(config: ApprovalNotificationConfig) {
 async function enqueueRecipient(
   client: QueryClient,
   approval: ApprovalNotificationInput,
-  config: Required<Pick<ApprovalNotificationConfig, 'policyApprovalId' | 'signingSecret'>>,
+  config: Pick<ApprovalNotificationConfig, 'policyApprovalId'> & { policyApprovalId: string },
   recipient: string,
   text: string,
+  inlineKeyboard: TelegramInlineButton[][],
 ) {
   const key = `approval-notice:${approval.id}:telegram:${recipient}`;
   const effect = await authorizeEffect(client as PoolClient, {
@@ -147,7 +149,7 @@ async function enqueueRecipient(
   const inserted = await client.query<{ id: string }>(
     `INSERT INTO channel_outbox(effect_intent_id,recipient_ref,channel,message_kind,idempotency_key,redacted_payload)
      VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(idempotency_key) DO NOTHING RETURNING id`,
-    [effect.id, recipient, 'telegram', 'approval_required', key, { text }],
+    [effect.id, recipient, 'telegram', 'approval_required', key, { text, inlineKeyboard }],
   );
   return inserted.rowCount === 1 || inserted.rows[0] ? 'enqueued' : 'duplicate';
 }
@@ -168,14 +170,14 @@ export async function enqueueApprovalNotifications(
     return { enqueued: 0, duplicates: 0, denied: 1, reason: 'invalid_owner_recipient' };
   }
 
-  const notice = buildApprovalNotification(approval, config.signingSecret, (config.now ?? (() => new Date()))());
+  const notice = buildApprovalNotification(approval, (config.now ?? (() => new Date()))());
   let enqueued = 0;
   let duplicates = 0;
   let denied = 0;
   for (const recipient of recipients) {
     const outcome = await enqueueRecipient(client, approval, {
-      policyApprovalId: config.policyApprovalId, signingSecret: config.signingSecret,
-    }, recipient, notice.text);
+      policyApprovalId: config.policyApprovalId,
+    }, recipient, notice.text, notice.inlineKeyboard);
     if (outcome === 'enqueued') enqueued += 1;
     else if (outcome === 'duplicate') duplicates += 1;
     else denied += 1;

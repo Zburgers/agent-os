@@ -8,7 +8,13 @@ const delivery = {
   channel: 'telegram',
   recipient_ref: '123456',
   message_kind: 'approval_required',
-  redacted_payload: { text: 'Safe owner notice' },
+  redacted_payload: {
+    text: 'Safe owner notice',
+    inlineKeyboard: [[
+      { text: '✅ Approve', callbackData: 'ao1:approve:11111111-1111-4111-8111-111111111111' },
+      { text: '❌ Reject', callbackData: 'ao1:reject:11111111-1111-4111-8111-111111111111' },
+    ]],
+  },
   status: 'delivering',
   attempts: 1,
   max_attempts: 3,
@@ -68,6 +74,10 @@ test('channel outbox atomically claims one row with SKIP LOCKED and consumes its
       recipientRef: '123456',
       messageKind: 'approval_required',
       text: 'Safe owner notice',
+      inlineKeyboard: [[
+        { text: '✅ Approve', callbackData: 'ao1:approve:11111111-1111-4111-8111-111111111111' },
+        { text: '❌ Reject', callbackData: 'ao1:reject:11111111-1111-4111-8111-111111111111' },
+      ]],
       attempt: 1,
     },
   });

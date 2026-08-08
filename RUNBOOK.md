@@ -66,7 +66,7 @@ The supervisor loads `OWNER_TELEGRAM_IDS` and
 `TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID` and passes them to the shared job
 executor. A successful occurrence creates one `job_success` message effect and
 one PostgreSQL outbox row per configured owner. The existing channel relay then
-delivers it through Hermes. The message contains only the job label and a
+delivers it through the Agent OS-owned Telegram Bot API adapter. The message contains only the job label and a
 short, allowlisted result summary; job output, credentials, provider tokens,
 and raw monitor payloads are not sent.
 
@@ -99,8 +99,16 @@ Inspect `/health` before touching an outbox row. A stale relay heartbeat means
 the host relay is not polling; verify its user service and loopback access.
 `reconciliation_required` means delivery crossed an ambiguous provider
 boundary and must never be reset to pending or replayed automatically. Compare
-the sanitized provider reference and Hermes history, then record a manual
-reconciliation decision. Explicit failures retry only to the stored cap.
+the sanitized Telegram provider reference and record a manual reconciliation
+decision. Explicit failures retry only to the stored cap.
+
+The relay reads `TELEGRAM_BOT_TOKEN_FILE` from a protected mode-0600 host file.
+It must be the only process polling that bot token. Before starting it, stop or
+reconfigure Hermes's Telegram polling lane; otherwise Telegram update
+consumption is undefined. Approval notices use native inline buttons. The
+relay forwards callback identity to Agent OS, which performs the owner/chat
+allowlist check and immutable approval transition, then acknowledges the
+callback and removes the buttons.
 
 Provision the dedicated approval-token secret directly to an owner-controlled
 mode-0600 host file without printing it, mount only that exact file read-only,
