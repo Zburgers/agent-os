@@ -15,16 +15,28 @@
   account write, wallet action, spend, or revenue occurred; settled revenue
   remains INR 0.
 
-## 13:23 UTC new public corporate route queued
+## 13:23 UTC public corporate route reconciled
 
 - A fresh n8n Community hiring post for Synergy Effect explicitly publishes
   `info@s-e.lt` and describes project-based/long-term AI automation, n8n, RPA,
-  and agent work. This is a company-level route and a stronger buying signal
-  than a generic directory listing.
-- It was added to `research/osint-public-contact-routes-2026-08-10.md` as a
-  new prospect, but no email or community message was sent: the current
-  approval is limited to existing CRM prospects, and sender/legal readiness is
-  still incomplete. No personal addresses from the page were harvested.
+  and agent work. The authoritative CRM check then found an existing sent
+  message (`ff7e328b-749c-476d-a2c8-8f2f3003ebf1`) linked to effect
+  `c870b24b-8b5b-43ec-8d94-75d10519cde6` from 2026-07-29.
+- Decision `0f35a195-6b25-4b7f-a7dc-2813ff707dea` corrected the route to
+  deduplicated/monitor-only. No new email, community message, or follow-up was
+  sent, and no personal addresses from the page were harvested.
+
+## 13:31 UTC current job-board OSINT reconciliation
+
+- Reviewed the current n8n Jobs index and several active-looking buyer posts.
+  The Best 5 Minute Wine Podcast has an official site and contact route, but no
+  published business email; its forum message is already effect-linked in CRM
+  under `866caaa9-c9c0-4e3c-aa15-dd0740b51bc6`.
+- Other visible email strings were personal addresses in applicant comments,
+  not buyer-owned business routes, and were excluded. No email pattern guessing,
+  personal-address harvesting, or new message was attempted.
+- Current revenue remains INR 0. Existing sent routes remain monitor-only until
+  a buyer reply or a separately approved, duplicate-free contact path exists.
 
 ## 13:15 UTC outreach research gate
 

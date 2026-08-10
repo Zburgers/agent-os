@@ -5,9 +5,12 @@
 - Recorded the 13:19 UTC public-route OSINT and market-scout checkpoint in the
   daily revenue log and research track; no new route, send, bid, spend, or
   revenue was inferred.
-- Queued Synergy Effect's company-published `info@s-e.lt` as a new public-route
-  prospect from an explicit n8n hiring post; no message was sent because the
-  current approval covers existing CRM prospects only.
+- Reconciled Synergy Effect's company-published `info@s-e.lt` against the
+  authoritative CRM/effect ledger and corrected it to monitor-only; an approved
+  message was already sent on 2026-07-29, so no duplicate was sent.
+- Reconciled current n8n job-board OSINT: the podcast buyer has no published
+  business email and was already contacted through the forum; personal emails
+  in applicant comments were excluded and no new outreach was sent.
 
 ## 2026-08-10 — Outreach research gate
 

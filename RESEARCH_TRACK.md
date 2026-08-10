@@ -26,9 +26,11 @@ Status vocabulary: `queued`, `researching`, `ready_for_approval`, `active`,
   FTC CAN-SPAM, UK ICO B2B/PECR guidance, Google sender guidance, AgentMail
   header support, and Gong's 85-million-email analysis. Public-route OSINT is
   recorded in `research/osint-public-contact-routes-2026-08-10.md`; it found
-  published company inboxes for two already-contacted prospects plus a new
-  public corporate route for Synergy Effect (`info@s-e.lt`), while no direct
-  corporate route exists for the third. The second ten-contact message approval is
+  published company inboxes for two already-contacted prospects plus the
+  already-contacted Synergy Effect route (`info@s-e.lt`), while no direct
+  corporate route exists for the third. The Best 5 Minute Wine Podcast also has
+  no published business email and is already contacted through the forum. The
+  second ten-contact message approval is
   approved but intentionally paused until sender/legal readiness is verified.
   The 2026-08-10 13:19 UTC market-scout/public-route checkpoint found no new
   duplicate-free executable buyer route.
