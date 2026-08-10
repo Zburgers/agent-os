@@ -1,5 +1,26 @@
 # Daily revenue entry — 2026-08-10
 
+## 13:03 UTC distribution reconciliation and duplicate-write lesson
+
+- Full read-only pagination through the Agent402 index confirms the prior
+  registration effect `4aecdc3a-89b3-4649-950c-b05075a38e29` is live on page 24
+  as `Goofy Automation Reliability Check`, one tool, health `1`, and
+  `routable=true`. A first-page-only preflight in this run missed that entry;
+  one additional guarded POST was attempted under effect
+  `3e1963dd-213e-4bdb-bd78-10b3f1a12362` and its postcondition was marked
+  failed. No further replay is allowed. Lesson: enumerate complete paginated
+  provider state and reconcile historical effects before any external POST.
+- The exact approved Tollbooth listing was attempted once under effect
+  `142526e8-9d6e-4a37-bdbc-3a5e44832c39`; the provider returned HTTP 422. No
+  listing, payment, wallet signature, verification spend, or retry occurred.
+- The PayanAgent endpoint-health request remains open with 4 USDC escrow and
+  two existing Goofy bids pending. No new bid or fulfillment write was sent;
+  fulfillment remains conditional on provider acceptance and the existing
+  bounded scope.
+- Decision `80d1a728-f513-40c3-8f7f-a28d61ca009d` closes both distribution
+  writes to replay and keeps Agent402/Tollbooth in read-only or stable-host
+  recovery states. Settled revenue remains `0`.
+
 ## 12:50 UTC recovery path and bounty verifier recheck
 
 - Official AuditPal documentation states that sign-up/login uses an email

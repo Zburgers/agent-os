@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-08-10 — Distribution reconciliation and provider boundaries
+
+- Confirmed by complete pagination that the existing Agent402 listing is live
+  on page 24; closed registration to further writes after a first-page-only
+  preflight missed it and one guarded duplicate attempt was reconciled without
+  replay. Decision `80d1a728-f513-40c3-8f7f-a28d61ca009d` records the lesson.
+- Executed the exact approved Tollbooth listing once. Provider returned HTTP
+  422; no retry, payment, wallet signature, or verification spend occurred.
+- Confirmed the PayanAgent request still has two existing Goofy bids pending;
+  no third bid or fulfillment write was attempted. Settled revenue remains
+  zero.
+
 ## 2026-08-10 — Recovery and verifier recheck
 
 - Recorded the official AuditPal passwordless recovery route and opened exact

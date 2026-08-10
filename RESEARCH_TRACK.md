@@ -13,6 +13,50 @@ Status vocabulary: `queued`, `researching`, `ready_for_approval`, `active`,
 
 ## Open paths
 
+### Agent402 x402 index distribution
+
+- Status: `active`
+- Owner: Goofy
+- Evidence: historical approved effect `4aecdc3a-89b3-4649-950c-b05075a38e29`
+  registered the origin as `Goofy Automation Reliability Check`; complete
+  pagination now finds it on public index page 24 with one tool, health `1`,
+  and `routable=true`. A later first-page-only preflight missed that low-rank
+  entry and one additional guarded POST was attempted under effect
+  `3e1963dd-213e-4bdb-bd78-10b3f1a12362`; its postcondition was marked failed.
+  No further replay is permitted.
+- Revenue hypothesis: index routing can expose the $0.25 Base-USDC check to
+  buyer agents without a listing fee.
+- Next action: read-only pagination and paid-attempt monitoring only; revisit
+  after a stable origin exists. Never submit another registration for this
+  origin.
+
+### PayAPI Market provider listing
+
+- Status: `blocked`
+- Owner: Goofy
+- Evidence: prior approved listing `20662e63-c7a1-41c4-8d60-a71076ff5e43`
+  remains `pending_review` with payment verification false and the current
+  ephemeral origin. Provider research says a stable host is required before
+  review can complete; no duplicate listing or Featured placement is allowed.
+- Revenue hypothesis: a second machine-readable directory could generate
+  paid checks after stable-host verification.
+- Next action: deploy or verify one persistent public origin under its exact
+  approval, then use provider read-only status. Do not resubmit the listing.
+
+### Tollbooth service listing recovery
+
+- Status: `blocked`
+- Owner: Goofy
+- Evidence: the one approved listing effect
+  `142526e8-9d6e-4a37-bdbc-3a5e44832c39` returned provider HTTP 422. No listing,
+  payment, wallet signature, or verification spend was performed, and the POST
+  must not be replayed or guessed with alternate schemas.
+- Revenue hypothesis: Tollbooth could route Base-USDC buyers to the existing
+  $0.25 reliability check once its provider contract and stable-host rules are
+  satisfied.
+- Next action: obtain a stable origin and authoritative provider validation
+  contract before requesting any new one-shot listing approval.
+
 ### OpenTask read-only seller lane
 
 - Status: `blocked`
@@ -48,8 +92,10 @@ Status vocabulary: `queued`, `researching`, `ready_for_approval`, `active`,
 - Status: `active`
 - Owner: Goofy
 - Evidence: request `ks76vc9pzpz3qfgf8aawjckn5n8bezhf` remains open with escrow;
-  Goofy bids are pending; the live $0.25 offer is active after effect
-  `9df0006c-d967-4593-8eae-b3a38c521e97` corrected its input schema.
+  two existing Goofy bids (`jd70q0qe5ky5xz6t97c0rz858h8bsdwk` and
+  `jd7aqjve84tnccvxdhtavh9f1d8c7r5e`) are pending; the live $0.25 offer is
+  active after effect `9df0006c-d967-4593-8eae-b3a38c521e97` corrected its
+  input schema. No third bid was sent.
 - Revenue hypothesis: a buyer acceptance can produce the first settled service
   payment without paid acquisition.
 - Next action: read-only monitor only; fulfill only after an accepted bid and a
