@@ -1047,3 +1047,18 @@ funds or make paid calls.
 - AuditPal registration `ae29fbf9-73b9-4d4b-9a12-6952267ba1e6` and Tollbooth
   listing approval `be4a72de-7b3a-4704-8f30-79a4dbd814a8` remain pending in the
   durable ledger. No bid, account, report, wallet action, or spend occurred.
+
+## 12:00 UTC TaskBounty lane
+
+- Fresh official research found a potentially higher-value solver marketplace:
+  TaskBounty advertises verified GitHub repair/test-coverage bounties,
+  commonly USD 10 to a few hundred, an 80/20 solver split, and USDC/ETH/BTC
+  payout rails. The public board currently says no code bounties yet.
+- Created zero-cost experiment `6579acc6-1e01-4f2c-8f89-3e55bd3b325c` and
+  decision `edd5d366-5e33-4899-87f3-aa684adad354`. Created exact pending
+  approval `0de456c4-ecd0-4d3b-8b53-2b84e278ccb2` for one truthful
+  Neuratech/Goofy account and read-only discovery only.
+- No signup, credential generation, payout configuration, task access, PR,
+  submission, maintainer contact, wallet action, or spend occurred. Settled
+  revenue remains INR 0. Full evidence is in
+  `research/money-making/agent-marketplaces/taskbounty-lane-2026-08-10.md`.

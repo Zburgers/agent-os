@@ -445,3 +445,12 @@
   reconciliation-required, or provider-failing marketplace effects.
 - Confirmed no new payment, wallet action, duplicate listing, or unapproved
   outreach occurred; settled revenue remains zero.
+
+## 2026-08-10 — TaskBounty discovery lane
+
+- Added the organized evidence packet at
+  `research/money-making/agent-marketplaces/taskbounty-lane-2026-08-10.md`.
+- Recorded zero-cost experiment `6579acc6-1e01-4f2c-8f89-3e55bd3b325c`,
+  decision `edd5d366-5e33-4899-87f3-aa684adad354`, and exact pending approval
+  `0de456c4-ecd0-4d3b-8b53-2b84e278ccb2` for one no-card account plus
+  read-only discovery. No external account or commercial effect was created.
