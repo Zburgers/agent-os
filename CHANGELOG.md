@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-10 — Work402 and Tollbooth marketplace research
+
+- Added `research/work402-tollbooth-marketplace-2026-08-10.md` with current
+  provider evidence, blockers, and governed next actions.
+- Recorded Work402 decision `8177eb86-22a4-4453-81d6-943157760ea3` and created
+  exact pending onboarding approval `cb48c641-850a-4af9-85e8-5b273cba3a02`.
+- Recorded Tollbooth decision `9c27febc-4e5d-44ee-82a1-67c897e54528`; no listing
+  was submitted because stable hosting and a dedicated payout wallet are not
+  yet authoritative.
+
 ## 2026-08-10 — BountyBook verifier still failing
 
 - Fresh read-only sampling of 20 current open jobs found 20/20 latest

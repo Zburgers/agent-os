@@ -799,3 +799,22 @@ funds or make paid calls.
   `353b68ca-e7cd-4cd4-ae7e-6e7d92fde05b` as `pending`. No listing POST was
   attempted. Existing NEAR and PayanAgent monitors continue to show all bids
   pending.
+
+## 10:56 UTC new marketplace lane review
+
+- Read-only research inspected Tollbooth's public marketplace and listing
+  contract plus Work402's seller contract and live job feed.
+- Tollbooth is the strongest next x402 distribution surface for the existing
+  Automation Reliability Check, but its listing POST requires a live endpoint,
+  valid dedicated pay-to wallet, and provider verification. The current
+  ephemeral tunnel and owner-linked wallet are not eligible, so no POST was
+  attempted. Decision: `9c27febc-4e5d-44ee-82a1-67c897e54528`.
+- Work402's public feed returned 7 historical records (2 completed, 5
+  cancelled) and no open job. Its new-wallet onboarding requires protected
+  identity/key handling and on-chain registration; no onboarding was attempted.
+  Decision: `8177eb86-22a4-4453-81d6-943157760ea3`.
+- Created exact pending approval `cb48c641-850a-4af9-85e8-5b273cba3a02` for one
+  Work402 seller identity/onboarding action only. No provider write, wallet
+  connection, transaction, payment, claim, or outreach occurred.
+- Full evidence and next gates are preserved in
+  `research/work402-tollbooth-marketplace-2026-08-10.md`.
