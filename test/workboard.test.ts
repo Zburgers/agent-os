@@ -52,3 +52,9 @@ test('accounts page is an owner-facing live credential observability surface', (
   for (const value of ['Accounts', '/accounts', 'Owned account access', '/api/owned-accounts', 'Raw secrets are never displayed', 'Protected runtime']) assert.ok(html.includes(value), value);
   assert.match(html, /data-page="accounts"/);
 });
+
+test('governance page exposes the allowlisted runtime laws and editable operating instructions', () => {
+  const html = renderControlPlane('governance' as any, {}, 'csrf-test');
+  for (const value of ['Governance', '/governance', 'Runtime laws', 'Editable operating instructions', '/api/operator-documents', 'Save document', 'metadata-only']) assert.ok(html.includes(value), value);
+  assert.match(html, /data-page="governance"/);
+});

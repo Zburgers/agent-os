@@ -1,4 +1,4 @@
-import { isAbsolute, basename } from 'node:path';
+import { isAbsolute } from 'node:path';
 import { statSync } from 'node:fs';
 
 export type AccountCategory = 'ai_provider' | 'communications' | 'crypto' | 'developer' | 'infrastructure' | 'marketplace' | 'payments' | 'other';
@@ -270,8 +270,4 @@ export class AccountInventoryService {
     );
     return { ...account, id: row.id };
   }
-}
-
-export function accountCredentialLabel(value: string) {
-  return basename(value).replace(/[._-]+/gu, ' ').trim() || 'Protected runtime file';
 }

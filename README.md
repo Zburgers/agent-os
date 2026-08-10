@@ -43,6 +43,27 @@ See [`docs/adr/0005-job-success-telegram-notifications.md`](docs/adr/0005-job-su
 and the [runbook notification section](RUNBOOK.md#telegram-job-success-notifications)
 for configuration and recovery details.
 
+## Governance workspace
+
+The authenticated [`/governance`](/governance) page exposes the fixed allowlist
+of runtime laws and operating instructions directly in the control plane. The
+owner can edit and save a known document from the page; saves are atomic,
+optimistically concurrency-checked by SHA-256, and audit-recorded with only
+document metadata. It is not an arbitrary file browser, and raw secrets are
+never accepted or returned as document content.
+
+## Account observability
+
+The authenticated [`/accounts`](/accounts) page is a live, metadata-only
+inventory of accounts owned or observed by Agent OS. It is backed by the
+`owned_accounts` and `owned_account_credentials` PostgreSQL tables and is
+reconciled from registered integrations and safe runtime signals on each
+read. The page shows platform identity, account category, safe identifiers,
+credential type/source/status metadata, and access health; raw secrets are
+never stored, scanned, or returned. Registration workflows may use
+`POST /api/owned-accounts`, but that endpoint accepts metadata-only payloads
+and rejects secret-bearing fields.
+
 ## Development
 
 ```bash

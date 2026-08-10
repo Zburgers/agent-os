@@ -97,3 +97,16 @@ test('server exposes authenticated account inventory and metadata-only registrat
   assert.match(source, /'\/accounts'/);
   assert.match(source, /mutationAllowed\(auth, req\)/);
 });
+
+test('operator documentation explains the Accounts page and its secret boundary', async () => {
+  const docs = await Promise.all([
+    readFile(new URL('../README.md', import.meta.url), 'utf8'),
+    readFile(new URL('../ARCHITECTURE.md', import.meta.url), 'utf8'),
+    readFile(new URL('../RUNBOOK.md', import.meta.url), 'utf8'),
+  ]);
+  const combined = docs.join('\n');
+  assert.match(combined, /\/accounts/);
+  assert.match(combined, /owned_account_credentials/);
+  assert.match(combined, /raw secrets/i);
+  assert.match(combined, /metadata-only/i);
+});

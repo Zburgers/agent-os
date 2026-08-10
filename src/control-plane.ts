@@ -1,4 +1,4 @@
-export type ControlPlanePage = 'command' | 'work' | 'commercial' | 'brief' | 'activity' | 'approvals' | 'decisions' | 'finance' | 'jobs' | 'health' | 'accounts';
+export type ControlPlanePage = 'command' | 'work' | 'commercial' | 'brief' | 'activity' | 'approvals' | 'decisions' | 'finance' | 'jobs' | 'health' | 'accounts' | 'governance';
 
 const routes: Record<ControlPlanePage, { href: string; label: string; description: string }> = {
   command: { href: '/', label: 'Command Centre', description: 'A concise operational overview of Goofy Agent OS.' },
@@ -12,6 +12,7 @@ const routes: Record<ControlPlanePage, { href: string; label: string; descriptio
   finance: { href: '/finance', label: 'Finance', description: 'Authoritative PostgreSQL-backed financial position and transaction ledger.' },
   jobs: { href: '/jobs', label: 'Jobs', description: 'Durable job runs, outcomes, failures, and supported owner controls.' },
   health: { href: '/health', label: 'Health', description: 'Runtime health, persisted checks, incidents, and recovery evidence.' },
+  governance: { href: '/governance', label: 'Governance', description: 'View and edit the allowlisted runtime laws. Editable operating instructions live here.' },
 };
 
 function escapeHtml(value: unknown) {
@@ -44,6 +45,10 @@ function clientScript() {
   tableStyles.id = 'dashboard-table-spacing';
   tableStyles.textContent = '.table .record-meta{display:block;margin-top:6px;line-height:1.35}.table td>.tag + .record-meta{margin-top:6px}.table td>details{margin-top:8px}';
   document.head.append(tableStyles);
+  const governanceStyles = document.createElement('style');
+  governanceStyles.id = 'governance-editor';
+  governanceStyles.textContent = '.governance-warning{margin-bottom:18px;padding:13px 15px;border:1px solid #806a37;border-radius:9px;background:#211d13;color:var(--warn);font-size:12px;line-height:1.55}.governance-warning strong{color:var(--text)}.document-list{display:grid;gap:6px}.document-list .button{display:block;width:100%;text-align:left}.document-list .button strong,.document-list .button small{display:block}.document-list .button small{margin-top:4px;color:var(--muted);font-size:11px}.document-list .button[aria-current=page]{border-color:var(--accent);background:#1b2823;color:var(--text)}.document-editor{min-width:0}.document-editor-header{display:flex;justify-content:space-between;align-items:start;gap:12px}.document-editor-header h2{margin:0}.document-editor-header p{margin:5px 0 0;color:var(--muted);font-size:12px}.document-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px;color:var(--muted);font-size:11px}.document-editor textarea{min-height:620px;margin-top:14px;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace}@media(max-width:900px){.document-editor textarea{min-height:440px}}';
+  document.head.append(governanceStyles);
   const detailDialog = document.getElementById('detailDialog');
   detailDialog?.setAttribute('aria-labelledby', 'detailTitle');
   detailDialog?.setAttribute('aria-describedby', 'detailBody');
@@ -330,6 +335,28 @@ function clientScript() {
     } catch (error) { content.innerHTML = empty(error.message); }
   }
 
+  async function loadGovernance() {
+    let items;
+    try { items = (await api('/api/operator-documents')).items || []; } catch (error) { content.innerHTML = empty(error.message); return; }
+    if (!items.length) { content.innerHTML = empty('No allowlisted runtime documents were found.'); return; }
+    const available = items.filter(item => item.status === 'available');
+    const open = async key => {
+      try {
+        const record = await api('/api/operator-documents/' + encodeURIComponent(key));
+        const list = items.map(item => '<button class="button" type="button" data-document-key="' + escape(item.key) + '"' + (item.key === key ? ' aria-current="page"' : '') + (item.status === 'missing' ? ' disabled' : '') + '><strong>' + escape(item.label) + '</strong><small>' + escape(item.group) + ' · ' + escape(item.status) + '</small></button>').join('');
+        content.innerHTML = '<div class="governance-warning"><strong>Governed document editor.</strong> These files define Agent OS runtime laws and operating instructions. Saves are restricted to this fixed allowlist, written atomically, and recorded in the audit trail by hash and size. This is metadata-only control-plane state: never paste passwords, API keys, private keys, recovery material, cookies, OTPs, or token values.</div><div class="grid"><section class="section"><h2>Runtime laws</h2><p>Choose an allowlisted instruction document.</p><div class="document-list">' + list + '</div></section><section class="section document-editor"><div class="document-editor-header"><div><h2>' + escape(record.label) + '</h2><p>' + escape(record.description) + '</p></div><span class="tag status-available">Editable</span></div><div class="document-meta"><span>' + escape(record.relativePath) + '</span><span>' + escape(record.bytes) + ' bytes</span><span>SHA-256 ' + escape(record.sha256.slice(0, 12)) + '…</span><span>Updated ' + when(record.updatedAt) + '</span></div><form id="documentForm"><textarea id="documentEditor" name="content" data-sha="' + escape(record.sha256) + '" spellcheck="false" required>' + escape(record.content) + '</textarea><div class="form-actions"><button class="button primary" type="submit">Save document</button></div></form></section></div>';
+        globalThis.document.querySelectorAll('[data-document-key]').forEach(button => button.addEventListener('click', () => open(button.dataset.documentKey)));
+        $('documentForm')?.addEventListener('submit', async event => {
+          event.preventDefault();
+          const editor = $('documentEditor'); const button = event.target.querySelector('button[type="submit"]');
+          button.disabled = true;
+          try { await api('/api/operator-documents/' + encodeURIComponent(key), { method:'PUT', body:JSON.stringify({ content:editor.value, sha256:editor.dataset.sha }) }); await open(key); message('Document saved and audit-recorded.'); } catch (error) { message(error.message, true); } finally { button.disabled = false; }
+        });
+      } catch (error) { message(error.message, true); }
+    };
+    await open((available[0] || items[0]).key);
+  }
+
   async function loadCommand() {
     try {
       const overview = await api('/api/overview');
@@ -341,7 +368,7 @@ function clientScript() {
 
   function load() {
     $('banner').style.display = 'none';
-    ({ command:loadCommand, work:loadWork, commercial:loadCommercial, activity:loadActivity, approvals:loadApprovals, decisions:loadDecisions, finance:loadFinance, jobs:loadJobs, health:loadHealth, accounts:loadAccounts }[page])();
+    ({ command:loadCommand, work:loadWork, commercial:loadCommercial, activity:loadActivity, approvals:loadApprovals, decisions:loadDecisions, finance:loadFinance, jobs:loadJobs, health:loadHealth, accounts:loadAccounts, governance:loadGovernance }[page])();
   }
 
   $('refresh').onclick = load;
