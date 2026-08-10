@@ -29,6 +29,8 @@ import { loadApprovalNotificationConfig } from './approval-notifications.ts';
 import { ChannelOutboxError, ChannelOutboxService } from './channel-outbox.ts';
 import { ReadinessEvidenceError, ReadinessEvidenceService } from './readiness.ts';
 import { classifyProtectedGitCommand } from './hermes-effect-policy.ts';
+import { AccountInventoryService } from './account-inventory.ts';
+import { OperatorDocumentError, OperatorDocumentService } from './operator-documents.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -52,6 +54,8 @@ const agentWallet = new AgentWalletService(pool);
 const paypal = new PayPalService(pool);
 const channelOutbox = new ChannelOutboxService(pool, { ownerTelegramIds: approvalNotificationConfig.ownerTelegramIds });
 const readinessEvidence = new ReadinessEvidenceService(pool);
+const accountInventory = new AccountInventoryService(pool);
+const operatorDocumentService = new OperatorDocumentService(pool, process.env.OPERATOR_DOCUMENT_ROOT ?? process.cwd());
 type Auth = { kind: 'bearer' | 'basic' | 'session' | 'agent'; csrfToken?: string; sessionValue?: string } | null;
 
 function constantEqual(left: string, right: string) { const a = Buffer.from(left); const b = Buffer.from(right); return a.length === b.length && timingSafeEqual(a, b); }
@@ -108,8 +112,8 @@ function respondBytes(res: import('node:http').ServerResponse, status: number, d
   res.writeHead(status, { 'content-type': contentType, 'cache-control': 'private, max-age=86400', 'content-length': String(data.byteLength) });
   res.end(data);
 }
-async function body(req: import('node:http').IncomingMessage) {
-  let raw = ''; for await (const chunk of req) { raw += chunk; if (raw.length > 32_768) throw new Error('body_too_large'); }
+async function body(req: import('node:http').IncomingMessage, maxBytes = 32_768) {
+  let raw = ''; for await (const chunk of req) { raw += chunk; if (Buffer.byteLength(raw, 'utf8') > maxBytes) throw new Error('body_too_large'); }
   return raw ? JSON.parse(raw) as Record<string, unknown> : {};
 }
 async function rawBody(req: import('node:http').IncomingMessage) {
@@ -181,7 +185,7 @@ const server = createServer(async (req, res) => {
     const publicAsset = req.method === 'GET' ? publicJavaScriptAsset(url.pathname) : null;
     if (publicAsset) return respondBytes(res, 200, await readFile(new URL(`../public/${publicAsset}`, import.meta.url)), 'text/javascript; charset=utf-8');
     const auth = await authenticate(req.headers);
-    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/decisions', '/finance', '/jobs', '/health', '/daily-brief', '/wallet'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
+    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/decisions', '/finance', '/jobs', '/health', '/daily-brief', '/wallet', '/accounts', '/governance'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
     if (versioned && req.method !== 'GET' && !String(req.headers['idempotency-key'] ?? '').trim()) return respond(res, 400, { error: 'idempotency_key_required' });
     if (req.method === 'POST' && url.pathname === '/api/logout') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
@@ -307,6 +311,19 @@ const server = createServer(async (req, res) => {
       return respond(res, 200, { allowed, policy_code: policyCode, effect_kind: effectKind });
     }
     if (req.method === 'GET' && url.pathname === '/api/overview') return respond(res, 200, await overview());
+    if (req.method === 'GET' && url.pathname === '/api/owned-accounts') return respond(res, 200, await accountInventory.inventory());
+    if (req.method === 'POST' && url.pathname === '/api/owned-accounts') {
+      if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
+      return respond(res, 201, await accountInventory.register(await body(req), actorFor(auth)));
+    }
+    if (req.method === 'GET' && url.pathname === '/api/operator-documents') return respond(res, 200, { items: await operatorDocumentService.list() });
+    const operatorDocument = url.pathname.match(/^\/api\/operator-documents\/([a-z0-9-]+)$/);
+    if (req.method === 'GET' && operatorDocument) return respond(res, 200, await operatorDocumentService.read(operatorDocument[1]));
+    if (req.method === 'PUT' && operatorDocument) {
+      if (!mutationAllowed(auth, req) || !ownerAuth(auth)) return respond(res, 403, { error: 'owner_authority_required' });
+      const input = await body(req, 320_000);
+      return respond(res, 200, await operatorDocumentService.save(operatorDocument[1], input.content, String(input.sha256 ?? ''), actorFor(auth)));
+    }
     if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID, await wallet.status(), await agentWallet.status()), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/api/wallet/status') return respond(res, 200, await wallet.status());
     if (req.method === 'GET' && url.pathname === '/api/agent-wallet/status') return respond(res, 200, await agentWallet.status());
@@ -338,7 +355,7 @@ const server = createServer(async (req, res) => {
       const image = await readFile(new URL(`../assets/${filename}`, import.meta.url));
       return respondBytes(res, 200, image, 'image/png');
     }
-    const pageByPath: Record<string, ControlPlanePage> = { '/': 'command', '/work': 'work', '/commercial': 'commercial', '/activity': 'activity', '/approvals': 'approvals', '/decisions': 'decisions', '/finance': 'finance', '/jobs': 'jobs', '/health': 'health' };
+    const pageByPath: Record<string, ControlPlanePage> = { '/': 'command', '/work': 'work', '/commercial': 'commercial', '/activity': 'activity', '/approvals': 'approvals', '/decisions': 'decisions', '/finance': 'finance', '/jobs': 'jobs', '/health': 'health', '/accounts': 'accounts', '/governance': 'governance' };
     if (req.method === 'GET' && pageByPath[url.pathname]) {
       const page = pageByPath[url.pathname];
       return respond(res, 200, renderControlPlane(page, page === 'command' ? await overview() : {}, auth.csrfToken), 'text/html; charset=utf-8');
@@ -454,6 +471,7 @@ const server = createServer(async (req, res) => {
   } catch (error) {
     if (error instanceof AgentWalletError) return respond(res, 400, { error: error.code });
     if (error instanceof ChannelOutboxError || error instanceof ReadinessEvidenceError) return respond(res, 409, { error: error.code });
+    if (error instanceof OperatorDocumentError) return respond(res, error.code === 'document_conflict' ? 409 : error.code === 'document_missing' || error.code === 'document_not_found' ? 404 : 400, { error: error.code });
     const message = error instanceof Error ? error.message : 'unknown';
     console.error('request_failed', redactSecrets(message, [token, process.env.DATABASE_URL ?? '']));
     return respond(res, 500, { error: 'internal_error' });

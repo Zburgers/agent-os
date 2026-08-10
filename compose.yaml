@@ -33,6 +33,7 @@ services:
       TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID: ${TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID:-}
       AGENT_RUNTIME_TOKEN: ${AGENT_RUNTIME_TOKEN:-}
       AGENT_RUNTIME_TOKEN_FILE: /run/secrets/agent_os_hermes_token
+      OPERATOR_DOCUMENT_ROOT: /app
       # Mem0 Cloud is contextual memory only; PostgreSQL remains authoritative.
       MEM0_API_KEY: ${MEM0_API_KEY:-}
       # Public, origin-restricted browser project ID and server-only RPC are
@@ -66,6 +67,25 @@ services:
         mode: 0400
     volumes:
       - /home/goofy/.hermes/goofy-agent-wallet.key:/run/secrets/goofy_agent_wallet_key:ro
+      # The governance editor writes only the fixed runtime-document allowlist
+      # back to the owner workspace; no arbitrary repository path is mounted.
+      - /home/goofy/agent-os/AGENTS.md:/app/AGENTS.md:rw
+      - /home/goofy/agent-os/AUTONOMOUS_REVENUE_MISSION.md:/app/AUTONOMOUS_REVENUE_MISSION.md:rw
+      - /home/goofy/agent-os/AGENT_CONSTITUTION.md:/app/AGENT_CONSTITUTION.md:rw
+      - /home/goofy/agent-os/GOOFY_IDENTITY.md:/app/GOOFY_IDENTITY.md:rw
+      - /home/goofy/agent-os/OPERATOR_SCRATCHPAD.md:/app/OPERATOR_SCRATCHPAD.md:rw
+      - /home/goofy/agent-os/APPROVAL_MATRIX.md:/app/APPROVAL_MATRIX.md:rw
+      - /home/goofy/agent-os/FINANCIAL_POLICY.md:/app/FINANCIAL_POLICY.md:rw
+      - /home/goofy/agent-os/OPERATING_POLICY.md:/app/OPERATING_POLICY.md:rw
+      - /home/goofy/agent-os/MEMORY_POLICY.md:/app/MEMORY_POLICY.md:rw
+      - /home/goofy/agent-os/SECURITY_MODEL.md:/app/SECURITY_MODEL.md:rw
+      - /home/goofy/agent-os/INCIDENT_RESPONSE.md:/app/INCIDENT_RESPONSE.md:rw
+      - /home/goofy/agent-os/DEPLOYMENT.md:/app/DEPLOYMENT.md:rw
+      - /home/goofy/agent-os/ARCHITECTURE.md:/app/ARCHITECTURE.md:rw
+      - /home/goofy/agent-os/RUNBOOK.md:/app/RUNBOOK.md:rw
+      - /home/goofy/agent-os/plans/active/agent-os-readiness.md:/app/plans/active/agent-os-readiness.md:rw
+      - /home/goofy/agent-os/plans/active/goofy-agent-os-completion.md:/app/plans/active/goofy-agent-os-completion.md:rw
+      - /home/goofy/agent-os/integrations/hermes/skills/os/SKILL.md:/app/integrations/hermes/skills/os/SKILL.md:rw
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s

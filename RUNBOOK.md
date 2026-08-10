@@ -17,6 +17,26 @@ are in `docs/COMMERCIAL_OPERATIONS.md`.
 
 For AgentMail email operations, read `docs/AGENTMAIL.md` and then the current upstream docs index at https://docs.agentmail.to/llms.txt. Do not expose the API key or use email sending to bypass approval/external-message policy.
 
+## Governance workspace
+
+Use the authenticated `/governance` page to view and edit the fixed runtime-law
+and operating-instruction allowlist. The API rejects arbitrary document paths,
+uses SHA-256 optimistic concurrency checks, writes atomically, and appends an
+audit event containing only the document path, hash, size, and actor. The
+editor rejects secret-shaped content; never paste credentials into documents.
+Compose mounts only those known files read-write so a stack refresh preserves
+owner edits.
+
+## Account observability
+
+Use the authenticated `/accounts` page to inspect the live inventory of
+platform accounts and safe credential metadata. The inventory is backed by
+`owned_accounts` and `owned_account_credentials`; it is metadata-only, and raw
+secrets are never displayed or returned. Runtime credential files are checked
+for presence and restrictive permissions without reading their contents. New
+registration workflows should call `POST /api/owned-accounts` with safe
+metadata only.
+
 ## Local deployment
 1. Copy `.env.example` to an owner-managed `.env`; do not commit it.
 2. Set `AGENT_OS_BIND_ADDRESS=0.0.0.0`, `AGENT_OS_PORT=9999`, and `GOOFY_DATA_DIR=/home/goofy/agent-os/data` in `.env`. PostgreSQL data will be stored at `$GOOFY_DATA_DIR/postgres`.

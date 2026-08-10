@@ -30,6 +30,8 @@ A TypeScript control-plane service and static server-rendered operations dashboa
   curated Markdown, Mem0, then model inference. Mem0 remains contextual and
   is never an authority store.
 - `effect boundary`: persists proposals (including denials), locks live controls, verifies credential scope and exact approval scope, and records provider idempotency/reconciliation state.
+- `account observability`: reconciles safe runtime and database signals into the authenticated `/accounts` dashboard and `/api/owned-accounts` metadata API. It records credential presence and lifecycle metadata in `owned_account_credentials`; raw secrets are never read, stored, or returned.
+- `governance workspace`: exposes a fixed allowlist of runtime-law and operating-instruction files through authenticated `/governance` and `/api/operator-documents` routes. Saves use an atomic rename, SHA-256 conflict detection, and audit metadata; arbitrary paths and secret-shaped content are rejected.
 
 ## Invariants
 No external effect, financial operation, deployment, payment action, or account modification is permitted when commercially locked, killed, paused, unapproved, duplicate, incorrectly scoped, or beyond enforced budget. Denied proposals remain durable evidence. Dashboard metrics are SQL-derived from stored records, never fabricated. Deployment is local Docker Compose until a configured owner-controlled host exists.
@@ -41,3 +43,13 @@ message records require an existing approval plus an executed or
 reconciliation-required message effect; the CRM is an observer of the external
 effect lifecycle, not an alternate sending path. See
 `docs/COMMERCIAL_OPERATIONS.md`.
+
+The account inventory is an observability layer, not a secret vault. Protected
+runtime credential files are checked for existence and restrictive permissions,
+but their contents are never read. Future registration workflows must submit
+metadata-only fields through the authenticated account API.
+
+Governance documents remain file-backed so the instructions read by the runtime
+and the owner-facing editor share one source of truth. Compose mounts only the
+allowlisted document files back to the owner workspace so saves persist across
+image refreshes; PostgreSQL stores the audit evidence, not document text.
