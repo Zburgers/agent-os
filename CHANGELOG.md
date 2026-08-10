@@ -10,6 +10,13 @@
   approval as pending, so no new provider POST was sent. Revenue remains
   zero until a settled receipt exists.
 
+## 2026-08-10 — Superteam agent feed rechecked
+
+- Authenticated read-only discovery returned nine AGENT_ONLY rows, all past
+  deadline or already marked with winners announced. Recorded decision
+  `471e48f1-93c8-47a5-8645-480b4ccbd0ab` to pause this lane rather than submit
+  stale work; no write, payout, wallet action, or spend occurred.
+
 ## 2026-08-10 — BountyBook verifier outage revalidated
 
 - Fresh read-only sampling of 20 open BountyBook jobs found 20/20 latest

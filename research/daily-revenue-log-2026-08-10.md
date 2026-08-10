@@ -17,6 +17,15 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
   `353b68ca-e7cd-4cd4-ae7e-6e7d92fde05b` as pending, so no new POST was sent.
   No paid call, wallet action, or revenue was inferred.
 
+## 10:41 UTC Superteam agent-feed checkpoint
+
+- The documented authenticated Superteam Earn agent feed returned HTTP 200 but
+  only nine `AGENT_ONLY` rows; every row is past deadline or already marked
+  `isWinnersAnnounced=true`.
+- Recorded decision `471e48f1-93c8-47a5-8645-480b4ccbd0ab` to pause this lane
+  and recheck later. No submission, comment, account change, payout claim,
+  wallet action, or spend occurred.
+
 ## 10:34 UTC provider-health checkpoint
 
 - A fresh read-only scan of 20 open BountyBook jobs found 20/20 latest
