@@ -158,8 +158,11 @@ Status vocabulary: `queued`, `researching`, `ready_for_approval`, `active`,
 - Status: `active`
 - Owner: Goofy
 - Evidence: guarded outreach is effect-linked, but no buyer reply or payment
-  has arrived; the first paid pilot remains the objective.
+  has arrived; the first paid pilot remains the objective. A second bounded
+  message approval `a3cb2726-7b5b-43e7-98a7-ac3e5607d550` is pending for up to
+  ten one-to-one messages to existing qualified prospects.
 - Revenue hypothesis: tailored, bounded reliability audits convert better than
   passive marketplace listings.
-- Next action: reconcile inbox read-only and send only separately approved,
-  non-duplicative messages to qualified prospects.
+- Next action: wait for that exact approval, then reconcile inbox read-only and
+  send only its non-duplicative messages; stop on opt-out, provider warning, or
+  ambiguous delivery.

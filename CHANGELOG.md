@@ -10,6 +10,9 @@
   human acceptance of three linked policies before sending a magic link. The
   exact approved recovery remains blocked at that human-only boundary; no
   secret, session, account, report, wallet action, or spend was persisted.
+- Added pending approval `a3cb2726-7b5b-43e7-98a7-ac3e5607d550` for up to ten
+  qualified, one-to-one pilot messages; no outbound message is authorized until
+  that exact approval is approved.
 
 ## 2026-08-10 — Distribution reconciliation and provider boundaries
 
