@@ -56,6 +56,12 @@ test('job success notifications trigger on completion and meaningful monitor cha
   assert.equal(shouldNotifyJobSuccess({ ...job, payload: { kind: 'near_bid_status_monitor' } }, {
     monitor: 'near_bid_status', alert: true,
   }), true);
+  assert.equal(shouldNotifyJobSuccess({ ...job, payload: { kind: 'payanagent_request_status_monitor' } }, {
+    monitor: 'payanagent_request_status', alert: false,
+  }), false);
+  assert.equal(shouldNotifyJobSuccess({ ...job, payload: { kind: 'payanagent_request_status_monitor' } }, {
+    monitor: 'payanagent_request_status', alert: true,
+  }), true);
 });
 
 test('job success notification is short and does not persist credential-bearing output', () => {
@@ -71,6 +77,15 @@ test('job success notification is short and does not persist credential-bearing 
   assert.match(notice, /NEAR bid status changed to awarded\./);
   assert.doesNotMatch(notice, /should-never-persist/);
   assert.ok(Buffer.byteLength(notice, 'utf8') <= 4096);
+});
+
+test('PayanAgent notification reports only the redacted request state', () => {
+  const notice = buildJobSuccessNotification({
+    ...job,
+    payload: { kind: 'payanagent_request_status_monitor', name: 'Escrow request monitor' },
+  }, { monitor: 'payanagent_request_status', alert: true, request: { status: 'accepted', apiKey: 'secret' } });
+  assert.match(notice, /PayanAgent request status changed to accepted\./);
+  assert.doesNotMatch(notice, /secret/);
 });
 
 test('job success notification authorizes and enqueues one idempotent outbox row per owner', async () => {

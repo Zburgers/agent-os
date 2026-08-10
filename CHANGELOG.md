@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-08-10 — PayanAgent acceptance monitor staged
+
+- Added the read-only PayanAgent request normalizer and five-minute acceptance
+  monitor for escrow request `ks76vc9pzpz3qfgf8aawjckn5n8bezhf`. It records
+  only request/bid status, strips messages and credentials, and alerts only on
+  a real transition; it cannot bid, fulfill, approve, sign, or spend.
+- Added migration `030_payanagent_request_monitor.sql`, targeted tests, and the
+  design record `docs/plans/2026-08-10-payanagent-acceptance-monitor.md`.
+- Created deployment approval `227109f1-82f6-4ee0-9340-1e043679f3a9` for one
+  zero-cost private app/supervisor rebuild. It is pending; no production image
+  or service was restarted. Decision `bdb22797-82c4-48b9-8245-f2664cdaa332`.
+
 ## 2026-08-10 — PayanAgent demand checkpoint
 
 - Re-ran the existing zero-cost catalog-health deliverable against 100 public

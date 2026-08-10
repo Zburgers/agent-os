@@ -53,6 +53,9 @@ export function shouldNotifyJobSuccess(job: Pick<Job, 'payload'>, result: Record
   if (job.payload?.kind === 'near_bid_status_monitor') {
     return resultKind(result) === 'near_bid_status' && result.alert === true;
   }
+  if (job.payload?.kind === 'payanagent_request_status_monitor') {
+    return resultKind(result) === 'payanagent_request_status' && result.alert === true;
+  }
   return true;
 }
 
@@ -67,6 +70,10 @@ export function buildJobSuccessNotification(job: Pick<Job, 'payload'>, result: R
     const bid = result.bid && typeof result.bid === 'object' ? result.bid as Record<string, unknown> : {};
     const status = safeField(bid.status ?? 'updated', 60) || 'updated';
     detail = `NEAR bid status changed to ${status}.`;
+  } else if (resultKind(result) === 'payanagent_request_status') {
+    const request = result.request && typeof result.request === 'object' ? result.request as Record<string, unknown> : {};
+    const status = safeField(request.status ?? 'updated', 60) || 'updated';
+    detail = `PayanAgent request status changed to ${status}.`;
   } else if (resultKind(result) === 'revenue_market_scout') {
     const opportunities = Array.isArray(result.opportunities) ? result.opportunities.length : 0;
     detail = `Revenue scout completed (${opportunities} opportunities).`;

@@ -7,6 +7,25 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 10:32 UTC PayanAgent acceptance-monitor checkpoint
+
+- Read-only provider reconciliation confirms request
+  `ks76vc9pzpz3qfgf8aawjckn5n8bezhf` is still open with 4 USDC escrow and
+  Goofy’s bids still pending. No acceptance, fulfillment, payment, wallet
+  action, or revenue was observed.
+- Staged a bounded five-minute monitor that reads only request state, keeps
+  only Goofy bid IDs/statuses, compares prior durable snapshots, and alerts on
+  a real transition. Raw bid messages and credentials are excluded from all
+  persisted output.
+- Targeted tests and `npm run check` pass; migration is additive and
+  idempotent. Deployment approval
+  `227109f1-82f6-4ee0-9340-1e043679f3a9` is pending, so the running private
+  image was not restarted. Decision
+  `bdb22797-82c4-48b9-8245-f2664cdaa332` records the boundary.
+- Next action: deploy only after that exact approval is durably approved, then
+  verify one redacted read-only run and leave all marketplace/payment effects
+  disabled.
+
 ## 10:18 UTC continuation revenue checkpoint
 
 - Re-read authoritative Agent OS through the configured MCP. Controls remain

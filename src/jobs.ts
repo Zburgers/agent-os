@@ -5,6 +5,7 @@ import { actorContext } from './actor.ts';
 import { authorizeEffect } from './effects.ts';
 import { buildDailyBriefData } from './daily-brief.ts';
 import { fetchNearBidStatus, loadNearAgentCredential, shouldAlertForBidStatus } from './near-bid-monitor.ts';
+import { fetchPayanAgentRequestStatus, loadPayanAgentCredential, shouldAlertForPayanAgentStatus } from './payanagent-request-monitor.ts';
 import { runRevenueMarketScout } from './revenue-market-scout.ts';
 import { enqueueJobSuccessNotifications, loadJobSuccessNotificationConfig } from './job-success-notifications.ts';
 
@@ -102,6 +103,17 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
           signal: AbortSignal.timeout(10_000),
         })
       : null;
+    const payanAgentRequest = claim.job.payload?.kind === 'payanagent_request_status_monitor'
+      ? await (async () => {
+          const credential = await loadPayanAgentCredential(process.env.PAYANAGENT_PROVIDER_CREDENTIAL_FILE ?? '/home/goofy/.hermes/payanagent-provider.json');
+          return fetchPayanAgentRequestStatus({
+            requestId: String(claim.job.payload.request_id ?? ''),
+            apiKey: credential.apiKey,
+            providerId: credential.providerId,
+            signal: AbortSignal.timeout(10_000),
+          });
+        })()
+      : null;
     const marketScout = claim.job.payload?.kind === 'revenue_market_scout'
       ? await runRevenueMarketScout()
       : null;
@@ -112,13 +124,41 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
            ORDER BY finished_at DESC,id DESC LIMIT 1`,
           [claim.job.id, claim.runId],
         )
+        : null;
+    const previousPayanRun = payanAgentRequest
+      ? await client.query<{ request_status: string; own_bids: unknown }>(
+          `SELECT output->'request'->>'status' AS request_status, output->'request'->'own_bids' AS own_bids FROM job_runs
+           WHERE job_id=$1 AND id<>$2 AND status='completed' AND output->'request'->>'status' IS NOT NULL
+           ORDER BY finished_at DESC,id DESC LIMIT 1`,
+          [claim.job.id, claim.runId],
+        )
       : null;
     const previousNearStatus = previousNearRun?.rows[0]?.status;
     const nearAlert = nearBid ? shouldAlertForBidStatus(previousNearStatus, nearBid.status) : false;
+    const previousPayanStatus = previousPayanRun?.rows[0]
+      ? {
+          requestId: payanAgentRequest!.requestId,
+          title: payanAgentRequest!.title,
+          requestStatus: previousPayanRun.rows[0].request_status,
+          budgetMaxCents: payanAgentRequest!.budgetMaxCents,
+          escrowDepositedCents: payanAgentRequest!.escrowDepositedCents,
+          ownBids: Array.isArray(previousPayanRun.rows[0].own_bids) ? previousPayanRun.rows[0].own_bids : [],
+        }
+      : undefined;
+    const payanAlert = payanAgentRequest ? shouldAlertForPayanAgentStatus(previousPayanStatus, payanAgentRequest) : false;
     const effectResult = dailyBrief
       ? { report: 'daily_owner_brief', route: '/daily-brief', generated_at: dailyBrief.generatedAt, snapshot: dailyBrief }
       : nearBid
         ? { monitor: 'near_bid_status', bid: nearBid, previous_status: previousNearStatus ?? null, alert: nearAlert }
+        : payanAgentRequest
+          ? { monitor: 'payanagent_request_status', request: {
+              id: payanAgentRequest.requestId,
+              title: payanAgentRequest.title,
+              status: payanAgentRequest.requestStatus,
+              budget_max_cents: payanAgentRequest.budgetMaxCents,
+              escrow_deposited_cents: payanAgentRequest.escrowDepositedCents,
+              own_bids: payanAgentRequest.ownBids,
+            }, previous_status: previousPayanStatus?.requestStatus ?? null, alert: payanAlert }
         : marketScout
           ? { monitor: 'revenue_market_scout', ...marketScout }
       : { result: 'internal_job_completed' };
@@ -178,6 +218,7 @@ export async function executeInternalJob(claim: ClaimedJob): Promise<'completed'
     }
     if (dailyBrief) await audit('daily_owner_brief_generated', 'job', claim.job.id, { route: '/daily-brief', generated_at: dailyBrief.generatedAt });
     if (nearBid) await audit('near_bid_status_checked', 'job', claim.job.id, { bid_id: nearBid.id, status: nearBid.status, alert: nearAlert });
+    if (payanAgentRequest) await audit('payanagent_request_status_checked', 'job', claim.job.id, { request_id: payanAgentRequest.requestId, status: payanAgentRequest.requestStatus, own_bid_count: payanAgentRequest.ownBids.length, alert: payanAlert });
     if (marketScout) await audit('revenue_market_scout_completed', 'job', claim.job.id, { source_count: marketScout.sources.length, opportunity_count: marketScout.opportunities.length, failure_count: marketScout.failures.length });
     return outcome;
   } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
