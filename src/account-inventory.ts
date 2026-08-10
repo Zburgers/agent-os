@@ -114,7 +114,7 @@ export function discoverRuntimeAccounts(environment: RuntimeEnvironment, filePro
     const required = descriptor.signals.filter((signal) => signal.required);
     const requiredCredentials = credentials.filter((credential) => required.some((signal) => signal.label === credential.label));
     const accessStatus: AccountAccessStatus = !requiredCredentials.length
-      ? identifier && required.length ? 'partial' : 'missing'
+      ? credentials.some((credential) => credential.status === 'available') || (identifier && required.length) ? 'partial' : 'missing'
       : requiredCredentials.every((credential) => credential.status === 'available')
         ? 'available'
         : requiredCredentials.some((credential) => credential.status === 'available')
