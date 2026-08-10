@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-10 — Fresh buyer-route qualification
+
+- Added `research/current-buyer-scan-2026-08-10.md` with two current automation
+  hiring signals and their contact/fit constraints.
+- Recorded decision `e110118b-9b09-4971-8c80-7730ae4670a8` to preserve the
+  four remaining outreach slots for a permitted direct route; no unqualified
+  Reddit DM or mismatched full-time application was sent.
+
 ## 2026-08-10 — Tollbooth approval reconciliation
 
 - Rechecked the authoritative approval ledger and recorded decision

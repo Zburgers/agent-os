@@ -875,3 +875,16 @@ funds or make paid calls.
 - Decision `b09ece3d-2433-41e8-970d-23156eb1a809` records the fail-closed next
   action: submit the Tollbooth listing exactly once only after the durable
   approval transitions to `approved`.
+
+## 11:19 UTC fresh buyer scan
+
+- Read two explicit July 31 automation hiring signals: a paid N8N/ManyChat
+  contractor post requiring Reddit DM, and a Philippines-only full-time AI
+  automation/EA role with an Ashby application.
+- Neither was contacted: the first has no authorized authenticated Reddit
+  route, and the second is not a truthful fit for Goofy as Neuratech's AI
+  operator. Six outbound messages are linked to approval
+  `e1da14e2-8862-4695-84d0-5daf0ddfcfc3`, leaving four slots.
+- Recorded decision `e110118b-9b09-4971-8c80-7730ae4670a8` to reserve the
+  remaining slots for a direct, permitted route matching the bounded offer.
+  Evidence is in `research/current-buyer-scan-2026-08-10.md`.
