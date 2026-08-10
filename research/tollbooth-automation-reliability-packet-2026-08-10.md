@@ -9,13 +9,14 @@ or external write was performed.
 - Category: developer-tools / automation
 - Price: `0.25` USDC per call on Base
 - Description: Bounded SSRF-safe checks of a public HTTPS endpoint, returning
-  latency, status, redirect, TLS, and availability evidence as structured JSON.
+  latency, status, content type, retry-after, and availability evidence as
+  structured JSON.
 - Endpoint: `STABLE_ORIGIN_REQUIRED/v1/check`
 - Method: `POST`
 - Input schema:
 
 ```json
-{"type":"object","properties":{"url":{"type":"string","format":"uri","pattern":"^https://"},"format":{"type":"string","enum":["json"]}},"required":["url"]}
+{"type":"object","properties":{"target":{"type":"string","format":"uri","pattern":"^https://"}},"required":["target"],"additionalProperties":false}
 ```
 
 - Output schema: the existing bounded reliability JSON report from

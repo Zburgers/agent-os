@@ -1157,3 +1157,6 @@ funds or make paid calls.
 - Local parser verification confirms `{target:"https://example.com"}` is
   accepted while the currently advertised `{url,format}` shape returns
   `invalid_request`.
+- Corrected the internal Tollbooth and x402 offer packets to use the deployed
+  `{target}` request contract and the actual bounded report fields. No external
+  listing was changed.

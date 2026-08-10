@@ -18,9 +18,14 @@ zero-cost deployment verified on 2026-08-03.
 
 ## Offer
 
-An agent sends a webhook or automation endpoint plus a test payload. The service
-returns a deterministic reliability report: DNS/TLS reachability, HTTP status,
-latency, retry behavior, response shape, and a short remediation checklist.
+An agent sends one public HTTPS target. The service returns a bounded JSON
+reliability report containing the target, HTTP status, latency, content type,
+and parsed retry-after information. Private targets are rejected before any
+network request.
+
+Request shape: `{"target":"https://public-target.example"}`. The deployed
+parser rejects additional fields and never accepts private, local, metadata, or
+non-HTTPS targets.
 
 Proposed launch price: **$0.25 USDC per check** (Base, x402). A batch of ten
 checks can be priced at $1.50. No customer data is retained beyond the report

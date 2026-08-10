@@ -31,6 +31,8 @@
 - Recorded decision `1f9eb5ad-ba6c-4266-92d2-2b7c8caa45e6` and created exact
   pending approval `ed8fba70-b0e9-4c8c-842b-cdf9c596a707` for a schema-only
   PATCH. No provider mutation or paid call occurred.
+- Corrected the internal Tollbooth and x402 offer packets so their documented
+  request and response contracts match the deployed parser.
 
 ## 2026-08-10 — AuditPal high-value lane packaged
 
