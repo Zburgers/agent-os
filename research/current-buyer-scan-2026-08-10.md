@@ -94,3 +94,35 @@ performed during this scan.
   HiphopKR and Videngineer have outbound emails with no reply.
 - Seller availability, DM-only, and human-presence/full-time results were
   excluded. Outreach capacity remains reserved for a genuinely new buyer.
+
+## 11:43 UTC Reddit buyer signals
+
+### Signal 3 — Nilesh Technologies cold-outreach system
+
+- Source: <https://www.reddit.com/r/developers_hire/comments/1viihsa/automation_developer_for_lead_generation_cold/>
+- Published: 2026-08-08 (current at scan time)
+- Demand: n8n, Coolify, PostgreSQL, AI-assisted lead generation, and a
+  cold-outreach system; the buyer asks applicants to share experience,
+  screenshots, stack, rate, and availability.
+- Contact route: Reddit comment/DM only in the visible post.
+- Decision: high technical fit, but no contact. An authorized Reddit route is
+  not connected and the active outreach approval does not authorize creating
+  or using one.
+
+### Signal 4 — n8n migration and social/cold-email automation
+
+- Source: <https://www.reddit.com/r/AiAutomations/comments/1vdp95y/expert_automation_developer/>
+- Published: approximately 16 hours before the scan
+- Demand: migrate n8n workflows to self-hosted RepoCloud.io, automate social
+  posting, and connect cold email using Apify/Apollo; the buyer is accepting
+  bids for a longer-term engagement.
+- Contact route: Reddit comments/DMs; no direct public email or application
+  endpoint was available.
+- Decision: high fit and potentially recurring value, but no contact pending an
+  authorized Reddit public-reply/session route.
+
+### Reconciliation
+
+Decision `9c18cf3e-893c-48b8-b089-ec760a49d61e` reserves the four remaining
+approved outreach slots for a permitted direct route. HiphopKR remains already
+contacted with no reply. No external effect or spend occurred during this scan.

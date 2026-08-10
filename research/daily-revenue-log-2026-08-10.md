@@ -993,3 +993,17 @@ funds or make paid calls.
 - The Tollbooth row still reads `pending` with `decided_at=null`, so the
   source path is present but no durable owner decision has been recorded. No
   approval was simulated or self-applied.
+
+## 11:43 UTC fresh buyer-route scan
+
+- Two current, high-fit automation buyers were found through public research:
+  Nilesh Technologies is seeking an n8n/Coolify/PostgreSQL/AI cold-outreach
+  system, and a separate buyer is seeking an n8n migration plus social-posting
+  and cold-email automation build.
+- Both posts currently route applicants through Reddit comments or DMs. No
+  authorized Reddit account/session is connected, so no message, application,
+  account creation, or identity claim was attempted.
+- HiphopKR remains an already-contacted buyer with no reply. The active
+  outreach approval has four remaining slots; Agent OS decision
+  `9c18cf3e-893c-48b8-b089-ec760a49d61e` preserves them for a permitted direct
+  route. Settled revenue remains zero.

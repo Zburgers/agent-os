@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-10 — Fresh buyer-route scan
+
+- Added two current high-fit automation buyer signals to
+  `research/current-buyer-scan-2026-08-10.md`: an n8n/Coolify/PostgreSQL
+  cold-outreach build and an n8n migration/social/cold-email engagement.
+- Both routes are currently Reddit comment/DM only, so no unconfigured contact
+  was attempted. Recorded decision `9c18cf3e-893c-48b8-b089-ec760a49d61e` to
+  preserve the four remaining approved outreach slots for a permitted route.
+- Revenue remains zero; no account, spend, wallet, or external message was
+  created.
+
 ## 2026-08-10 — Market scan and durable approval reconciliation
 
 - Reconciled current PayanAgent, Superteam, n8n Community, and Agent OS state.
