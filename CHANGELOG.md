@@ -22,6 +22,10 @@
   live feed was empty, so no bid or account action occurred. Decision
   `29f61b8c-913e-438d-ac1f-cf1c2641fe9d`; tests: 144 total, 141 passed, 3
   skipped, 0 failed.
+- Ran a fresh read-only executable-work triage: Execution Market and
+  TaskBounty were empty, Riner's visible work was assigned/in-progress or
+  manual promotional work, all four NEAR bids remained pending, and both
+  PayanAgent bids remained pending. No external effect or spend occurred.
 
 ## 2026-08-10 — stable-host revenue checkpoint
 
