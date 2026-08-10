@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-10 — Market scan and durable approval reconciliation
+
+- Reconciled current PayanAgent, Superteam, n8n Community, and Agent OS state.
+- Recorded decision `099bb1b7-0853-4202-8d7c-9d2c446ff8b4` to preserve capacity
+  and continue read-only monitors because no fresh authorized revenue action
+  was available.
+- Confirmed Tollbooth approval `be4a72de-7b3a-4704-8f30-79a4dbd814a8` is still
+  pending in the durable ledger; no listing POST or duplicate outreach was
+  performed. Settled revenue remains zero.
+
 ## 2026-08-10 — Current n8n buyer reconciliation
 
 - Qualified current n8n Community buyer topic `306811` and preserved the

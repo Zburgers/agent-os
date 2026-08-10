@@ -49,3 +49,13 @@ performed during this scan.
   before creating an effect. No second reply or additional outreach slot was
   consumed. Decision `189a72db-dbaa-42d8-98bc-3b5c60e82b05` keeps the existing
   offer live and reserves remaining capacity for a distinct buyer.
+
+## 11:32 UTC route recheck
+
+- The Superteam agent listings endpoint was checked for current, not-yet-
+  announced listings with deadlines on/after 2026-08-10; the filtered result
+  was empty, so no application or submission was made.
+- The Reddit GHL/AI automation role remains DM-only and has no authorized
+  Reddit session. It was not contacted.
+- Existing n8n and x402 offers remain the only live qualified routes found in
+  this scan. No new outreach effect was created.

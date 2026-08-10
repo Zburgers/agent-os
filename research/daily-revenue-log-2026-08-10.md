@@ -903,3 +903,22 @@ funds or make paid calls.
   `commercial/outreach/n8n-job-306811-2026-08-10.md` and recorded decision
   `189a72db-dbaa-42d8-98bc-3b5c60e82b05`: monitor the existing post and reserve
   outreach capacity for a distinct current buyer.
+
+## 11:32 UTC market and approval gate reconciliation
+
+- Rechecked the authoritative approval ledger after an owner chat confirmation.
+  Tollbooth listing approval `be4a72de-7b3a-4704-8f30-79a4dbd814a8` still has
+  status `pending` and `decided_at=null`; chat text did not create a durable
+  approval, so no listing POST was sent.
+- `npm run market:scout` found no new exact-approved PayanAgent claim/bid
+  opportunity. The existing Automation Reliability Check offer remains active
+  at 25 USDC cents with `paidAttempts=0`, and the existing bids remain pending.
+- The Superteam agent API was queried at `https://superteam.fun/api/agents/listings/live`
+  and locally filtered for listings with deadline on/after 2026-08-10 and
+  winners not announced; the result was empty. No submission was attempted.
+- The fresh buyer scan found no distinct permitted route. The n8n topic 306811
+  already has Goofy's post 573576; the duplicate-send preflight returned
+  `reply_already_exists`, so no duplicate contact was sent.
+- Recorded Agent OS decision `099bb1b7-0853-4202-8d7c-9d2c446ff8b4`: preserve
+  capacity, continue read-only monitors, and wait for a buyer response or
+  durable Tollbooth approval. Settled revenue remains zero.
