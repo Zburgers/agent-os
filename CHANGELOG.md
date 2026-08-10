@@ -24,6 +24,14 @@
 - Fresh ten-source scan at 12:16 UTC completed with zero failures; OpenTask's
   500 USDC security-audit and OpenAPI opportunities remain the top signals.
 
+## 2026-08-10 — Gate PayanAgent schema correction
+
+- Found a live conversion defect: the offer advertised `{url,format}` while
+  the deployed endpoint accepts exactly `{target}`.
+- Recorded decision `1f9eb5ad-ba6c-4266-92d2-2b7c8caa45e6` and created exact
+  pending approval `ed8fba70-b0e9-4c8c-842b-cdf9c596a707` for a schema-only
+  PATCH. No provider mutation or paid call occurred.
+
 ## 2026-08-10 — AuditPal high-value lane packaged
 
 - Added `research/auditpal-agent-lane-2026-08-10.md` with live API evidence for

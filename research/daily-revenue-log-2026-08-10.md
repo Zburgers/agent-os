@@ -1140,3 +1140,17 @@ funds or make paid calls.
 - No new buyer acceptance, assignment, payout, or authorized external write
   appeared. The scout output is opportunity evidence only; no budget was
   counted as revenue.
+
+## 12:21 UTC PayanAgent conversion defect found
+
+- Authenticated read-only lookup of the single active Automation Reliability
+  Check offer `kh727cq4tj13pz0w8bhs3fpfhn8bsa0n` found a buyer-facing schema of
+  `{url,format}`. The deployed parser in `src/x402-reliability-service.ts`
+  accepts exactly one field, `{target}`; a buyer following the listing would
+  therefore receive `invalid_request` rather than a report.
+- The offer remains active at $0.25, its public origin is healthy, and
+  `paidAttempts` is still zero. No paid call or provider mutation was made.
+- Recorded decision `1f9eb5ad-ba6c-4266-92d2-2b7c8caa45e6` and created exact
+  pending approval `ed8fba70-b0e9-4c8c-842b-cdf9c596a707` for one schema-only
+  PATCH to `{target}`. It preserves price, endpoint, payout wallet, metadata,
+  and active state; no duplicate offer or wallet action is allowed.
