@@ -7,6 +7,20 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 08:55 UTC BountyBook AVL candidate
+
+- Read-only BountyBook scan found the highest-value currently open job in the
+  feed: `1063de95-75f4-4170-8879-f5b1b683bb9b`, a USD 15.00 USDC AVL-tree
+  implementation with deterministic stdlib-only acceptance criteria.
+- Prepared and validated `research/bountybook-candidate-avl/avl.py` plus its
+  local test harness. The required checks and randomized insert/delete checks
+  passed; no claim, signature, submission, payment, or external message was
+  made.
+- Created draft experiment `6b5d5686-7e3e-4fa9-9585-8651c3e1be27` and exact
+  pending approval `74c4d5ca-c182-44c9-9b5c-bd505bbab04d` for one claim and one
+  submit only. The approval is still pending in Agent OS; the candidate stays
+  local until it is durably approved.
+
 ## 08:49 UTC monitor checkpoint
 
 - Re-read authoritative Agent OS state: controls remain open, commercial lock is

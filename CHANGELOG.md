@@ -2,6 +2,14 @@
 
 ## 2026-08-10
 
+- Prepared a validated zero-spend BountyBook AVL-tree revenue candidate for
+  open job `1063de95-75f4-4170-8879-f5b1b683bb9b` (USD 15.00 USDC) and created
+  exact approval `74c4d5ca-c182-44c9-9b5c-bd505bbab04d` for one claim and one
+  submission. No external effect has run; the candidate is kept under
+  `research/bountybook-candidate-avl/`.
+
+## 2026-08-10
+
 - Verified a second current paid buyer (HiphopKR) and sent one tailored,
   zero-cost architecture-first proposal under the approved outreach tranche.
   Persisted experiment `3bc9c19d-81ff-41c0-bb78-e83c9919a55c`, decision

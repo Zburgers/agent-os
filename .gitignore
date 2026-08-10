@@ -3,6 +3,8 @@ node_modules/
 .env.*
 !.env.example
 coverage/
+__pycache__/
+*.pyc
 backups/
 data/
 *.log
