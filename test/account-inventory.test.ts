@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import {
   buildAccountSummary,
   discoverRuntimeAccounts,
@@ -86,4 +87,13 @@ test('summarizes availability and attention counts from safe account metadata', 
     { platformKey: 'three', displayName: 'Three', category: 'other', accessStatus: 'missing', credentials: [] },
   ]);
   assert.deepEqual(summary, { total: 3, available: 1, partial: 1, attention: 2, credentials: 0 });
+});
+
+test('server exposes authenticated account inventory and metadata-only registration routes', async () => {
+  const source = await readFile(new URL('../src/server.ts', import.meta.url), 'utf8');
+  assert.match(source, /AccountInventoryService/);
+  assert.match(source, /\/api\/owned-accounts/);
+  assert.match(source, /renderControlPlane\(page/);
+  assert.match(source, /'\/accounts'/);
+  assert.match(source, /mutationAllowed\(auth, req\)/);
 });

@@ -29,6 +29,7 @@ import { loadApprovalNotificationConfig } from './approval-notifications.ts';
 import { ChannelOutboxError, ChannelOutboxService } from './channel-outbox.ts';
 import { ReadinessEvidenceError, ReadinessEvidenceService } from './readiness.ts';
 import { classifyProtectedGitCommand } from './hermes-effect-policy.ts';
+import { AccountInventoryService } from './account-inventory.ts';
 
 const token = process.env.OWNER_DASHBOARD_TOKEN;
 if (!token) throw new Error('OWNER_DASHBOARD_TOKEN must be injected at runtime');
@@ -52,6 +53,7 @@ const agentWallet = new AgentWalletService(pool);
 const paypal = new PayPalService(pool);
 const channelOutbox = new ChannelOutboxService(pool, { ownerTelegramIds: approvalNotificationConfig.ownerTelegramIds });
 const readinessEvidence = new ReadinessEvidenceService(pool);
+const accountInventory = new AccountInventoryService(pool);
 type Auth = { kind: 'bearer' | 'basic' | 'session' | 'agent'; csrfToken?: string; sessionValue?: string } | null;
 
 function constantEqual(left: string, right: string) { const a = Buffer.from(left); const b = Buffer.from(right); return a.length === b.length && timingSafeEqual(a, b); }
@@ -181,7 +183,7 @@ const server = createServer(async (req, res) => {
     const publicAsset = req.method === 'GET' ? publicJavaScriptAsset(url.pathname) : null;
     if (publicAsset) return respondBytes(res, 200, await readFile(new URL(`../public/${publicAsset}`, import.meta.url)), 'text/javascript; charset=utf-8');
     const auth = await authenticate(req.headers);
-    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/decisions', '/finance', '/jobs', '/health', '/daily-brief', '/wallet'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
+    if (!auth) { if (req.method === 'GET' && ['/', '/work', '/commercial', '/activity', '/approvals', '/decisions', '/finance', '/jobs', '/health', '/daily-brief', '/wallet', '/accounts'].includes(url.pathname)) return respond(res, 302, '', 'text/plain', { location: '/login' }); return respond(res, 401, { error: 'authentication_required' }); }
     if (versioned && req.method !== 'GET' && !String(req.headers['idempotency-key'] ?? '').trim()) return respond(res, 400, { error: 'idempotency_key_required' });
     if (req.method === 'POST' && url.pathname === '/api/logout') {
       if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
@@ -307,6 +309,11 @@ const server = createServer(async (req, res) => {
       return respond(res, 200, { allowed, policy_code: policyCode, effect_kind: effectKind });
     }
     if (req.method === 'GET' && url.pathname === '/api/overview') return respond(res, 200, await overview());
+    if (req.method === 'GET' && url.pathname === '/api/owned-accounts') return respond(res, 200, await accountInventory.inventory());
+    if (req.method === 'POST' && url.pathname === '/api/owned-accounts') {
+      if (!mutationAllowed(auth, req)) return respond(res, 403, { error: 'csrf_required' });
+      return respond(res, 201, await accountInventory.register(await body(req), actorFor(auth)));
+    }
     if (req.method === 'GET' && url.pathname === '/wallet') return respond(res, 200, renderWalletPage(auth.csrfToken, process.env.INFURA_PROJECT_ID, await wallet.status(), await agentWallet.status()), 'text/html; charset=utf-8');
     if (req.method === 'GET' && url.pathname === '/api/wallet/status') return respond(res, 200, await wallet.status());
     if (req.method === 'GET' && url.pathname === '/api/agent-wallet/status') return respond(res, 200, await agentWallet.status());
@@ -338,7 +345,7 @@ const server = createServer(async (req, res) => {
       const image = await readFile(new URL(`../assets/${filename}`, import.meta.url));
       return respondBytes(res, 200, image, 'image/png');
     }
-    const pageByPath: Record<string, ControlPlanePage> = { '/': 'command', '/work': 'work', '/commercial': 'commercial', '/activity': 'activity', '/approvals': 'approvals', '/decisions': 'decisions', '/finance': 'finance', '/jobs': 'jobs', '/health': 'health' };
+    const pageByPath: Record<string, ControlPlanePage> = { '/': 'command', '/work': 'work', '/commercial': 'commercial', '/activity': 'activity', '/approvals': 'approvals', '/decisions': 'decisions', '/finance': 'finance', '/jobs': 'jobs', '/health': 'health', '/accounts': 'accounts' };
     if (req.method === 'GET' && pageByPath[url.pathname]) {
       const page = pageByPath[url.pathname];
       return respond(res, 200, renderControlPlane(page, page === 'command' ? await overview() : {}, auth.csrfToken), 'text/html; charset=utf-8');
