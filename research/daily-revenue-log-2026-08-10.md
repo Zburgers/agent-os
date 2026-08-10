@@ -52,6 +52,21 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
   $0.25 Base USDC manifest, and unpaid `POST /v1/check` returned HTTP 402. The
   process was stopped after verification; no public origin, paid call, or
   wallet action occurred.
+- After owner approval, authorized effect
+  `432428b0-0834-4a7f-ac93-149cf7d44652` and deployed one isolated quick-tunnel
+  origin at `https://floors-pickup-european-theory.trycloudflare.com`. Independent
+  checks passed: health 200, discovery metadata, and unpaid POST 402. The
+  loopback service and tunnel remain supervised in the current run session;
+  the tunnel has no uptime guarantee.
+- After owner approval, submitted exactly one 4 USDC bid on escrow-funded
+  PayanAgent request `ks76vc9pzpz3qfgf8aawjckn5n8bezhf`. Effect
+  `f6812b4b-da5f-4166-910b-32e00ee610d4` succeeded and bid
+  `jd7aqjve84tnccvxdhtavh9f1d8c7r5e` is currently pending. No wallet spend or
+  paid call occurred.
+- Created pending approval `5b183bdf-b7b1-4332-8225-f4909b86f095` for the
+  exact existing PayanAgent offer update and activation to the fresh origin.
+  The older approved update names a different DNS-dead hostname and was not
+  reused.
 
 ## Current commercial truth
 
@@ -62,16 +77,14 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 - Spend: INR 0 in this block
 - Wallet transactions: 0
 - PayanAgent paid calls: 0
-- PayanAgent bids/fulfillments in this block: 0
+- PayanAgent bids/fulfillments in this block: 1 bid pending, 0 fulfillments
 - Local x402 smoke tests: health/discovery/402 passed; public deployment: 0
 
 ## Next action
 
-If approval `858b1a84-916b-4057-b89a-c9f4636935d2` is approved, restore and
-verify one isolated HTTPS origin, then use the already-approved metadata update
-and activation scope for the existing PayanAgent offer. If approval
-`b61adf0c-78f2-4ced-9106-71af926bab4d` is approved first, prepare and submit
-only the escrow-funded catalog-health bid and fulfill only after acceptance.
-Until either approval is active, continue read-only market scans and reply
-review; do not activate a dead route, replay the failed post, or spend wallet
-funds.
+If approval `5b183bdf-b7b1-4332-8225-f4909b86f095` is approved, update and
+activate only the existing PayanAgent listing, then verify the public offer and
+keep the origin monitored. If bid `jd7aqjve84tnccvxdhtavh9f1d8c7r5e` becomes
+accepted, run the no-paid-call checker and fulfill exactly that request; stop on
+rejection or changed terms. Continue reply review and NEAR bid monitoring; do
+not spend wallet funds or make paid calls.

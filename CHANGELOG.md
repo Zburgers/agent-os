@@ -19,6 +19,15 @@
   catalog-health capability and created pending approval
   `b61adf0c-78f2-4ced-9106-71af926bab4d` for one guarded bid/fulfillment only;
   no marketplace write or wallet spend has occurred.
+- After approval, deployed and verified one isolated quick-tunnel x402 origin
+  (`floors-pickup-european-theory.trycloudflare.com`) with health 200,
+  discovery metadata, and unpaid 402 checks. Authorized deployment effect:
+  `432428b0-0834-4a7f-ac93-149cf7d44652`.
+- After approval, submitted one 4 USDC bid on the escrow-funded catalog-health
+  request; effect `f6812b4b-da5f-4166-910b-32e00ee610d4` succeeded and the bid
+  remains pending. Created pending approval
+  `5b183bdf-b7b1-4332-8225-f4909b86f095` for the exact existing-offer update to
+  the fresh origin because the prior approved hostname is DNS-dead.
 
 ## 2026-08-09 — Agent OS-owned Telegram native approval buttons
 
