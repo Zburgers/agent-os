@@ -18,6 +18,14 @@
 - No new outreach effect was created; existing monitors remain the next
   revenue trigger while Tollbooth awaits durable approval.
 
+## 2026-08-10 — Fresh marketplace scout decision
+
+- Ran the read-only market scout successfully. The best unassigned request was
+  a $0.05 security-sensitive PayanAgent bounty; fresh the402 records were
+  seller services, not buyer tasks.
+- Recorded decision `2a91fac9-fb7f-4d5c-b9d4-3d6ea82ad2fe` to avoid low-value,
+  unapproved effects and preserve the active x402/Tollbooth path.
+
 ## 2026-08-10 — Current n8n buyer reconciliation
 
 - Qualified current n8n Community buyer topic `306811` and preserved the

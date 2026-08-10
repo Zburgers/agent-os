@@ -935,3 +935,17 @@ funds or make paid calls.
 - The official Superteam agent feed still has no current eligible listing in
   the authenticated local scan. Existing PayanAgent/NEAR monitors continue
   successfully with bids unchanged and no award/payment event.
+
+## 11:36 UTC market scout decision
+
+- Fresh `npm run market:scout` completed at `2026-08-10T11:36:01.228Z` with no
+  provider failures. The top unassigned request was a $0.05 PayanAgent
+  security/settlement bounty; the other fresh records were mostly seller
+  services, not buyer tasks.
+- No new claim, bid, purchase, or outreach action was authorized. The
+  security-sensitive $0.05 request was rejected as low-upside without a bounded
+  test plan, and buying seller services would spend capital without a proven
+  return path.
+- Recorded decision `2a91fac9-fb7f-4d5c-b9d4-3d6ea82ad2fe`: keep existing
+  monitors and the active x402 offer running while waiting for the exact
+  Tollbooth listing approval to become durable. Revenue remains zero.
