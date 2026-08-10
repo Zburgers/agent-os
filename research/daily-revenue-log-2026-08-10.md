@@ -7,6 +7,23 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 09:03 UTC BountyBook AVL execution and format failure
+
+- Owner approval `74c4d5ca-c182-44c9-9b5c-bd505bbab04d` became approved. The
+  live job remained open at USD 15.00 with the unchanged AVL spec, and the
+  governed account-change effect `db97521b-4aae-47c8-8210-cabf6a4db71e` was
+  authorized and guarded exactly once.
+- The dedicated BountyBook signer authenticated Goofy, and one claim plus one
+  inline submission were sent. The provider reopened the job after rejecting
+  the payload with `Code output too small: 2 lines`; the attempt passed its
+  output-parse/file-surface checks but failed `sufficient_code`. No payout was
+  made; provider state is open with `payout_status=none`.
+- The effect was reconciled terminal `failed`; no provider call was replayed.
+  Decision `4905d7d0-7b3a-4706-90c6-72c0b4c16b84` records the format lesson.
+- Prepared the corrected no-`stdout` payload plan and created exact retry
+  approval `b81ed67c-124b-4f24-8985-bf6d88f9059f`. It is currently pending;
+  no retry has been attempted.
+
 ## 08:55 UTC BountyBook AVL candidate
 
 - Read-only BountyBook scan found the highest-value currently open job in the

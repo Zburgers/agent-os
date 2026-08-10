@@ -24,5 +24,14 @@ candidate has no external dependencies.
 - `avl.py`: `3b61fc3abfeaff4b995f56bbea9d9ee981e2919b58400e55d7b36314685b4e5a`
 - `test_avl.py`: `7c00474017227cf4699fd9b5b1624ec6851b68563b0adfb457957d1ea648706d`
 
-This is a local candidate only. No BountyBook claim, signature, submission,
-payment, or external message has been made.
+The candidate was claimed and submitted once under approval
+`74c4d5ca-c182-44c9-9b5c-bd505bbab04d`; BountyBook rejected the inline shape,
+reopened the job, and paid nothing. No retry is authorized by that approval.
+
+## Submission-format lesson
+
+The first approved attempt used `outputData.files.avl.py` plus a short optional
+`stdout` field. BountyBook accepted the request but its verifier selected the
+two-line `stdout` surface and failed with `Code output too small: 2 lines`.
+The corrected payload must omit `stdout` and provide the complete source through
+the inline file/content surface. A new approval is required before retrying.
