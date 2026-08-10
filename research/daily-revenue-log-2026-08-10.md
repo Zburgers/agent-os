@@ -7,6 +7,17 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 09:39 UTC BountyBook provider-outage confirmation
+
+- Read-only GET of the fresh open USD 3 Python-framework research job showed
+  the same provider-wide verifier failure: visible attempts stop in
+  `ipfs_fetch` with `undefined.length` or IPFS 500/504 before any acceptance
+  checks run. Payout remains `none`.
+- Recorded decision `3fa3c8b2-06bc-4db7-87b3-ebe331654a64`: keep the entire
+  BountyBook earning lane closed until a provider release or an independently
+  successful post-fix verification sample exists. No new claim or submission
+  was attempted.
+
 ## 09:35 UTC monitoring checkpoint
 
 - Authoritative Agent OS still reports open controls, revenue `0`, and one

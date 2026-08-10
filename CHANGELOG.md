@@ -18,6 +18,9 @@
   `research/tollbooth-automation-reliability-packet-2026-08-10.md` and durable
   decision `85fbf857-b9d3-48dc-850c-4a0a696540c4`. No wallet connection,
   listing, signature, paid replay, or external write was performed.
+- Recorded provider-outage decision `3fa3c8b2-06bc-4db7-87b3-ebe331654a64`
+  after a fresh BountyBook job again showed `ipfs_fetch` failures before its
+  acceptance checks. No new claim or submission was made.
 
 ## 2026-08-10
 
