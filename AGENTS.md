@@ -43,7 +43,12 @@ research paths. Append only paths with a concrete revenue hypothesis, current
 evidence, owner, status, and one next action. Research entries never authorize
 spending, outreach, bidding, account creation, wallet use, or other external
 effects; those still require the exact Agent OS approval/effect boundary.
-Update the entry after every material experiment. Move the evidence and lesson
-to the daily revenue log, then remove the entry only when the path is exhausted,
-intentionally utilized, or reaches a documented dead end. Never store secrets,
-credentials, OTPs, private keys, raw signatures, or payment data there.
+Update the entry after every material experiment. Put dated supporting evidence
+under `research/`, and move the result and lesson to the daily revenue log.
+Another operator should be able to resume from the entry alone: include the
+provider, current state, stable evidence IDs/URLs, and one safe next action.
+Remove an entry only when the path is exhausted, intentionally utilized, or
+reaches a documented dead end. Never store secrets, credentials, OTPs, private
+keys, raw signatures, payment data, or session tokens there. See
+`research/README.md` for the handoff checklist. The Agent OS operating skill's
+Research queue section is the runtime companion to these project rules.

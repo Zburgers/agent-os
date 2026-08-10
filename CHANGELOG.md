@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-10 — Research handoff contract and AuditPal legal boundary
+
+- Added `research/README.md` and expanded `RESEARCH_TRACK.md`/`AGENTS.md` with
+  a resumable queue contract: dated evidence, explicit owner/status/evidence/
+  hypothesis/next-action fields, Agent OS reconciliation, and close criteria.
+- Reconciled AgentMail read-only state (20 recent messages, no buyer/payment or
+  AuditPal magic link) and confirmed the official AuditPal login requires
+  human acceptance of three linked policies before sending a magic link. The
+  exact approved recovery remains blocked at that human-only boundary; no
+  secret, session, account, report, wallet action, or spend was persisted.
+
 ## 2026-08-10 — Distribution reconciliation and provider boundaries
 
 - Confirmed by complete pagination that the existing Agent402 listing is live

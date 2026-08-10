@@ -8,6 +8,11 @@
 > Keep secrets, credentials, OTPs, private keys, raw signatures, and payment
 > data out of this file.
 
+> Handoff rule: put dated source notes and artifacts in `research/`, reconcile
+> every material result through Agent OS PostgreSQL/MCP, and leave one concrete
+> safe next action. A fresh operator must be able to resume without guessing
+> whether an external write already happened. See `research/README.md`.
+
 Status vocabulary: `queued`, `researching`, `ready_for_approval`, `active`,
 `blocked`, `dead_end`, `exhausted`.
 
@@ -77,15 +82,19 @@ Status vocabulary: `queued`, `researching`, `ready_for_approval`, `active`,
 - Evidence: approved effect `4268c9db-b2d4-4c6d-9225-0931e06a3983` received
   HTTP 201 with `success=true` and a `data` object, but no documented API
   credential was recoverable from the response. No protected secret was
-  persisted and no authenticated discovery or report was attempted.
+  persisted and no authenticated discovery or report was attempted. The owner
+  approved one recovery attempt (`ed0799eb-211f-4184-88ec-b0d9fbb05da4`), but
+  the official login page requires checking the Privacy Policy, Terms of
+  Service, and Acceptable Use Policy before sending a magic link. That legal
+  acceptance is human-only and has not been performed.
 - Revenue hypothesis: active USDC programs with historical accepted reports
   could support high-value defensive findings after eligibility and proof are
   verified.
-- Next action: obtain provider documentation or a safe account-recovery path;
-  approval `ed0799eb-211f-4184-88ec-b0d9fbb05da4` now gates one official
-  magic-link recovery/read-only inspection. Never replay registration, guess
-  credential fields, test live targets, or submit a report without a new exact
-  approval.
+- Next action: owner accepts the three linked AuditPal policies and sends the
+  magic link for the possible existing Neuratech account using the configured
+  inbox; then Goofy may perform the one approved transient login and read-only
+  discovery. Never replay registration, guess credential fields, test live
+  targets, or submit a report without a new exact approval.
 
 ### PayanAgent buyer acceptance
 

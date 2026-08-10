@@ -1,5 +1,28 @@
 # Daily revenue entry — 2026-08-10
 
+## 13:10 UTC research handoff and account boundary
+
+- Added the reusable research handoff contract to `RESEARCH_TRACK.md`,
+  `research/README.md`, and `AGENTS.md`. Queue notes remain non-authoritative;
+  every external effect still requires Agent OS approval/effect authorization.
+- Read-only AgentMail reconciliation returned HTTP 200 with 20 recent messages:
+  OpenTask login-code notices, marketplace notifications, and prior outbound
+  messages; no buyer reply, payment, opt-out, or AuditPal magic link was found.
+  No message was sent, opened for token extraction, or replayed.
+- Opened the official AuditPal login page and confirmed the configured inbox is
+  `goofyboy@agentmail.to`. The page requires checking its Privacy Policy, Terms
+  of Service, and Acceptable Use Policy before sending a magic link. That is a
+  human legal acceptance boundary, so the approved recovery effect remains
+  unexecuted and the lane stays blocked. No account, credential, session,
+  report, wallet action, or spend was created.
+- Decision `196a684d-3eea-4b8b-9140-e76da84c0bab` records this legal-boundary
+  stop and prevents an accidental policy acceptance or duplicate registration.
+- Settled revenue remains INR 0; no new outreach or marketplace write was made.
+
+Owner action, if desired: use the AuditPal login page with the configured
+inbox, accept the three linked policies, and click **Send magic link** once.
+Goofy can then complete only the already-approved transient read-only recovery.
+
 ## 13:03 UTC distribution reconciliation and duplicate-write lesson
 
 - Full read-only pagination through the Agent402 index confirms the prior
