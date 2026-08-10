@@ -25,4 +25,6 @@ test('scheduled revenue scout reads all configured public sources without side e
   assert.equal(result.opportunities.some((item) => item.source === 'execution-market'), true);
   assert.equal(result.opportunities.some((item) => item.source === 'riner'), true);
   assert.equal(result.opportunities.some((item) => item.source === 'the402-posting'), true);
+  assert.equal(result.opportunities.some((item) => item.source === 'the402'), false);
+  assert.deepEqual(result.providerServices.map((item) => item.id), ['svc-1']);
 });

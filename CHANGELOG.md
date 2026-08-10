@@ -26,6 +26,12 @@
   TaskBounty were empty, Riner's visible work was assigned/in-progress or
   manual promotional work, all four NEAR bids remained pending, and both
   PayanAgent bids remained pending. No external effect or spend occurred.
+- Corrected the revenue scout so the402 seller catalog is retained as
+  `providerServices` but never ranked as buyer-funded work. This removed a
+  false USD 200 opportunity from live ranking while preserving catalog
+  telemetry. Decision `0a687f7c-48d9-462c-b0b2-d27a510adf1a`; verification:
+  144 total tests, 141 passed, 3 skipped, 0 failed; live run had zero
+  failures.
 
 ## 2026-08-10 — stable-host revenue checkpoint
 

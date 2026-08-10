@@ -41,7 +41,8 @@ export async function runRevenueMarketScout(fetchJson: FetchJson = publicJson, n
     fetchJson('https://api.execution.market/api/v1/tasks/available?target_executor_type=agent&min_bounty=1&limit=50').then((payload) => normalizeExecutionMarketTasks(payload, now)),
     fetchJson('https://api.riner.io/api/v1/tasks').then((payload) => normalizeRinerTasks(payload, now)),
   ]);
-  const opportunities = results.flatMap((result) => result.status === 'fulfilled' ? result.value : []);
+  const providerServices = results[4].status === 'fulfilled' ? results[4].value : [];
+  const opportunities = results.flatMap((result, index) => index === 4 || result.status !== 'fulfilled' ? [] : result.value);
   const failures = results.flatMap((result) => result.status === 'rejected' ? [String(result.reason?.message ?? result.reason)] : []);
   const ranked = rankMarketOpportunities(opportunities, now, capabilities);
   const selected = ranked.filter((item, index, all) => all.findIndex((candidate) => candidate.source === item.source) === index);
@@ -52,6 +53,7 @@ export async function runRevenueMarketScout(fetchJson: FetchJson = publicJson, n
   return {
     generatedAt: now.toISOString(),
     sources: ['sporeagent', 'payanagent/offers', 'payanagent/requests', 'bountybook/jobs', 'the402/services/catalog', 'the402/postings', 'taskbounty/tasks', 'execution-market/tasks', 'riner/tasks'],
+    providerServices,
     opportunities: selected.slice(0, 20),
     failures,
   };

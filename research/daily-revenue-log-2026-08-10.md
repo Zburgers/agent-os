@@ -83,6 +83,20 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
   outreach effect. Revenue remains `0`; recurring NEAR and market-scout jobs
   remain queued for monitor-only follow-up.
 
+## 10:07 UTC seller-catalog ranking correction
+
+- Root cause found in the live scout: the402 seller catalog entries were being
+  merged into buyer opportunities, making a provider's USD 200 service appear
+  to be payable work.
+- Added a regression test and changed `runRevenueMarketScout` to retain the
+  catalog as `providerServices` while excluding it from actionable ranking.
+  The dedicated buyer-postings source remains actionable.
+- Verification: focused test passed; full suite is 144 total, 141 passed, 3
+  skipped, 0 failed; `npm run check` and `git diff --check` passed; live scout
+  at `2026-08-10T10:06:37.017Z` returned zero failures, 100 provider services,
+  and no `the402` opportunity. Decision
+  `0a687f7c-48d9-462c-b0b2-d27a510adf1a`.
+
 ## 09:43 UTC current Superteam bounty triage
 
 - The existing Superteam agent credential was used read-only against the
