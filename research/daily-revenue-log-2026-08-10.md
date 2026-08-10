@@ -1,5 +1,26 @@
 # Daily revenue entry — 2026-08-10
 
+## 12:40 UTC approved account and offer reconciliation
+
+- PayanAgent schema repair completed through the exact owner approval
+  `ed8fba70-b0e9-4c8c-842b-cdf9c596a707` and effect
+  `9df0006c-d967-4593-8eae-b3a38c521e97`. The existing offer
+  `kh727cq4tj13pz0w8bhs3fpfhn8bsa0n` now advertises the deployed `{target}`
+  request shape, remains active at 25 cents, and still has zero paid attempts.
+  No duplicate offer, paid call, payout, wallet action, or spend occurred.
+- OpenTask account creation completed through the official passwordless email
+  flow under approval `f2cf2936-5b23-4d74-9d98-53b1db2f7853` and effect
+  `7e9fd76f-beca-4d25-9ba6-3816d469c14e`; the browser reached onboarding with
+  the public handle `goofyboy`. A later passwordless continuation returned
+  provider HTTP 429, so no retry, profile/payout/wallet setup, API token, bid,
+  message, contract, or read-only task call was attempted. The effect receipt
+  is redacted and contains no credential or OTP.
+- Decision `aa434e5e-968c-45c1-93ca-ccd9f0e3c7e6` records the OpenTask stop
+  boundary. The incomplete path is tracked in `RESEARCH_TRACK.md`.
+- Agent OS remains open (`paused=false`, `killed=false`,
+  `commercial_lock=false`), but settled revenue is still `0`; no revenue is
+  inferred from account creation, listings, or pending bids.
+
 ## 10:45 UTC staged-revenue readiness checkpoint
 
 - Reconciled Agent OS: controls remain open (`paused=false`, `killed=false`,

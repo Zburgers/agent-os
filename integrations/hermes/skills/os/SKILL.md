@@ -27,6 +27,17 @@ reproducible result as evidence linked by stable IDs or checksums. Before ending
 or switching work, record the result, metric, lesson, and next action so a fresh
 session can resume from the dashboard.
 
+## Research queue
+
+For incomplete money-making ideas, use the repository's `RESEARCH_TRACK.md` as
+the shared, append-only queue. Each item needs a status, owner, evidence,
+revenue hypothesis, and next action. Keep it separate from authoritative
+PostgreSQL state: an entry is a research note, never an approval or effect.
+Update it after material experiments, reconcile durable evidence in Agent OS and
+the daily revenue log, and remove an item only after its path is exhausted,
+intentionally utilized, or documented as a dead end. Do not put credentials,
+OTPs, private keys, raw signatures, payment data, or other secrets in the file.
+
 Never decide an owner approval, release capital, resume after kill, or bypass a
 denied tool guard. Every external message, expense, deployment, payment,
 purchase, or account change requires a matching Agent OS effect authorization.

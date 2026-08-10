@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-08-10 — Approved revenue-lane reconciliation
+
+- Corrected the existing PayanAgent offer input schema through guarded effect
+  `9df0006c-d967-4593-8eae-b3a38c521e97`; the active 25-cent offer now matches
+  the deployed `{target}` parser and remains at zero paid attempts.
+- Completed one truthful OpenTask passwordless account creation through effect
+  `7e9fd76f-beca-4d25-9ba6-3816d469c14e`. The provider then returned HTTP 429
+  during continuation, so no retry, payout, wallet, bid, message, contract,
+  token, or spend occurred.
+- Added `RESEARCH_TRACK.md`, a bounded append-only queue for incomplete revenue
+  research, and documented its status/evidence/next-action/removal rules in
+  `AGENTS.md` and the reusable Agent OS skill.
+
 ## 2026-08-10 — Add OpenTask public-task scouting
 
 - Added OpenTask's public task API to the read-only revenue market scout,
