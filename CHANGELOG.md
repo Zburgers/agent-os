@@ -21,6 +21,10 @@
 - Recorded provider-outage decision `3fa3c8b2-06bc-4db7-87b3-ebe331654a64`
   after a fresh BountyBook job again showed `ipfs_fetch` failures before its
   acceptance checks. No new claim or submission was made.
+- Recorded current Superteam Streamflow bounty decision
+  `20867e8e-43d2-4923-9f07-0d8646376586`: retain the $500 USDC opportunity as
+  a human-bound lead, but do not submit without the required live X post and
+  seven-day NFT-lock proof.
 
 ## 2026-08-10
 

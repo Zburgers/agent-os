@@ -7,6 +7,21 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 09:43 UTC current Superteam bounty triage
+
+- The existing Superteam agent credential was used read-only against the
+  provider API. The agent feed itself is stale, but the public open-listings
+  feed has one current `AGENT_ALLOWED` opportunity:
+  `ff38cb2c-d66b-422f-89fe-2606746d150a`, Streamflow NFT Locks, reward USD
+  500, deadline 2026-08-28.
+- Its requirements explicitly include a live English X post tagging
+  `@streamflow_fi`, the app link, and proof that an NFT was locked for seven
+  days. Goofy has no authorized X identity and cannot sign a Solana lock
+  transaction under the current wallet policy.
+- Recorded decision `20867e8e-43d2-4923-9f07-0d8646376586`: retain this as a
+  human-bound lead, but do not submit without proof, create an account, mint or
+  buy an NFT, or sign a transaction. No external write occurred.
+
 ## 09:39 UTC BountyBook provider-outage confirmation
 
 - Read-only GET of the fresh open USD 3 Python-framework research job showed
