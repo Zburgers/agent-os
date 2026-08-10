@@ -1,0 +1,65 @@
+{
+  "generated_at": "2026-08-10",
+  "databases": [
+    {
+      "name": "Chroma",
+      "github_url": "https://github.com/chroma-core/chroma",
+      "github_stars": 29003,
+      "license": "Apache-2.0",
+      "primary_language": "Rust",
+      "embedding_support": ["OpenAI", "Cohere", "Hugging Face", "Sentence Transformers", "custom functions"],
+      "language_clients": ["Python", "JavaScript", "TypeScript", "Rust"],
+      "storage_backends": ["in-memory", "local persistent storage", "S3-compatible object storage"],
+      "highlights": ["simple embedded developer experience", "metadata filtering", "local or hosted deployment"],
+      "summary": "A developer-focused embedding database optimized for quick local prototyping and straightforward production APIs."
+    },
+    {
+      "name": "Weaviate",
+      "github_url": "https://github.com/weaviate/weaviate",
+      "github_stars": 16714,
+      "license": "BSD-3-Clause",
+      "primary_language": "Go",
+      "embedding_support": ["OpenAI", "Cohere", "Hugging Face", "Voyage AI", "self-hosted vectorizers"],
+      "language_clients": ["Python", "JavaScript", "TypeScript", "Go", "Java", "C#"],
+      "storage_backends": ["local disk", "persistent volumes", "object-storage backups"],
+      "highlights": ["hybrid keyword and vector search", "module-based vectorization", "GraphQL and REST APIs"],
+      "summary": "A modular vector search engine combining semantic, keyword, and generative retrieval features behind typed APIs."
+    },
+    {
+      "name": "Qdrant",
+      "github_url": "https://github.com/qdrant/qdrant",
+      "github_stars": 33896,
+      "license": "Apache-2.0",
+      "primary_language": "Rust",
+      "embedding_support": ["FastEmbed", "OpenAI", "Cohere", "Hugging Face", "custom vectors"],
+      "language_clients": ["Python", "JavaScript", "TypeScript", "Rust", "Go", "Java", "C#"],
+      "storage_backends": ["local disk segments", "memory-mapped files", "snapshots to object storage"],
+      "highlights": ["payload filtering", "quantization and scalar indexes", "distributed collections"],
+      "summary": "A Rust-based vector similarity engine built around fast filtered search, payloads, and scalable collection management."
+    },
+    {
+      "name": "Milvus",
+      "github_url": "https://github.com/milvus-io/milvus",
+      "github_stars": 45582,
+      "license": "Apache-2.0",
+      "primary_language": "Go",
+      "embedding_support": ["OpenAI", "Cohere", "Hugging Face", "Milvus model services", "custom embeddings"],
+      "language_clients": ["Python", "Java", "Go", "JavaScript", "TypeScript", "C++"],
+      "storage_backends": ["local disk", "MinIO", "Amazon S3-compatible storage", "etcd metadata"],
+      "highlights": ["distributed architecture", "GPU-accelerated indexes", "scalar and vector filtering"],
+      "summary": "A distributed open-source vector database designed for high-scale retrieval, indexing, and hybrid data workloads."
+    },
+    {
+      "name": "LanceDB",
+      "github_url": "https://github.com/lancedb/lancedb",
+      "github_stars": 11114,
+      "license": "Apache-2.0",
+      "primary_language": "Rust",
+      "embedding_support": ["OpenAI", "Cohere", "Hugging Face", "FastEmbed", "custom embedding functions"],
+      "language_clients": ["Python", "JavaScript", "TypeScript", "Rust"],
+      "storage_backends": ["local Lance tables", "S3", "GCS", "Azure Blob Storage"],
+      "highlights": ["embedded serverless operation", "Arrow-native multimodal data", "SQL and vector search together"],
+      "summary": "An embedded vector database using Lance columnar tables for multimodal retrieval without a separate server process."
+    }
+  ]
+}

@@ -2,6 +2,14 @@
 
 ## 2026-08-10
 
+- Closed the BountyBook AVL lane after its final approved attempt failed in the
+  provider IPFS fallback, and staged a validated structured vector-database
+  JSON candidate for job `0773e126-08fb-4b80-a3f7-ed67e2261cdf` (USD 5.00).
+  Created experiment `f7a5fe44-86ad-45cf-896d-9b180a3fe1e9` and pending
+  approval `389f9ac3-b995-4c4d-8847-627fef0accd7` for one claim and submission.
+
+## 2026-08-10
+
 - Executed the one approved AVL retry with a files-only payload. BountyBook
   again rejected it as zero lines and reopened the job; no payout occurred.
   Recorded effect `69a42b86-ed92-498a-9d2b-9bf69febdb1e` as requiring

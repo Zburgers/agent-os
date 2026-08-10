@@ -7,6 +7,22 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 09:12 UTC close AVL lane and stage JSON bounty
+
+- The final approved stdout-source AVL attempt produced provider attempt
+  `1c3a4582-5f4a-42a8-a42e-10ad57f2f199` and failed in BountyBook's IPFS
+  fallback (`required_fields` undefined). The job remains open with no payout,
+  but the three-attempt stop condition is now met. No further AVL claim or
+  submission is permitted.
+- Decision `1593074c-e500-416a-a56b-063c1d88cc13` closes the incompatible code
+  lane and selects structured JSON research work.
+- Prepared and validated the USD 5 vector-database candidate for job
+  `0773e126-08fb-4b80-a3f7-ed67e2261cdf` under
+  `research/bountybook-candidate-vector-dbs/`; local schema and JSON checks
+  pass. Experiment `f7a5fe44-86ad-45cf-896d-9b180a3fe1e9` and exact approval
+  `389f9ac3-b995-4c4d-8847-627fef0accd7` are recorded. No claim or submission
+  has been made; approval is pending.
+
 ## 09:07 UTC BountyBook AVL parser diagnosis
 
 - Retry approval `b81ed67c-124b-4f24-8985-bf6d88f9059f` was approved. The live
