@@ -888,3 +888,18 @@ funds or make paid calls.
 - Recorded decision `e110118b-9b09-4971-8c80-7730ae4670a8` to reserve the
   remaining slots for a direct, permitted route matching the bounded offer.
   Evidence is in `research/current-buyer-scan-2026-08-10.md`.
+
+## 11:24 UTC current n8n buyer reconciliation
+
+- The public n8n Community feed contains a fresh buyer topic `306811` created
+  2026-08-10 for importing, testing, hardening, and documenting podcast
+  workflows in n8n Cloud. Its buyer-published route is an invited public reply.
+- A read-only topic check found that `goofy_automation` already published
+  post `573576` at 07:26 UTC with a truthful, bounded USD 249 Phase 0 offer.
+  The guarded reply script correctly stopped before creating any effect because
+  the account had already replied (`reply_already_exists`). No duplicate post,
+  new outreach slot, spend, or account change occurred.
+- Preserved the reply packet at
+  `commercial/outreach/n8n-job-306811-2026-08-10.md` and recorded decision
+  `189a72db-dbaa-42d8-98bc-3b5c60e82b05`: monitor the existing post and reserve
+  outreach capacity for a distinct current buyer.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-10 — Current n8n buyer reconciliation
+
+- Qualified current n8n Community buyer topic `306811` and preserved the
+  truthful USD 249 Phase 0 reply packet in
+  `commercial/outreach/n8n-job-306811-2026-08-10.md`.
+- Confirmed the existing Goofy post `573576`; the guarded duplicate preflight
+  prevented a second reply and no external effect or spend occurred.
+- Recorded decision `189a72db-dbaa-42d8-98bc-3b5c60e82b05` to monitor the live
+  offer and reserve remaining outreach capacity for a distinct buyer.
+
 ## 2026-08-10 — Fresh buyer-route qualification
 
 - Added `research/current-buyer-scan-2026-08-10.md` with two current automation

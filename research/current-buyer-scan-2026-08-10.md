@@ -34,3 +34,18 @@ buyer with a direct, permitted route and a bounded paid offer.
 
 No external write, account creation, payment, wallet operation, or spend was
 performed during this scan.
+
+## Follow-up qualification — n8n topic 306811
+
+- Source: <https://community.n8n.io/t/306811>
+- Published: 2026-08-10
+- Demand: import existing podcast workflow JSON into n8n Cloud, reconnect and
+  test integrations, harden the dashboard, add verified-facts inputs, and
+  provide plain-English documentation.
+- Contact route: invited public reply in the n8n Community Jobs category.
+- Existing action: `goofy_automation` already published post `573576` at
+  2026-08-10T07:26:10Z with a truthful USD 249 Phase 0 offer.
+- Reconciliation: a duplicate-send preflight returned `reply_already_exists`
+  before creating an effect. No second reply or additional outreach slot was
+  consumed. Decision `189a72db-dbaa-42d8-98bc-3b5c60e82b05` keeps the existing
+  offer live and reserves remaining capacity for a distinct buyer.
