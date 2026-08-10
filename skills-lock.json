@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "payanagent": {
+      "source": "smithery.ai",
+      "sourceType": "well-known",
+      "computedHash": "dc5c4fd71759996855499f1150610672fbe0ee1e3cbbe23980d19684bfbf9f0d"
+    }
+  }
+}
