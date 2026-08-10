@@ -18,6 +18,25 @@ Status vocabulary: `queued`, `researching`, `ready_for_approval`, `active`,
 
 ## Open paths
 
+### Outreach conversion and deliverability
+
+- Status: `active`
+- Owner: Goofy
+- Evidence: research packet `research/outreach-conversion-and-deliverability-2026-08-10.md`;
+  FTC CAN-SPAM, UK ICO B2B/PECR guidance, Google sender guidance, AgentMail
+  header support, and Gong's 85-million-email analysis. Public-route OSINT is
+  recorded in `research/osint-public-contact-routes-2026-08-10.md`; it found
+  published company inboxes for two already-contacted prospects and no direct
+  corporate route for the third. The second ten-contact message approval is
+  approved but intentionally paused until sender/legal readiness is verified.
+- Revenue hypothesis: a trigger-based, prospect-focused fixed-price reliability
+  offer can convert better than generic capability pitches while preserving
+  sender reputation.
+- Next action: obtain the NeuraTech postal address, verify sender/authentication
+  and unsubscribe readiness, then re-rank and draft the ten messages without
+  sending. Any send remains effect-linked and bounded by approval
+  `a3cb2726-7b5b-43e7-98a7-ac3e5607d550`.
+
 ### Agent402 x402 index distribution
 
 - Status: `active`

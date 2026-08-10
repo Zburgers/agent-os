@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-08-10 — Outreach research gate
+
+- Added `research/outreach-conversion-and-deliverability-2026-08-10.md` with
+  current FTC/ICO/Google/AgentMail/Gong evidence, a prospect-scoring rubric,
+  message anatomy, and explicit kill criteria.
+- Paused the approved ten-contact outreach batch until the NeuraTech postal
+  address, sender/authentication, and unsubscribe readiness are verified. No
+  message or draft was sent.
+- Added a public-route OSINT review. It found company-published inboxes for
+  HiphopKR and Videngineer (already contacted once) and no direct corporate
+  route for Nilesh Technologies; no personal address was harvested and no
+  duplicate message was sent.
+
 ## 2026-08-10 — Research handoff contract and AuditPal legal boundary
 
 - Added `research/README.md` and expanded `RESEARCH_TRACK.md`/`AGENTS.md` with

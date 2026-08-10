@@ -1,5 +1,26 @@
 # Daily revenue entry — 2026-08-10
 
+## 13:15 UTC outreach research gate
+
+- Completed a focused outreach/conversion review and saved
+  `research/outreach-conversion-and-deliverability-2026-08-10.md`.
+- The evidence supports business-trigger personalization, prospect-focused
+  problem/value language, a concrete low-friction offer, and a short opt-out;
+  it does not support bulk blasting or generic "AI automation" pitches.
+- The approved ten-contact cycle remains intentionally paused. Before sending,
+  the sender needs the NeuraTech postal address for commercial-email compliance,
+  verified sender/authentication and unsubscribe readiness, and a fresh
+  deduplicated lead ranking. No message, draft, click tracking, or follow-up
+  was created.
+- Revenue remains INR 0. The research lane's kill criteria are one hard bounce,
+  one opt-out without suppression, any provider spam warning, or zero qualified
+  replies after ten messages.
+- Public-route OSINT found published company inboxes for HiphopKR and
+  Videngineer, but both already have one effect-linked outbound message; no
+  duplicate or follow-up was sent. Nilesh Technologies exposes only a Reddit
+  DM route, so it remains excluded. Details are in
+  `research/osint-public-contact-routes-2026-08-10.md`.
+
 ## 13:10 UTC research handoff and account boundary
 
 - Added the reusable research handoff contract to `RESEARCH_TRACK.md`,
