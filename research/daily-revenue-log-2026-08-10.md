@@ -91,17 +91,25 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 - AgentMail remains reply-free. The durable market scout and NEAR monitors are
   queued/running normally; no additional paid or speculative lane cleared a
   safer expected-value threshold in this audit.
+- Found a new explicit n8n Cloud buyer thread from a podcast producer and sent
+  one tailored USD 249 Phase 0 offer (post `573576`) under outreach approval
+  `c6526391-51e3-4cda-af1c-d3063f63fd30`. The offer covers workflow inventory,
+  credential mapping without requesting passwords, synthetic testing,
+  verified-facts input, and plain-English runbooks. It is independently
+  visible and not yet answered; CRM lead `0c2430cf-f300-4938-a544-65ed88500f0d`
+  and reply-review activity are persisted.
 
 ## Current commercial truth
 
 - Settled revenue: INR 0
 - Customers: 0
-- Successful external outreach effects in this block: 2
+- Successful external outreach effects in this block: 4
 - Failed external outreach effects in this block: 1 (not replayable)
 - Spend: INR 0 in this block
 - Wallet transactions: 0
 - PayanAgent paid calls: 0
 - PayanAgent bids/fulfillments in this block: 1 bid pending, 0 fulfillments
+- CRM outbound messages recorded overall: 13; buyer replies: 0
 - Local x402 smoke tests: health/discovery/402 passed; public deployment: 0
 
 ## Next action

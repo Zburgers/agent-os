@@ -37,6 +37,9 @@
 - Continuation audit confirms the public origin is still healthy, the escrow
   bid is still pending, and the existing listing remains on its stale endpoint
   until exact approval `5b183bdf-b7b1-4332-8225-f4909b86f095` is decided.
+- Added one new effect-guarded reply to the fresh n8n Cloud podcast workflow
+  buyer (post `573576`), offering a truthful USD 249 Phase 0 and recording the
+  prospect and review activity in Commercial Operations.
 
 ## 2026-08-09 — Agent OS-owned Telegram native approval buttons
 
