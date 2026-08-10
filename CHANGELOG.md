@@ -2,6 +2,13 @@
 
 ## 2026-08-10
 
+- Verified a second current paid buyer (HiphopKR) and sent one tailored,
+  zero-cost architecture-first proposal under the approved outreach tranche.
+  Persisted experiment `3bc9c19d-81ff-41c0-bb78-e83c9919a55c`, decision
+  `2101519c-830e-44f2-ba6b-d4a4ffec7349`, outreach artifact, effect
+  `01826580-b1e2-4a63-9806-b11514417d1e`, AgentMail receipt, and CRM lead
+  `443a2923-4f66-45c7-b1b2-8b5462de230d`. No payment or contract action was
+  taken.
 - Researched a current explicit Videngineer hiring request and sent one
   individually tailored, zero-cost email under the approved outreach tranche.
   Persisted experiment `d2a1da48-18b8-43dd-92f4-353414df2eae`, decision
