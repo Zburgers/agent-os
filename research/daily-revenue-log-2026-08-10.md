@@ -23,6 +23,14 @@
   exact persistent-host deployment approval. No duplicate listing POST,
   payment, wallet action, or spend was made.
 
+## 10:49 UTC BountyBook verifier checkpoint
+
+- A fresh read-only sample of 20 current open BountyBook jobs found 20/20
+  latest attempts failing: 13 at `ipfs_fetch` and 7 at `sufficient_code`.
+- Recorded decision `a2000aa7-8265-41fe-adc8-c0abc006ab34` to keep claims and
+  submissions paused until an independent successful verifier sample appears.
+  No claim, submission, replay, wallet action, or spend occurred.
+
 ## Objective
 
 Increase the probability of Neuratech’s first settled payment while preserving

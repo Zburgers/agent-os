@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-10 — BountyBook verifier still failing
+
+- Fresh read-only sampling of 20 current open jobs found 20/20 latest
+  attempts failing: 13 at `ipfs_fetch` and 7 at `sufficient_code`.
+- Recorded decision `a2000aa7-8265-41fe-adc8-c0abc006ab34` to keep claims and
+  submissions paused; no replay, wallet action, or spend occurred.
+
 ## 2026-08-10 — PayAPI stable-host gate confirmed
 
 - Read the provider's latest rejection notice: the Automation Reliability
