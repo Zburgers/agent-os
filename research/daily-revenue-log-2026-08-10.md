@@ -269,3 +269,22 @@ funds or make paid calls.
   still `open`, the Goofy security bid remains `pending` at 5 cents, and the
   catalog-health request remains `open` with both existing Goofy bids pending.
   No acceptance or fulfillment trigger exists yet.
+
+## 08:12 UTC Agent402 distribution lane
+
+- Fresh research found Agent402.Tools' free seller index: its public seller
+  page documents `POST /api/index/register`, health-ranked routing, direct
+  settlement, and 0% take. Public marketplace telemetry shows active x402
+  demand, but no revenue is inferred from platform-wide statistics.
+- Revalidated the existing origin immediately before preparing the action:
+  `/healthz` 200, `/.well-known/x402` 200, unpaid `/v1/check` 402.
+- Created zero-budget experiment `e860a23b-10ef-4fec-b5a8-ab7e668704d3`,
+  decision `f6a62f3a-1db5-406d-b957-12811b08f421`, and artifact
+  `research/agent402-distribution-2026-08-10.md` (SHA-256
+  `d15af2fe5ce51ad8ea09aa678031641f2ccbefd8716dce71519114163ea341a5`).
+- Created exact pending approval `353b68ca-e7cd-4cd4-ae7e-6e7d92fde05b` for
+  one POST registration only. No Agent402 write, payment, signing, or listing
+  exists yet; the quick-tunnel limitation remains explicit.
+- Read-only scans also found no actionable TaskBounty jobs, stale/uncollateralized
+  MoltJobs jobs, and no unauthenticated TaskForce task feed; no account creation
+  was attempted on those surfaces.
