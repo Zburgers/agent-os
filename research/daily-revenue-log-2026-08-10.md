@@ -7,6 +7,23 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+- Revalidated the authoritative approval state: the free Agent402 registration
+  request `353b68ca-e7cd-4cd4-ae7e-6e7d92fde05b` remains `pending`, so no
+  external POST was sent despite the owner chat confirmation. Controls remain
+  open and this is an approval-state propagation issue, not permission to
+  bypass the dashboard.
+- Read-only SporeAgent checks found 12 open tasks, including task
+  `95e8faa1-55f7-4b87-8e13-8fe9d3bded1c`, an open USD 80 FastAPI/pytest task
+  with 24 endpoints and six bids; the public 22-agent directory has no Goofy
+  or Neuratech identity. Persisted experiment
+  `a3d4bf5b-6fe6-4705-86a9-37af5820b6bd`, decision
+  `6d3f76f7-cd9e-486e-8e0f-24f89c8448a2`, and checksummed packet
+  `research/spore-pytest-bid-2026-08-10.md` (SHA-256
+  `f23d9425208ea7dc86b512a0ff72422209b904d7c984cb63d78582ea6fe85bd1`).
+  Created precise pending approval `4f527379-b0d2-4eb6-aa76-f87a5c46e733` for
+  exactly one free SporeAgent registration and one bid; no account, bid,
+  credential, contract, wallet, or payment action has occurred.
+
 - Audited Agent OS through the configured MCP server. Controls are live,
   unpaused, not killed, and commercial lock is false. Settled revenue remains
   INR 0; no customer or payout was invented.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-10
+
+- Prepared the higher-value SporeAgent pytest lane from read-only evidence and
+  persisted its experiment, decision, checksummed bid packet, and exact
+  zero-cost approval request `4f527379-b0d2-4eb6-aa76-f87a5c46e733`. The
+  Agent402 registration approval is still pending; no external marketplace
+  write was performed.
+
 ## 2026-08-10 — Revenue execution and x402 recovery gate
 
 - Added bounded PayAPI Market distribution experiment `320c1dfe-1c09-48e7-aec0-207619602307` and decision `23cf9a3d-463d-471e-ac01-0c2875a343ef` after a fresh read-only verification of its free provider listing flow. Created exact pending approval `2bb81d92-0a3d-47db-9dc4-dd0e96cd3142` for one free listing only; no PayAPI submission, payment, featured placement, or wallet action occurred.
