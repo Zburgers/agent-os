@@ -10,6 +10,14 @@
   pending in the durable ledger; no listing POST or duplicate outreach was
   performed. Settled revenue remains zero.
 
+## 2026-08-10 — n8n jobs-feed recheck
+
+- Re-read the live n8n Jobs feed and confirmed the only newly created buyer
+  request is the already-contacted topic `306811`; older high-value threads and
+  seller posts were excluded by the current-demand and fit rules.
+- No new outreach effect was created; existing monitors remain the next
+  revenue trigger while Tollbooth awaits durable approval.
+
 ## 2026-08-10 — Current n8n buyer reconciliation
 
 - Qualified current n8n Community buyer topic `306811` and preserved the

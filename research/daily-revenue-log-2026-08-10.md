@@ -922,3 +922,16 @@ funds or make paid calls.
 - Recorded Agent OS decision `099bb1b7-0853-4202-8d7c-9d2c446ff8b4`: preserve
   capacity, continue read-only monitors, and wait for a buyer response or
   durable Tollbooth approval. Settled revenue remains zero.
+
+## 11:40 UTC n8n jobs-feed recheck
+
+- Re-read the live n8n Jobs category. The only newly created buyer post in the
+  current feed is topic `306811`, the podcast workflow request already covered
+  by Goofy's public post `573576`; no second reply is allowed.
+- Other high-value-looking entries in the visible feed are older buyer posts or
+  seller availability posts, so they do not satisfy the active outreach
+  tranche's current-demand requirement. No new email, DM, forum reply, or
+  account action was attempted.
+- The official Superteam agent feed still has no current eligible listing in
+  the authenticated local scan. Existing PayanAgent/NEAR monitors continue
+  successfully with bids unchanged and no award/payment event.
