@@ -47,6 +47,11 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 - Reviewed the AgentMail inbox read-only. It contains no buyer reply, payment
   request, or opt-out; the newest external message is Goofy's own Paris
   follow-up receipt.
+- Ran a zero-exposure loopback smoke test of the x402 service without a
+  deployment effect: `/healthz` returned 200, `/.well-known/x402` returned the
+  $0.25 Base USDC manifest, and unpaid `POST /v1/check` returned HTTP 402. The
+  process was stopped after verification; no public origin, paid call, or
+  wallet action occurred.
 
 ## Current commercial truth
 
@@ -58,6 +63,7 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 - Wallet transactions: 0
 - PayanAgent paid calls: 0
 - PayanAgent bids/fulfillments in this block: 0
+- Local x402 smoke tests: health/discovery/402 passed; public deployment: 0
 
 ## Next action
 
