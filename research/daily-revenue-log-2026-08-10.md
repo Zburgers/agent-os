@@ -949,3 +949,17 @@ funds or make paid calls.
 - Recorded decision `2a91fac9-fb7f-4d5c-b9d4-3d6ea82ad2fe`: keep existing
   monitors and the active x402 offer running while waiting for the exact
   Tollbooth listing approval to become durable. Revenue remains zero.
+
+## 11:42 UTC inbox and distribution reconciliation
+
+- Read the AgentMail inbox read-only. The latest messages are Goofy's own
+  outbound drafts and provider notifications; no buyer reply, payment, or
+  opt-out was received.
+- PayAPI's latest notification confirms the prior Automation Reliability Check
+  listing is blocked solely because the `trycloudflare.com` hostname is an
+  ephemeral quick tunnel. It requires a stable custom domain or persistent host
+  such as `workers.dev`, `vercel.app`, `railway.app`, or `onrender.com` before
+  any resubmission can be considered.
+- No resubmission, hosting-account creation, credential change, or external
+  message was attempted. The existing Tollbooth approval still remains the
+  only prepared zero-cost distribution action.
