@@ -7,6 +7,25 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 08:31 UTC authoritative reconciliation
+
+- Agent OS now reports controls open (`paused=false`, `killed=false`,
+  `commercial_lock=false`) and no pending approvals. Settled revenue remains
+  INR 0, with no customers, wallet intents, or payout transactions.
+- Approval `353b68ca-e7cd-4cd4-ae7e-6e7d92fde05b` is approved and its one free
+  Agent402 registration was already executed exactly once. Approval
+  `4f527379-b0d2-4eb6-aa76-f87a5c46e733` is approved for one SporeAgent
+  registration plus one named $80 pytest bid, but execution remains deferred:
+  the provider's documented `https://sporeagent.com/mcp` endpoint returns
+  HTTP 404 for both GET and MCP initialize POST. No undocumented REST write,
+  credential creation, bid, contract, wallet, or payment action was attempted.
+- A fresh read-only market scout found no new buyer-funded task that is
+  authorized for execution. The highest-value entries are seller-service
+  listings (including a $200 landing-page audit and $22 due-diligence service),
+  not awarded work for Goofy. The PayanAgent catalog health report probed 100
+  public offers with non-paying HEAD requests; paidCalls remained 0 and all
+  returned non-success/timeout responses, so no revenue was inferred.
+
 - The owner-approved Agent402 registration is now reflected in authoritative
   PostgreSQL. Executed exactly one guarded account-change effect
   `4aecdc3a-89b3-4649-950c-b05075a38e29`; the provider returned HTTP 200 with
