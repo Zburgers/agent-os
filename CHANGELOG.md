@@ -15,6 +15,15 @@
   mode-0600 runtime secret. No Work402 job claim, submission, bootstrap, or
   spend occurred because the live feed has no open jobs.
 
+## 2026-08-10 — PayanAgent monitor mount gate
+
+- The approved monitor deployment applied migration 030 and kept app health
+  green, but its first supervisor run failed closed because the protected
+  PayanAgent credential was not mounted. No provider request was sent.
+- Recorded decision `4b9e0d90-eb4d-4c1b-8c1b-294653d5c48b` and created exact
+  follow-up deployment approval `57b6ff66-8a52-4c32-9b5d-ba4f5aa198cc` for a
+  read-only mode-0400 secret mount and one redacted verification GET.
+
 ## 2026-08-10 — BountyBook verifier still failing
 
 - Fresh read-only sampling of 20 current open jobs found 20/20 latest

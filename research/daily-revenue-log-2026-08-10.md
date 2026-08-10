@@ -833,3 +833,17 @@ funds or make paid calls.
 - A read-only postcondition check still found 7 historical Work402 jobs (2
   completed, 5 cancelled) and 0 open jobs. No claim, submission, bootstrap,
   wallet transaction, or spend was attempted.
+
+## 11:04 UTC PayanAgent monitor deployment gate
+
+- Owner-approved deployment effect `378b8fe3-2e34-4703-8fd7-360396b6e6b0`
+  rebuilt/recreated only app and supervisor; app health remained 200 and
+  migration `030_payanagent_request_monitor.sql` applied successfully.
+- The first scheduled monitor run failed closed before any provider request:
+  supervisor could not read `/home/goofy/.hermes/payanagent-provider.json`
+  because the current Compose definition mounts only the NEAR credential.
+  The deployment effect is terminal `failed`; no PayanAgent state changed.
+- Recorded decision `4b9e0d90-eb4d-4c1b-8c1b-294653d5c48b` and created exact
+  follow-up deployment approval `57b6ff66-8a52-4c32-9b5d-ba4f5aa198cc` for a
+  read-only mode-0400 secret mount and one verification GET. No credential was
+  copied into the image, repository, logs, dashboard, Telegram, or output.
