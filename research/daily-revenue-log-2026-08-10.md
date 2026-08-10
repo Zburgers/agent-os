@@ -1154,3 +1154,6 @@ funds or make paid calls.
   pending approval `ed8fba70-b0e9-4c8c-842b-cdf9c596a707` for one schema-only
   PATCH to `{target}`. It preserves price, endpoint, payout wallet, metadata,
   and active state; no duplicate offer or wallet action is allowed.
+- Local parser verification confirms `{target:"https://example.com"}` is
+  accepted while the currently advertised `{url,format}` shape returns
+  `invalid_request`.
