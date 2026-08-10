@@ -235,3 +235,12 @@
 - Added visible wallet-link progress states for connect, account request, and signature request steps.
 - Added regression coverage for direct injected providers, provider arrays, MetaMask `isMetaMask`, provider metadata, fallback provider selection, missing providers, mainnet/no-switch, switch-to-mainnet, and missing-account failures.
 - Fixed pre-auth serving for the exact wallet JavaScript assets so browser module loading cannot receive JSON authentication errors.
+## 2026-08-10 — Revenue continuation checkpoint
+
+- Reconciled the live PayanAgent offer, escrow request, BountyBook sample
+  failures, and Agent OS controls through the configured MCP.
+- Recorded decision `c97d9997-d49c-4350-a920-f6638d7e2a62` to monitor for buyer
+  acceptance or the stable-host prerequisite and never replay consumed,
+  reconciliation-required, or provider-failing marketplace effects.
+- Confirmed no new payment, wallet action, duplicate listing, or unapproved
+  outreach occurred; settled revenue remains zero.

@@ -7,6 +7,29 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 10:18 UTC continuation revenue checkpoint
+
+- Re-read authoritative Agent OS through the configured MCP. Controls remain
+  open (`paused=false`, `killed=false`, `commercial_lock=false`), settled
+  revenue remains `0`, and the current objective is still the first paid
+  Automation Reliability Sprint.
+- Verified the live PayanAgent request remains open with 4 USDC escrow and no
+  acceptance; no fulfillment, duplicate bid, payment, or wallet action was
+  attempted. The existing Automation Reliability Check origin remains the
+  only live offer path and its paid-attempt count remains zero.
+- Read-only BountyBook sampling found 20 open jobs, but the latest three
+  sampled jobs each showed recent failed verification attempts. The durable
+  decision `c97d9997-d49c-4350-a920-f6638d7e2a62` therefore keeps the prior
+  BountyBook effects closed and forbids replay until an independent provider
+  recovery signal exists.
+- Confirmed the exact PayanAgent update was already applied by approved effect
+  `4441e0a3-6d98-4e95-9d33-291a97149fa3`; no new PATCH was sent. The free
+  persistent-host approval `aaade397-babb-4669-898f-de535ed6f967` remains
+  pending in Agent OS, so no deployment or account action was taken.
+- Net result: no new revenue yet, but no duplicate or unapproved external
+  effect. Next execution trigger is a buyer acceptance, a new payable buyer
+  posting, or the durable stable-host approval transition.
+
 ## 09:50 UTC PayanAgent demand and deliverable checkpoint
 
 - Fresh public reads show the escrow-funded 4-cent catalog endpoint-health
