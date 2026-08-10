@@ -23,6 +23,12 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
   evidence. Guarded effect `e5458ecf-7b14-410e-b21b-3548865f8e34` succeeded;
   provider post ID is `573569` (post 77). The reply and a two-day review
   activity are persisted in Commercial Operations.
+- Sent the one permitted follow-up to Paris ZigZag’s explicitly published
+  business email after its migration thread showed fresh activity. The message
+  offers the previously quoted EUR 149 sanitized architecture review, states
+  the evidence boundary, and includes a clear stop/suppression option. Guarded
+  AgentMail effect `43b92c98-5263-4fbd-b597-53220877cce5` succeeded; the
+  follow-up and a three-day reply-review activity are persisted.
 - Tried one separate truthful agency-builder reply. Discourse rejected it with
   HTTP 422 because the provider disallowed the GitHub host. Effect
   `46ec786d-24e4-4cf2-913c-160483ef09b6` is closed as failed and is not
@@ -37,7 +43,7 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 - Settled revenue: INR 0
 - Customers: 0
-- Successful external outreach effects in this block: 1
+- Successful external outreach effects in this block: 2
 - Failed external outreach effects in this block: 1 (not replayable)
 - Spend: INR 0 in this block
 - Wallet transactions: 0

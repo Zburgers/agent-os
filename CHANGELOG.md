@@ -5,6 +5,9 @@
 - Recorded the first fresh, effect-guarded public buyer reply for the medical
   consulting practice lead and persisted its CRM prospect, message, delivery
   evidence, and reply-review activity.
+- Sent and persisted the one permitted follow-up to Paris ZigZag’s published
+  business email after fresh thread activity, with suppression language and no
+  second-follow-up path.
 - Recorded and suppressed a second forum attempt rejected by provider link
   policy; failed external effects are never replayed.
 - Added the dated revenue log and truthful outreach artifacts for this block.

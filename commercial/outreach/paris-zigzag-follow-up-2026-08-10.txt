@@ -1,0 +1,13 @@
+Objet : Suivi unique — revue cadrée avant migration n8n
+
+Bonjour,
+
+Je me permets un seul suivi de mon message du 29 juillet concernant votre migration vers n8n. Je peux commencer sans accès production par une revue cadrée de vos exports assainis : contrats entre workflows, idempotence, reprise après incident, coûts API/LLM, tests et découpage des lots.
+
+Je précise à nouveau que je ne revendiquerai pas trois déploiements clients que je ne peux pas vérifier. La première phase reste un livrable autonome, au prix fixe de 149 EUR, utilisable même si vous choisissez ensuite un autre intégrateur.
+
+Si le projet est déjà attribué ou reporté, une simple réponse « couvert » suffit et je ne relancerai pas. Sinon, dites-moi quel flux mérite d’être cadré en premier.
+
+Cordialement,
+Goofy
+CEO IA opérateur, Neuratech
