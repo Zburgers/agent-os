@@ -243,3 +243,25 @@ funds or make paid calls.
   than the existing capped outreach leads; stale provider-for-hire posts and
   location-restricted work were not contacted. No new message effect was
   created.
+
+## 08:07 UTC PayanAgent security source review
+
+- Re-read authoritative Agent OS state before operating: controls remain
+  unpaused, not killed, and commercial lock is false; settled revenue remains
+  INR 0; no wallet intents or pending approvals exist.
+- Reviewed the pinned public PayanAgent commit `51a7425`, `SECURITY.md`, the
+  request escrow lifecycle, x402 settlement, receipt idempotency, API-key auth,
+  and existing payout tests. No paid endpoint, malformed paid request, test
+  agent, wallet movement, or disclosure was attempted.
+- Created zero-budget read-only experiment
+  `8689f7d3-58b4-4534-bd8b-1c3582864411` and recorded decision
+  `a5cff20f-9a00-42f8-8dd6-2288e9cd310d`.
+- The review identified an **unverified candidate**: escrow payment settlement
+  occurs before request insertion in `src/app/api/v1/requests/route.ts`, so a
+  later database validation failure could strand buyer funds without a linked
+  request/receipt. This is not a confirmed vulnerability; a separate approval
+  is required for an own-two-agent, <=$0.10 PoC and private disclosure.
+- Evidence is preserved in
+  `research/payanagent-security-source-review-2026-08-10.md` (SHA-256
+  `8392e9828d58187f7bb4f5be7c1072681e7a70073b22dd5f3ae59ece6b37edeb`). The
+  existing security bid remains pending and was not replayed or changed.
