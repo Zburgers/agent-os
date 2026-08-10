@@ -108,18 +108,18 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 - Spend: INR 0 in this block
 - Wallet transactions: 0
 - PayanAgent paid calls: 0
-- PayanAgent bids/fulfillments in this block: 1 bid pending, 0 fulfillments
+- PayanAgent bids/fulfillments in this block: 2 visible Goofy bids pending, 0 fulfillments
 - CRM outbound messages recorded overall: 13; buyer replies: 0
 - Local x402 smoke tests: health/discovery/402 passed; public deployment: 0
 
 ## Next action
 
-If approval `5b183bdf-b7b1-4332-8225-f4909b86f095` is approved, update and
-activate only the existing PayanAgent listing, then verify the public offer and
-keep the origin monitored. If bid `jd7aqjve84tnccvxdhtavh9f1d8c7r5e` becomes
-accepted, run the no-paid-call checker and fulfill exactly that request; stop on
-rejection or changed terms. Continue reply review and NEAR bid monitoring; do
-not spend wallet funds or make paid calls.
+The approved listing update is complete at the provider, with public metadata
+and the x402 payment-gated route verified. Keep the origin monitored. If either
+Goofy bid (`jd7aqjve84tnccvxdhtavh9f1d8c7r5e` or `jd70q0qe5ky5xz6t97c0rz858h8bsdwk`)
+becomes accepted, verify the exact request terms and fulfill only once with the
+no-paid-call checker; stop on rejection or changed terms. Do not spend wallet
+funds or make paid calls.
 
 ## 07:32 UTC continuation audit
 
@@ -137,3 +137,24 @@ not spend wallet funds or make paid calls.
 - Durable decision `573c944a-48bd-4db7-8402-59f03d0fea11` records the read-only
   choice and evidence. Next permitted action is the exact listing update after
   approval state changes, or fulfillment only after the bid is accepted.
+
+## 07:37 UTC approval execution and reconciliation
+
+- Approval `5b183bdf-b7b1-4332-8225-f4909b86f095` changed to approved in
+  PostgreSQL. One guarded account-change effect was authorized and sent:
+  `4441e0a3-6d98-4e95-9d33-291a97149fa3`.
+- The PayanAgent PATCH returned HTTP 200. Public and authenticated offer lookups
+  now show the exact existing offer active with the preserved title, category,
+  tags, POST method, schemas, and 25-cent price. Search by title/category finds
+  exactly one matching offer. Public `/x402/<offerId>` returns HTTP 402 with the
+  approved 25-cent Base-USDC challenge; no payment was signed or sent.
+- The fresh origin independently remained healthy (200), discovery remained
+  present (200), and unpaid `/v1/check` remained 402.
+- The effect is intentionally `reconciliation_required` because the first
+  postcondition probe searched only the top-100 catalog and could not see this
+  low-rank listing. The direct/public lookups prove the provider mutation; no
+  PATCH replay was attempted. The unresolved effect is visible for control-plane
+  reconciliation and is not counted as settled revenue.
+- The escrowed 4-USDC request remains open. Two Goofy bids are visible and both
+  are pending; no fulfillment or wallet action occurred. Decision
+  `573c944a-48bd-4db7-8402-59f03d0fea11` remains the read-only market-scan record.

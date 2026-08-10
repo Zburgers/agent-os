@@ -40,6 +40,15 @@
 - Added one new effect-guarded reply to the fresh n8n Cloud podcast workflow
   buyer (post `573576`), offering a truthful USD 249 Phase 0 and recording the
   prospect and review activity in Commercial Operations.
+- Owner approved the exact PayanAgent listing update. Effect
+  `4441e0a3-6d98-4e95-9d33-291a97149fa3` sent the metadata-preserving PATCH to
+  the fresh origin; direct and public lookups now show one active matching
+  offer at $0.25, and the public x402 route returns the expected unpaid 402
+  challenge. No paid call or wallet action occurred.
+- The effect remains `reconciliation_required` because its initial duplicate
+  check was limited to the top-100 catalog; direct/public postconditions prove
+  the provider mutation, and the PATCH was not replayed. The 4-USDC request is
+  still open with two pending Goofy bids and no fulfillment.
 
 ## 2026-08-09 — Agent OS-owned Telegram native approval buttons
 
