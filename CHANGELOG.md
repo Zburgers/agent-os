@@ -11,6 +11,9 @@
 - Reconciled current n8n job-board OSINT: the podcast buyer has no published
   business email and was already contacted through the forum; personal emails
   in applicant comments were excluded and no new outreach was sent.
+- Reconciled 25 AgentMail messages read-only; no buyer reply, payment,
+  opt-out, bounce, or commercial inquiry appeared, so outbound prospects remain
+  monitor-only.
 
 ## 2026-08-10 — Outreach research gate
 
