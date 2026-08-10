@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-10 — Tollbooth approval reconciliation
+
+- Rechecked the authoritative approval ledger and recorded decision
+  `b09ece3d-2433-41e8-970d-23156eb1a809`: Tollbooth approval
+  `be4a72de-7b3a-4704-8f30-79a4dbd814a8` remains pending, so no listing POST
+  or replay was performed.
+- Verified the existing Agent402 origin still returns HTTP 200 for health and
+  x402 discovery. Revenue remains zero; no wallet or payment action occurred.
+
 ## 2026-08-10 — Work402 and Tollbooth marketplace research
 
 - Added `research/work402-tollbooth-marketplace-2026-08-10.md` with current

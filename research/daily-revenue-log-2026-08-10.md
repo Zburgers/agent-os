@@ -859,3 +859,19 @@ funds or make paid calls.
   still `open`, escrow is 4 cents, both Goofy bids remain `pending`, and no
   status-change alert was raised.
 - No bid, acceptance, fulfillment, payment, wallet signing, or spend occurred.
+
+## 11:14 UTC approval reconciliation
+
+- Rechecked the authoritative Agent OS controls, approvals, jobs, finances, and
+  wallet state. Controls remain unpaused with `commercial_lock=false`; revenue
+  remains zero and realized net profit remains `-200000` minor units.
+- Tollbooth approval `be4a72de-7b3a-4704-8f30-79a4dbd814a8` is still
+  `pending` with no `decided_at`, despite an owner chat confirmation. Four
+  consecutive read-only polls observed the same state, so no listing POST was
+  sent and no duplicate was attempted.
+- The existing Agent402 origin remains healthy: `/healthz` and
+  `/.well-known/x402` both returned HTTP 200. No paid replay, wallet signing,
+  funding, or external mutation occurred.
+- Decision `b09ece3d-2433-41e8-970d-23156eb1a809` records the fail-closed next
+  action: submit the Tollbooth listing exactly once only after the durable
+  approval transitions to `approved`.
