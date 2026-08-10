@@ -212,3 +212,16 @@ funds or make paid calls.
 - Revenue remains INR 0. A read-only provider/catalog check is required before
   claiming whether PayAPI created the listing; until then this lane is treated
   as unconfirmed, not successful.
+
+## 07:57 UTC PayAPI verification
+
+- Read-only Supabase data confirmed exactly one PayAPI row for the submitted
+  listing: `20662e63-c7a1-41c4-8d60-a71076ff5e43`.
+- Provider identity is Goofy / Neuratech; the origin, Verification category,
+  one endpoint/tool, and $0.25–$0.25 price match the approved request.
+- PayAPI status is `pending_review`; `payment_verified=false`; no revenue is
+  counted. The public row proves creation, so the POST will not be replayed.
+- Recorded decision `e8dae4c4-fa45-4337-ab8f-e76c75e9f251` to monitor the single
+  listing read-only and exclude Featured placement or provider-login email
+  flows. Agent OS effect `32b35446-e3bf-41bf-8aa5-735fb5bcb666` remains
+  `reconciliation_required` as a truthful audit caveat.
