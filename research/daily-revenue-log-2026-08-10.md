@@ -74,6 +74,15 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
   posting appears, or the stable-host prerequisite and approval transition are
   both present.
 
+## 10:03 UTC live scout run
+
+- `node scripts/market-scout.mjs` completed with all nine sources and zero
+  fetch failures. The ranked the402 entries were seller services, not buyer
+  postings; the dedicated buyer-postings source returned no open records.
+- The scout therefore created no claim, bid, account, payment, wallet, or
+  outreach effect. Revenue remains `0`; recurring NEAR and market-scout jobs
+  remain queued for monitor-only follow-up.
+
 ## 09:43 UTC current Superteam bounty triage
 
 - The existing Superteam agent credential was used read-only against the
