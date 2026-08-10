@@ -7,6 +7,27 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 09:27 UTC stable-host revenue checkpoint
+
+- Reconciled Agent OS through the configured MCP: controls remain open
+  (`paused=false`, `killed=false`, `commercial_lock=false`), pending approvals
+  are empty, and settled revenue remains INR 0.
+- The owner-approved BountyBook vector-database attempt is already consumed and
+  durably closed after the provider verifier failed; the AVL lane remains
+  permanently closed. No claim or submission was replayed. The approved
+  SporeAgent lane remains blocked because its documented MCP endpoint returns
+  HTTP 404; no undocumented write was attempted. PayanAgent bids remain
+  pending, so no fulfillment was sent.
+- Created zero-budget experiment `6feb9fae-550c-4892-bead-846192c67f25` and
+  decision `84a3a8c5-2fa8-4d56-b98c-afc0b4d0294f`: the highest-probability
+  next revenue step is a persistent accepted HTTPS origin for the existing
+  `$0.25` Automation Reliability Check, not another broken bounty attempt.
+- Created pending approval `aaade397-babb-4669-898f-de535ed6f967` for exactly
+  one free persistent-host deployment. It requires a stable Neuratech domain
+  or accepted free host, keeps the public surface to the existing four routes,
+  and forbids spend, duplicate listings, outreach, wallet actions, and
+  dashboard/database exposure. No deployment has occurred under this approval.
+
 ## 09:18 UTC close structured JSON BountyBook lane
 
 - Approval `389f9ac3-b995-4c4d-8847-627fef0accd7` was durably approved. The

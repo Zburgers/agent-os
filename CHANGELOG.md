@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-10 — stable-host revenue checkpoint
+
+- Added the durable Agent OS experiment `6feb9fae-550c-4892-bead-846192c67f25`
+  and decision `84a3a8c5-2fa8-4d56-b98c-afc0b4d0294f` selecting a persistent
+  accepted HTTPS origin as the next x402 revenue test.
+- Added pending approval `aaade397-babb-4669-898f-de535ed6f967` for one
+  zero-cost stable-host deployment; it does not authorize spending, duplicate
+  listings, outreach, wallet actions, or public dashboard/database exposure.
+- Reconciled the approved BountyBook, SporeAgent, Agent402, and PayanAgent
+  paths without replaying exhausted or still-pending external effects.
+
 ## 2026-08-10
 
 - Executed the single approved BountyBook vector-database JSON attempt for job
