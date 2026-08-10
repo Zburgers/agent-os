@@ -26,6 +26,23 @@ Status vocabulary: `queued`, `researching`, `ready_for_approval`, `active`,
   approval before profile completion or read-only API discovery. No bids,
   messages, contracts, payout, wallet, or spend.
 
+### AuditPal defensive security lane
+
+- Status: `blocked`
+- Owner: Goofy
+- Evidence: approved effect `4268c9db-b2d4-4c6d-9225-0931e06a3983` received
+  HTTP 201 with `success=true` and a `data` object, but no documented API
+  credential was recoverable from the response. No protected secret was
+  persisted and no authenticated discovery or report was attempted.
+- Revenue hypothesis: active USDC programs with historical accepted reports
+  could support high-value defensive findings after eligibility and proof are
+  verified.
+- Next action: obtain provider documentation or a safe account-recovery path;
+  approval `ed0799eb-211f-4184-88ec-b0d9fbb05da4` now gates one official
+  magic-link recovery/read-only inspection. Never replay registration, guess
+  credential fields, test live targets, or submit a report without a new exact
+  approval.
+
 ### PayanAgent buyer acceptance
 
 - Status: `active`

@@ -1,5 +1,40 @@
 # Daily revenue entry — 2026-08-10
 
+## 12:50 UTC recovery path and bounty verifier recheck
+
+- Official AuditPal documentation states that sign-up/login uses an email
+  magic link and no password. Because the earlier approved API attempt returned
+  success without a recoverable credential, decision
+  `aded1d47-f2ec-48c4-8ec7-fe6109c483ce` requested one bounded recovery path;
+  approval `ed0799eb-211f-4184-88ec-b0d9fbb05da4` is pending. No browser login,
+  duplicate registration, report, wallet action, or spend has occurred.
+- Read-only BountyBook checks show the three exact approved candidate jobs are
+  still open, but their latest verifier failures remain provider-side:
+  `0773e126…` has 40 attempts with `ipfs_fetch`, `1063de95…` has 533 attempts
+  with zero-line output, and `9651abf4…` has 241 attempts with `ipfs_fetch`.
+  No claim, signature, submission, replay, or payout was attempted.
+- The live x402 deployment remains reachable only at the existing
+  `floors-pickup-european-theory.trycloudflare.com` origin; the older
+  `consider-warranties-trackback-craft` hostname does not resolve. Existing
+  PayanAgent offer metadata is active with the corrected `{target}` schema and
+  zero paid attempts, so stale endpoint-change approvals were not executed.
+
+## 12:47 UTC AuditPal account-contract boundary
+
+- Executed the exact approved AuditPal registration/read-only lane under
+  approval `ae29fbf9-73b9-4d4b-9a12-6952267ba1e6` and effect
+  `4268c9db-b2d4-4c6d-9225-0931e06a3983`.
+- The provider returned HTTP 201 with `success=true` and a `data` object, but
+  no credential was recoverable from the documented response shape. Agent OS
+  reconciled the effect as failed; no secret was persisted, no duplicate
+  registration was attempted, and no authenticated discovery, finding,
+  exploit test, wallet action, or spend occurred.
+- Decision `0b61edca-557e-4772-987b-04de9955d234` keeps this lane blocked until
+  an official credential/recovery contract exists. The open path is tracked in
+  `RESEARCH_TRACK.md`.
+- This was a provider-contract failure, not revenue: settled revenue remains
+  `0`.
+
 ## 12:40 UTC approved account and offer reconciliation
 
 - PayanAgent schema repair completed through the exact owner approval

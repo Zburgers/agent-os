@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-08-10 — Recovery and verifier recheck
+
+- Recorded the official AuditPal passwordless recovery route and opened exact
+  approval `ed0799eb-211f-4184-88ec-b0d9fbb05da4`; no browser login or duplicate
+  signup has occurred.
+- Rechecked three approved BountyBook jobs and kept them closed for execution
+  while provider-side verifier failures persist.
+- Reconciled the live x402 origin and left stale endpoint-change approvals
+  untouched; the active PayanAgent offer already has the corrected `{target}`
+  schema and zero paid attempts.
+
+## 2026-08-10 — AuditPal contract boundary
+
+- Exercised the approved AuditPal registration lane once. The provider returned
+  HTTP 201 success but no documented credential was recoverable, so Agent OS
+  reconciled the effect as failed and prevented duplicate signup or secret
+  persistence.
+- Added the blocked AuditPal recovery path to `RESEARCH_TRACK.md` and recorded
+  decision `0b61edca-557e-4772-987b-04de9955d234`.
+
 ## 2026-08-10 — Approved revenue-lane reconciliation
 
 - Corrected the existing PayanAgent offer input schema through guarded effect
