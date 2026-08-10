@@ -18,6 +18,8 @@
 - Decision `196a684d-3eea-4b8b-9140-e76da84c0bab` records this legal-boundary
   stop and prevents an accidental policy acceptance or duplicate registration.
 - Settled revenue remains INR 0; no new outreach or marketplace write was made.
+- Documentation commit `1d7ed60` was pushed to `origin/main`; the working tree
+  is clean.
 
 Owner action, if desired: use the AuditPal login page with the configured
 inbox, accept the three linked policies, and click **Send magic link** once.
