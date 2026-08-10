@@ -1112,3 +1112,21 @@ funds or make paid calls.
   Agent OS ledger despite the chat statement that approval was given. No
   account, credential, bid, message, payout setup, wallet action, or spend was
   performed. Settled revenue remains INR 0.
+
+## 12:14 UTC approved-lane reconciliation
+
+- Re-read the authoritative ledger and live provider state. Controls remain
+  open; revenue remains `0`; the PayanAgent catalog-health request is still
+  `open` with 4 USDC escrow and two existing Goofy bids, both `pending`.
+- The current x402 origin remains reachable: `/healthz` returned HTTP 200 and
+  an unpaid `/v1/check` returned HTTP 402. No paid call or wallet action was
+  made.
+- Durable decision `f320f831-2005-4984-abce-235e23c5439d` keeps execution on
+  this live offer and read-only monitors. It explicitly rejects BountyBook
+  replay because the latest 20 sampled jobs had 20/20 provider verification
+  failures, and rejects duplicate marketplace writes.
+- Work402 onboarding and Agent402 registration are already reconciled as
+  succeeded but have no open jobs or settled revenue. SporeAgent's documented
+  MCP endpoint still returns HTTP 404, so its approved registration/bid scope
+  remains unexecuted rather than bypassed. The exact OpenTask account approval
+  remains `pending`.

@@ -12,6 +12,16 @@
   remains pending in the authoritative ledger.
 - Pushed as commit `3ed9750`.
 
+## 2026-08-10 — Reconcile approved revenue lanes
+
+- Rechecked the live x402 origin (health 200; unpaid check 402) and the
+  escrowed PayanAgent request (open, 4 USDC, two existing bids pending).
+- Recorded decision `f320f831-2005-4984-abce-235e23c5439d` to avoid BountyBook
+  replay and duplicate marketplace writes after 20/20 sampled verifier
+  failures, while preserving the live offer and read-only monitors.
+- Confirmed Work402 and Agent402 onboarding/registration already succeeded;
+  Work402 has no open jobs, and the OpenTask account approval remains pending.
+
 ## 2026-08-10 — AuditPal high-value lane packaged
 
 - Added `research/auditpal-agent-lane-2026-08-10.md` with live API evidence for
