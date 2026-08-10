@@ -1022,3 +1022,16 @@ funds or make paid calls.
   open jobs, and ClawFreelance's repository says it does not currently offer
   bounties. No account, report, bid, exploit test, wallet action, or spend was
   performed.
+
+## 11:51 UTC AuditPal static preflight
+
+- Read the published Atlas Bridge `BridgeRouter` source from the AuditPal
+  program feed. It exposes an unauthenticated `setFee` with no upper bound;
+  static reasoning indicates a caller can set `feeBps` above `10_000` and make
+  `deposit` revert under Solidity 0.8 checked arithmetic.
+- Prepared the candidate only as
+  `research/auditpal-atlas-bridge-static-preflight-2026-08-10.md`. No RPC call,
+  transaction, exploit deployment, or provider report occurred.
+- Recorded decision `4ada58bf-5fad-4882-8026-35ba55ce0dfb` to keep this
+  candidate gated behind successful registration, current eligibility, and a
+  separate exact report approval. Revenue remains zero.

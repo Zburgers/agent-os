@@ -11,6 +11,14 @@
 - Rejected stale MoltJobs records, zero-job WorkProtocol, and ClawFreelance's
   no-bounty state as current execution paths. Revenue remains zero.
 
+## 2026-08-10 — AuditPal static report preflight
+
+- Added a static-only Atlas Bridge `BridgeRouter` finding candidate. It is
+  explicitly not a submission and contains no live-chain interaction.
+- Recorded decision `4ada58bf-5fad-4882-8026-35ba55ce0dfb`; any report remains
+  gated on successful registration, current eligibility, and a separate exact
+  approval.
+
 ## 2026-08-10 — Fresh buyer-route scan
 
 - Added two current high-fit automation buyer signals to
