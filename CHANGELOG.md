@@ -2,6 +2,15 @@
 
 ## 2026-08-10
 
+- Executed the one approved AVL retry with a files-only payload. BountyBook
+  again rejected it as zero lines and reopened the job; no payout occurred.
+  Recorded effect `69a42b86-ed92-498a-9d2b-9bf69febdb1e` as requiring
+  reconciliation and created final approval
+  `905133a1-5bf1-426b-9475-fc8dd99c7efa` for a stdout-source payload, with a
+  permanent stop condition after that attempt.
+
+## 2026-08-10
+
 - Executed the approved BountyBook AVL claim and one inline submission. The
   provider reopened the job after selecting the optional two-line stdout field
   and failing `sufficient_code`; no payout occurred. Recorded the terminal

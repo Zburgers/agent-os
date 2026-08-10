@@ -7,6 +7,22 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 09:07 UTC BountyBook AVL parser diagnosis
+
+- Retry approval `b81ed67c-124b-4f24-8985-bf6d88f9059f` was approved. The live
+  job was re-preflighted unchanged, and fresh effect
+  `69a42b86-ed92-498a-9d2b-9bf69febdb1e` was authorized and guarded exactly
+  once.
+- One fresh claim and one files-only inline submission were sent. The provider
+  recorded attempt `35c16f51-5e13-486c-a377-cdccced8d5af` and again reopened
+  the job with `Code output too small: 0 lines`; no payout occurred. Bounded
+  polling saw no terminal state, so the effect is correctly
+  `reconciliation_required` and must not be replayed.
+- Decision `2ba197f6-7141-4831-a2fe-e4021982e15f` infers that the provider
+  reads `outputData.stdout`. Final approval `905133a1-5bf1-426b-9475-fc8dd99c7efa`
+  requests one last stdout-source attempt and permanently closes this AVL lane
+  after any failure. It is currently pending; no third attempt was made.
+
 ## 09:03 UTC BountyBook AVL execution and format failure
 
 - Owner approval `74c4d5ca-c182-44c9-9b5c-bd505bbab04d` became approved. The

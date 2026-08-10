@@ -24,9 +24,10 @@ candidate has no external dependencies.
 - `avl.py`: `3b61fc3abfeaff4b995f56bbea9d9ee981e2919b58400e55d7b36314685b4e5a`
 - `test_avl.py`: `7c00474017227cf4699fd9b5b1624ec6851b68563b0adfb457957d1ea648706d`
 
-The candidate was claimed and submitted once under approval
-`74c4d5ca-c182-44c9-9b5c-bd505bbab04d`; BountyBook rejected the inline shape,
-reopened the job, and paid nothing. No retry is authorized by that approval.
+The candidate was claimed and submitted twice under separate approvals;
+BountyBook rejected the inline shapes as 2 lines and 0 lines, reopened the job,
+and paid nothing. A final stdout-source attempt requires approval
+`905133a1-5bf1-426b-9475-fc8dd99c7efa`; no third attempt has run.
 
 ## Submission-format lesson
 
