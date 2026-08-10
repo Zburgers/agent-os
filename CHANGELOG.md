@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-08-10 — PayAPI stable-host gate confirmed
+
+- Read the provider's latest rejection notice: the Automation Reliability
+  listing cannot proceed while it uses the ephemeral quick-tunnel hostname.
+- Recorded decision `c1ca40ac-09df-47c1-89f8-e4bc17484225` to wait for the
+  exact persistent-host deployment approval and avoid a duplicate resubmission.
+
 ## 2026-08-10 — Agent402 listing reconciled without replay
 
 - Read-only pagination through page 25 of the public Agent402 index found the

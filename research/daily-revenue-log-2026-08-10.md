@@ -14,6 +14,15 @@
   deployment approval is authoritative.
 - No provider write, outreach, payment, wallet signing, or spend occurred.
 
+## 10:46 UTC PayAPI rejection reconciliation
+
+- Read the newest PayAPI provider message. It explicitly rejects the current
+  quick-tunnel host as ephemeral and requests a stable custom domain or
+  persistent platform host before resubmission.
+- Recorded decision `c1ca40ac-09df-47c1-89f8-e4bc17484225` to wait for the
+  exact persistent-host deployment approval. No duplicate listing POST,
+  payment, wallet action, or spend was made.
+
 ## Objective
 
 Increase the probability of Neuratech’s first settled payment while preserving
