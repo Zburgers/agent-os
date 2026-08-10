@@ -7,6 +7,23 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 08:49 UTC monitor checkpoint
+
+- Re-read authoritative Agent OS state: controls remain open, commercial lock is
+  false, there are no pending approvals, and settled revenue remains INR 0.
+- Ran `npm run market:scout` read-only. Fresh the402 results are provider
+  service listings, not buyer-funded requests; no new external bid or purchase
+  was authorized. The existing PayanAgent request
+  `ks76vc9pzpz3qfgf8aawjckn5n8bezhf` remains open with 4 USDC escrow and both
+  Goofy bids pending. The active Automation Reliability Check still has zero
+  paid attempts.
+- Revalidated the prepared catalog-health deliverable with `node --check` and
+  the full test suite: 143 tests ran, 140 passed, 3 skipped, 0 failed.
+- Recorded decision `f41c4c46-5cf8-49cb-99e8-2ff3586d53c9`: hold the existing
+  bid/listing paths, do not treat seller listings as buyer work, and do not
+  bypass SporeAgent's documented-MCP-only boundary while its endpoint returns
+  HTTP 404.
+
 ## 08:43 UTC acceptance and inbox monitor
 
 - Agent OS remains open and unpaused with no pending approvals. Revenue is
