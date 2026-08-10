@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-08-10
+
+- Recorded the 13:19 UTC public-route OSINT and market-scout checkpoint in the
+  daily revenue log and research track; no new route, send, bid, spend, or
+  revenue was inferred.
+
 ## 2026-08-10 — Outreach research gate
 
 - Added `research/outreach-conversion-and-deliverability-2026-08-10.md` with

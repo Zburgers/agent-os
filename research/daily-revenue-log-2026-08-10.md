@@ -1,5 +1,20 @@
 # Daily revenue entry — 2026-08-10
 
+## 13:19 UTC public-route OSINT and market-scout checkpoint
+
+- Reconciled a fresh, read-only public buyer-signal search and `node
+  scripts/market-scout.mjs`; all market sources succeeded, but no new
+  duplicate-free executable write lane appeared. Seller listings and stale or
+  provider-limited jobs were not treated as buyer demand.
+- Public OSINT produced no new verified corporate inbox beyond the published
+  HiphopKR and Videngineer routes already contacted once. Nilesh Technologies
+  exposes only a Reddit DM route, so no personal-address enrichment or direct
+  message was attempted.
+- Decision `f90f142c-4f8c-40fc-92a7-327ee5663fe9` keeps this lane read-only until
+  sender/legal readiness and a fresh approved route exist. No message, bid,
+  account write, wallet action, spend, or revenue occurred; settled revenue
+  remains INR 0.
+
 ## 13:15 UTC outreach research gate
 
 - Completed a focused outreach/conversion review and saved
