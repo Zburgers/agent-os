@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-08-10 — PayanAgent demand checkpoint
+
+- Re-ran the existing zero-cost catalog-health deliverable against 100 public
+  PayanAgent gateways: 92 reachable and 8 non-alive by unauthenticated `HEAD`
+  probe; no paid calls or marketplace writes occurred.
+- Confirmed the escrow-funded catalog-checker request remains open with the
+  existing Goofy bids pending, and the security request remains open with its
+  existing bid pending. Recorded decision
+  `57016391-7a59-4f8e-a8b3-155682304c5e` to prevent another duplicate bid,
+  premature fulfillment, or wallet spend.
+- Added reproducible checkpoint
+  `research/payanagent-catalog-health-checkpoint-2026-08-10.md`. Revenue
+  remains zero; the stable-host deployment approval is still pending.
+
 ## 2026-08-10 — stable-host revenue checkpoint
 
 - Added the durable Agent OS experiment `6feb9fae-550c-4892-bead-846192c67f25`

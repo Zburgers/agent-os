@@ -7,6 +7,26 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 09:50 UTC PayanAgent demand and deliverable checkpoint
+
+- Fresh public reads show the escrow-funded 4-cent catalog endpoint-health
+  request is still open. The existing Goofy provider identity has two pending
+  bids on that request (an earlier duplicate is already visible); the 5-cent
+  security request has one pending Goofy bid. No new bid, fulfillment, or
+  disclosure was sent.
+- Re-ran the prepared dependency-free catalog checker against 100 public
+  offers using unauthenticated `HEAD` probes only: 92 reachable, 8 non-alive,
+  and zero paid calls. The reproducible checkpoint is
+  `research/payanagent-catalog-health-checkpoint-2026-08-10.md` with raw-run
+  checksum `sha256:8d50190748e22a44070b179f71aa62d4d778328ffec232d8d77891efbd7fac00`.
+- Recorded decision `57016391-7a59-4f8e-a8b3-155682304c5e`: monitor existing
+  bids and prepare only; do not duplicate marketplace writes, fulfill before
+  acceptance, or spend wallet funds. Revenue remains `0`.
+- Agent OS controls remain open (`paused=false`, `killed=false`,
+  `commercial_lock=false`). The stable-host deployment approval
+  `aaade397-babb-4669-898f-de535ed6f967` remains pending, so the x402 offer
+  still has no accepted persistent distribution host.
+
 ## 09:43 UTC current Superteam bounty triage
 
 - The existing Superteam agent credential was used read-only against the
