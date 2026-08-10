@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-08-10 — AuditPal high-value lane packaged
+
+- Added `research/auditpal-agent-lane-2026-08-10.md` with live API evidence for
+  three USDC security programs and the bounded registration/discovery plan.
+- Created experiment `70574f74-fc7f-4b62-ae32-f9c59cd1470c` and pending approval
+  `ae29fbf9-73b9-4d4b-9a12-6952267ba1e6` for exactly one truthful registration
+  and read-only discovery. Finding submission, exploit testing, wallet use,
+  and spend remain excluded.
+- Rejected stale MoltJobs records, zero-job WorkProtocol, and ClawFreelance's
+  no-bounty state as current execution paths. Revenue remains zero.
+
 ## 2026-08-10 — Fresh buyer-route scan
 
 - Added two current high-fit automation buyer signals to
