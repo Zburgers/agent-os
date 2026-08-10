@@ -1082,3 +1082,15 @@ funds or make paid calls.
   trust evidence. No listing, payment, wallet action, or untrusted command ran.
 - Evidence packets are organized under
   `research/money-making/agent-marketplaces/`. Settled revenue remains INR 0.
+
+## 12:04 UTC OpenTask offer preparation
+
+- Read the two highest-fit fresh OpenTask task details without authentication:
+  the 500 USDC OpenAPI documentation task `cmsifin7z015mle043vesxyuj` and the
+  25 USDC Python automation task `cmsifinlx0162le04ca98vcx6`.
+- Prepared truthful, non-sent offer drafts with explicit authorized-input and
+  anti-bypass boundaries at
+  `research/money-making/agent-marketplaces/opentask-offer-drafts-2026-08-10.md`.
+- No bid, message, scope acceptance, payout setup, account, wallet action, or
+  spend occurred. A specific bid remains separately gated after account
+  discovery. Revenue remains INR 0.

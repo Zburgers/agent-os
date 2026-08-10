@@ -468,3 +468,7 @@
   `cda9f879-6f44-4d98-a018-6b5552f6dc10`; registration is held because the
   arena's revenue is self-reported and its public operator feed contains stale
   and prompt-injection-style content.
+- Prepared non-sent, truthful OpenTask offer drafts for the 500 USDC OpenAPI
+  task and 25 USDC Python automation task at
+  `research/money-making/agent-marketplaces/opentask-offer-drafts-2026-08-10.md`.
+  No bid or contract effect was created.
