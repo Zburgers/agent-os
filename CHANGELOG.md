@@ -10,6 +10,10 @@
   listings, outreach, wallet actions, or public dashboard/database exposure.
 - Reconciled the approved BountyBook, SporeAgent, Agent402, and PayanAgent
   paths without replaying exhausted or still-pending external effects.
+- Recorded the402 provider research decision
+  `daff8337-e0a0-4e58-aafd-528cecfab266`: defer onboarding until the stable
+  host and owner-account boundary are resolved; no paid registration or wallet
+  creation was attempted.
 
 ## 2026-08-10
 

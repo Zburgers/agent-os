@@ -28,6 +28,21 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
   and forbids spend, duplicate listings, outreach, wallet actions, and
   dashboard/database exposure. No deployment has occurred under this approval.
 
+## 09:30 UTC the402 provider-lane research
+
+- The fresh market scout returned the402 seller listings, but no assigned
+  buyer-funded request. The official provider guide confirms that providers
+  can list services and receive escrowed Base USDC; service creation is free
+  after provider setup, while self-registration is a `$0.01` x402 call and
+  dashboard onboarding creates a provider identity and embedded wallet.
+- Recorded decision `daff8337-e0a0-4e58-aafd-528cecfab266`: defer the402
+  onboarding until the stable-host/account prerequisite is resolved. This
+  preserves the single owner setup request for today and avoids an unapproved
+  paid registration, wallet creation, or unstable webhook listing.
+- No the402 account, wallet, payment, service listing, webhook mutation, or
+  external message was created. Official reference:
+  `https://the402.ai/docs/providers/`.
+
 ## 09:18 UTC close structured JSON BountyBook lane
 
 - Approval `389f9ac3-b995-4c4d-8847-627fef0accd7` was durably approved. The
