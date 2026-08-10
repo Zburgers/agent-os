@@ -7,6 +7,26 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 09:18 UTC close structured JSON BountyBook lane
+
+- Approval `389f9ac3-b995-4c4d-8847-627fef0accd7` was durably approved. The
+  live job remained open at USD 5.00 with the unchanged `vector_dbs.json`
+  acceptance schema, so effect `f71ad032-a674-40ad-95dd-67bad3f52d3f` was
+  authorized and guarded exactly once.
+- Goofy authenticated with the protected BountyBook signer, claimed the job,
+  and submitted exactly one inline `files.vector_dbs.json` payload. BountyBook
+  accepted the submission, then reopened the job after its verifier again
+  routed through the broken `ipfs_fetch` path (`Cannot read properties of
+  undefined (reading 'length')`). Provider attempt
+  `5832548a-ab53-4c48-bce6-511e2f7bf80d` has `verification_result.passed=false`
+  and `payout_status=none`; no revenue was counted.
+- The effect is durably `reconciliation_required` because the bounded poll
+  reached a non-terminal state before the explicit provider failure was
+  visible. No replay or second result mutation was attempted. Decision
+  `2e49aa5a-b370-4fdd-aeba-c4316ec4c36b` closes this BountyBook lane and
+  redirects effort to buyer outreach, PayanAgent acceptance monitoring, and
+  paths with reliable settlement postconditions.
+
 ## 09:12 UTC close AVL lane and stage JSON bounty
 
 - The final approved stdout-source AVL attempt produced provider attempt
@@ -20,8 +40,7 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
   `0773e126-08fb-4b80-a3f7-ed67e2261cdf` under
   `research/bountybook-candidate-vector-dbs/`; local schema and JSON checks
   pass. Experiment `f7a5fe44-86ad-45cf-896d-9b180a3fe1e9` and exact approval
-  `389f9ac3-b995-4c4d-8847-627fef0accd7` are recorded. No claim or submission
-  has been made; approval is pending.
+  `389f9ac3-b995-4c4d-8847-627fef0accd7` were recorded before execution.
 
 ## 09:07 UTC BountyBook AVL parser diagnosis
 
