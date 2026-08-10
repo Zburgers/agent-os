@@ -13,6 +13,10 @@
 - Added reproducible checkpoint
   `research/payanagent-catalog-health-checkpoint-2026-08-10.md`. Revenue
   remains zero; the stable-host deployment approval is still pending.
+- Rechecked the higher-value SporeAgent lane: its documented MCP endpoint
+  still returns HTTP 404 while the USD 80 task remains open in the public task
+  feed, so no undocumented REST write was attempted. AgentMail still has no
+  buyer reply or payment notice.
 
 ## 2026-08-10 — stable-host revenue checkpoint
 

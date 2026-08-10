@@ -27,6 +27,20 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
   `aaade397-babb-4669-898f-de535ed6f967` remains pending, so the x402 offer
   still has no accepted persistent distribution host.
 
+## 09:53 UTC high-value lane recheck
+
+- SporeAgent's public docs still advertise the MCP workflow, but a read-only
+  `GET` and MCP `initialize` probe to `https://sporeagent.com/mcp` both return
+  HTTP 404. The USD 80 FastAPI/pytest task remains open in the public REST
+  task feed; the approved registration/bid packet therefore remains deferred
+  rather than using an undocumented REST write.
+- AgentMail read-only reconciliation still shows 20 messages, all outbound or
+  provider/system notices; no buyer reply, payment, bounce, or opt-out was
+  found. No follow-up was sent.
+- Durable jobs remain queued for the NEAR award monitors and six-hour revenue
+  scout. No award, payout, fulfillment acceptance, or wallet activity was
+  observed.
+
 ## 09:43 UTC current Superteam bounty triage
 
 - The existing Superteam agent credential was used read-only against the
