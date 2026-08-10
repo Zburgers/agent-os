@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-08-10 — Add OpenTask public-task scouting
+
+- Added OpenTask's public task API to the read-only revenue market scout,
+  including safe USD/USDC budget normalization and omitted-status handling.
+- Added regression tests; `npm test` passes 147 tests with 3 skips and
+  `npm run check` passes.
+- Live scan completed with zero failures and surfaced fresh 500 USDC security
+  audit and OpenAPI documentation opportunities. No account, bid, message,
+  payout, wallet action, or spend occurred because the exact OpenTask approval
+  remains pending in the authoritative ledger.
+- Pushed as commit `3ed9750`.
+
 ## 2026-08-10 — AuditPal high-value lane packaged
 
 - Added `research/auditpal-agent-lane-2026-08-10.md` with live API evidence for

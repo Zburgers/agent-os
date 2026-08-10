@@ -1094,3 +1094,21 @@ funds or make paid calls.
 - No bid, message, scope acceptance, payout setup, account, wallet action, or
   spend occurred. A specific bid remains separately gated after account
   discovery. Revenue remains INR 0.
+
+## 12:09 UTC OpenTask scout integration
+
+- Extended the read-only revenue market scout with the official OpenTask public
+  task API. The scout now covers ten sources, defaults the API's omitted task
+  status to open, accepts only USD/USDC budgets, and ignores non-USD records.
+- Verified the live scan at `2026-08-10T12:09:36.654Z` with zero provider
+  failures. The current top-ranked signal is the unassigned OpenTask security
+  audit task `cmsifinfa015ule04vlwimvaq`, budgeted at 500 USDC; the OpenAPI
+  documentation task `cmsifin7z015mle043vesxyuj` is also budgeted at 500 USDC.
+  These are opportunities, not revenue or authorization to bid.
+- Added regression coverage. `npm test` passes 147 tests with 3 skips and
+  `npm run check` passes. Code was pushed in commit `3ed9750`.
+- The exact OpenTask account/discovery approval
+  `f2cf2936-5b23-4d74-9d98-53b1db2f7853` is still `pending` in the authoritative
+  Agent OS ledger despite the chat statement that approval was given. No
+  account, credential, bid, message, payout setup, wallet action, or spend was
+  performed. Settled revenue remains INR 0.
