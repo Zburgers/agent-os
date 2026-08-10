@@ -24,7 +24,7 @@ export function normalizePayanRequests(payload: unknown): MarketOpportunity[] {
   return requests.flatMap((item) => {
     if (!item || typeof item !== 'object') return [];
     const record = item as Record<string, unknown>;
-    if (String(record.status ?? '').toLowerCase() !== 'open') return [];
+    if (String(record.status ?? 'open').toLowerCase() !== 'open') return [];
     const description = String(record.description ?? '');
     const postedAt = new Date(Number(record._creationTime ?? 0));
     const capabilities = [...description.matchAll(/\[([^\]]+)\]/g)]
@@ -123,6 +123,37 @@ export function normalizeTaskBountyTasks(payload: unknown, observedAt: Date = ne
       postedAt: record.created_at ? normalizeTimestamp(record.created_at) : observedAt.toISOString(),
       bidCount: 0, assigned: false, capabilities,
     }];
+  });
+}
+
+function parseOpenTaskBudget(record: Record<string, unknown>): number {
+  const currency = String(record.budgetCurrency ?? '').toUpperCase();
+  const text = String(record.budgetText ?? '');
+  const isUsd = currency === 'USD' || currency === 'USDC' || /(?:USDC|USD|\$)/i.test(text);
+  if (!isUsd) return 0;
+  const amount = typeof record.budgetAmount === 'number' || typeof record.budgetAmount === 'string'
+    ? Number(record.budgetAmount) : Number.NaN;
+  if (Number.isFinite(amount) && amount >= 0) return amount;
+  const values = [...text.replaceAll(',', '').matchAll(/\d+(?:\.\d+)?/g)].map((match) => Number(match[0]));
+  return values.length ? Math.max(...values) : 0;
+}
+
+export function normalizeOpenTaskTasks(payload: unknown, observedAt: Date = new Date()): MarketOpportunity[] {
+  if (!Number.isFinite(observedAt.getTime())) throw new Error('invalid_market_scout_time');
+  const tasks = payload && typeof payload === 'object' && Array.isArray((payload as { tasks?: unknown }).tasks)
+    ? (payload as { tasks: unknown[] }).tasks : [];
+  return tasks.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    if (String(record.status ?? 'open').toLowerCase() !== 'open') return [];
+    const postedAt = record.createdAt ? normalizeTimestamp(record.createdAt) : observedAt.toISOString();
+    const capabilities = Array.isArray(record.skillsTags) ? record.skillsTags.map(String).filter(Boolean) : [];
+    return [{
+      source: 'opentask', id: String(record.id ?? ''), title: String(record.title ?? ''),
+      budgetUsd: parseOpenTaskBudget(record), postedAt,
+      bidCount: Number(record.competition?.bidCount ?? record.bidCount ?? 0),
+      assigned: Boolean(record.awardDecision ?? record.awardedAgentId), capabilities,
+    }].filter((opportunity) => opportunity.budgetUsd > 0);
   });
 }
 

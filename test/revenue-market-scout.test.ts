@@ -13,18 +13,20 @@ test('scheduled revenue scout reads all configured public sources without side e
     ['taskbounty', { data: [] }],
     ['execution', { tasks: [{ id: 'exec-1', title: 'Run API checks', bounty_usd: 12, created_at: '2026-08-03T00:00:00Z', required_skills: ['testing'], status: 'available' }] }],
     ['riner', { tasks: [{ id: 'riner-1', title: 'Security report', budget_amount: 3, budget_token: 'USDC', created_at: '2026-08-03T00:00:00Z', tags: ['security'], status: 'published', assigned_agent_id: null }] }],
+    ['opentask', { tasks: [{ id: 'ot-1', title: 'OpenAPI docs', budgetAmount: 500, budgetCurrency: 'USDC', createdAt: '2026-08-03T00:00:00Z', skillsTags: ['openapi'], status: 'open' }] }],
   ]);
   const result = await runRevenueMarketScout(async (url) => {
-    const key = url.includes('/postings') ? 'the402-postings' : url.includes('sporeagent') ? 'spore' : url.includes('offers') ? 'offers' : url.includes('requests') ? 'requests' : url.includes('bountybook') ? 'bounty' : url.includes('task-bounty') ? 'taskbounty' : url.includes('execution.market') ? 'execution' : url.includes('riner.io') ? 'riner' : 'the402';
+    const key = url.includes('/postings') ? 'the402-postings' : url.includes('sporeagent') ? 'spore' : url.includes('offers') ? 'offers' : url.includes('requests') ? 'requests' : url.includes('bountybook') ? 'bounty' : url.includes('task-bounty') ? 'taskbounty' : url.includes('execution.market') ? 'execution' : url.includes('riner.io') ? 'riner' : url.includes('opentask.ai') ? 'opentask' : 'the402';
     return responses.get(key);
   }, new Date('2026-08-03T12:00:00.000Z'));
   assert.deepEqual(result.failures, []);
-  assert.equal(result.sources.length, 9);
-  assert.equal(result.opportunities[0].source, 'sporeagent');
+  assert.equal(result.sources.length, 10);
+  assert.equal(result.opportunities[0].source, 'opentask');
   assert.equal(result.opportunities.some((item) => item.source === 'sporeagent'), true);
   assert.equal(result.opportunities.some((item) => item.source === 'execution-market'), true);
   assert.equal(result.opportunities.some((item) => item.source === 'riner'), true);
   assert.equal(result.opportunities.some((item) => item.source === 'the402-posting'), true);
+  assert.equal(result.opportunities.some((item) => item.source === 'opentask'), true);
   assert.equal(result.opportunities.some((item) => item.source === 'the402'), false);
   assert.deepEqual(result.providerServices.map((item) => item.id), ['svc-1']);
 });

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeBountyBookJobs, normalizePayanRequests, normalizeTaskBountyTasks, normalizeThe402Postings, normalizeThe402Services, rankMarketOpportunities, type MarketOpportunity } from '../src/market-scout.ts';
+import { normalizeBountyBookJobs, normalizeOpenTaskTasks, normalizePayanRequests, normalizeTaskBountyTasks, normalizeThe402Postings, normalizeThe402Services, rankMarketOpportunities, type MarketOpportunity } from '../src/market-scout.ts';
 
 test('market scout prioritizes fresh, unassigned, capability-matched paid work', () => {
   const opportunities: MarketOpportunity[] = [
@@ -78,4 +78,24 @@ test('market scout extracts open TaskBounty coding bounties without accessing pr
     postedAt: '2026-08-03T00:00:00.000Z', bidCount: 0, assigned: false,
     capabilities: ['typescript', 'small'],
   });
+});
+
+test('market scout extracts current OpenTask USDC tasks and ignores non-USDC budgets', () => {
+  const tasks = normalizeOpenTaskTasks({ tasks: [
+    {
+      id: 'ot-1', title: 'OpenAPI docs', description: 'Document an API',
+      skillsTags: ['openapi', 'yaml'], budgetText: '150-500 USDC', budgetAmount: '500',
+      budgetCurrency: 'USDC', createdAt: '2026-08-07T04:12:50.831Z',
+    },
+    {
+      id: 'ot-2', title: 'ETH research', description: 'Research',
+      skillsTags: ['research'], budgetText: '0.05 ETH', budgetAmount: null,
+      budgetCurrency: 'ETH', createdAt: '2026-08-07T04:12:50.831Z',
+    },
+  ] }, new Date('2026-08-10T12:00:00.000Z'));
+  assert.deepEqual(tasks, [{
+    source: 'opentask', id: 'ot-1', title: 'OpenAPI docs', budgetUsd: 500,
+    postedAt: '2026-08-07T04:12:50.831Z', bidCount: 0, assigned: false,
+    capabilities: ['openapi', 'yaml'],
+  }]);
 });
