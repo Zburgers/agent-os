@@ -225,3 +225,21 @@ funds or make paid calls.
   listing read-only and exclude Featured placement or provider-login email
   flows. Agent OS effect `32b35446-e3bf-41bf-8aa5-735fb5bcb666` remains
   `reconciliation_required` as a truthful audit caveat.
+
+## 07:59 UTC demand and bounty scan
+
+- PayAPI remains `pending_review`, `payment_verified=false`, and the origin
+  remains healthy (HTTP 200). No second listing or provider-login flow was
+  attempted.
+- PayanAgent still has three current escrow-funded open requests: the existing
+  catalog-health request with two pending Goofy bids, a 4-cent MCP buy example,
+  and a 3-cent Python x402 buy example. The latter two require a paid Base
+  transaction and are outside the current no-transaction signing boundary, so
+  no bids were submitted.
+- The 5-cent PayanAgent security bounty already has one pending Goofy bid. Its
+  separate source review/PoC scope remains unstarted until acceptance and a
+  distinct fulfillment/testing authorization.
+- Fresh web research found no newer explicit buyer with a verified fit better
+  than the existing capped outreach leads; stale provider-for-hire posts and
+  location-restricted work were not contacted. No new message effect was
+  created.
