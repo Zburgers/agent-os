@@ -14,6 +14,10 @@
   `daff8337-e0a0-4e58-aafd-528cecfab266`: defer onboarding until the stable
   host and owner-account boundary are resolved; no paid registration or wallet
   creation was attempted.
+- Added the inert Tollbooth listing packet
+  `research/tollbooth-automation-reliability-packet-2026-08-10.md` and durable
+  decision `85fbf857-b9d3-48dc-850c-4a0a696540c4`. No wallet connection,
+  listing, signature, paid replay, or external write was performed.
 
 ## 2026-08-10
 

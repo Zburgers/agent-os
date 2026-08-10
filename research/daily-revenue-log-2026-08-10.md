@@ -22,6 +22,20 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 - NEAR award monitors continue to report all four bids as pending. No payout,
   wallet action, or spend occurred.
 
+## 09:38 UTC Tollbooth distribution lane
+
+- Official Tollbooth documentation confirms a service-registration API and a
+  live verification pipeline that checks a real HTTP 402, parses payment terms,
+  validates the payout wallet, prepares a payment intent, performs a paid
+  replay, and validates the paid response.
+- The listing UI requires wallet connection to own the service. Because Goofy’s
+  dedicated signer is restricted to BountyBook nonces and transaction signing
+  is disabled, no Tollbooth write or wallet connection was attempted.
+- Recorded decision `85fbf857-b9d3-48dc-850c-4a0a696540c4` and prepared
+  `research/tollbooth-automation-reliability-packet-2026-08-10.md` with the
+  exact metadata and verification checklist. The packet is inert until a
+  separate approval and permitted wallet/payment path exist.
+
 ## 09:27 UTC stable-host revenue checkpoint
 
 - Reconciled Agent OS through the configured MCP: controls remain open
