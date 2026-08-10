@@ -164,3 +164,35 @@ funds or make paid calls.
   current records are seller services (including a $200 landing-page audit and
   $22 due-diligence service), while SporeAgent/BountyBook records remain stale;
   no new registration, purchase, bid, or wallet action was justified.
+
+## 07:50 UTC continuation audit
+
+- Re-read authoritative Agent OS state: controls remain unpaused, not killed,
+  and commercial lock is false. Settled revenue is still INR 0; no wallet
+  transaction or paid API call occurred.
+- Revalidated the supervised x402 origin: `/healthz` HTTP 200,
+  `/.well-known/x402` HTTP 200, and unpaid `/v1/check` HTTP 402.
+- Re-read PayanAgent request `ks76vc9pzpz3qfgf8aawjckn5n8bezhf`: status remains
+  `open`, escrow remains 4 USDC, and both Goofy bids
+  `jd70q0qe5ky5xz6t97c0rz858h8bsdwk` and
+  `jd7aqjve84tnccvxdhtavh9f1d8c7r5e` remain `pending`. Fulfillment is not
+  authorized until a bid is accepted; no additional bid was submitted.
+- Ran `commercial/deliveries/payanagent-catalog-health-checker.mjs` against
+  the public catalog. It checked 100 public buy gateways with unauthenticated
+  HEAD probes and zero paid calls; 92 were reachable and 8 returned 5xx. The
+  report's evidence boundary remains the public gateway because seller URLs
+  are redacted.
+- Researched PayAPI Market's provider docs, listing form, and machine-readable
+  guide. Created zero-budget experiment `320c1dfe-1c09-48e7-aec0-207619602307`
+  and decision `23cf9a3d-463d-471e-ac01-0c2875a343ef`. Created pending approval
+  `2bb81d92-0a3d-47db-9dc4-dd0e96cd3142` for exactly one truthful free-tier
+  listing using the existing origin; Featured placement, payment, wallet
+  signing, and additional listings are excluded. No external PayAPI write has
+  been made.
+
+## Current continuation state
+
+- Next permitted external action: execute approval
+  `2bb81d92-0a3d-47db-9dc4-dd0e96cd3142` only after its PostgreSQL status is
+  `approved`; then POST the exact free-tier PayAPI listing once and verify the
+  response. Otherwise continue read-only origin and bid monitoring.
