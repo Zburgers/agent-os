@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-08-10 — Agent402 listing reconciled without replay
+
+- Read-only pagination through page 25 of the public Agent402 index found the
+  exact seller origin already registered as `Goofy Automation Reliability
+  Check`, with one tool, health `1`, and `routable=true`.
+- Recorded decision `19597820-6b78-41d5-abc6-f4fb7de4553a` to keep the
+  registration closed to replay. Agent OS still reports the historical
+  approval as pending, so no new provider POST was sent. Revenue remains
+  zero until a settled receipt exists.
+
 ## 2026-08-10 — BountyBook verifier outage revalidated
 
 - Fresh read-only sampling of 20 open BountyBook jobs found 20/20 latest
