@@ -46,6 +46,12 @@
 - Confirmed loopback health and database status remain green; no external
   effect occurred during verification.
 
+## 2026-08-10 — Approval-path diagnostic
+
+- Audited the dashboard-to-ledger approval path. It is wired to the guarded
+  owner-only transition endpoint and transactional audit trail; the Tollbooth
+  record remains genuinely pending, so no approval was simulated.
+
 ## 2026-08-10 — Current n8n buyer reconciliation
 
 - Qualified current n8n Community buyer topic `306811` and preserved the

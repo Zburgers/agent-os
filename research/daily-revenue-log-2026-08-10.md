@@ -983,3 +983,13 @@ funds or make paid calls.
 - Loopback health remains green with database healthy and
   `commercial_lock=false`. No external business effect was created by this
   verification run.
+
+## Approval-path diagnostic
+
+- Audited the dashboard approval flow in the current source. The UI posts to
+  `/api/approvals/:id/approve`, the server requires owner authority and CSRF,
+  and `ApprovalService.transition` durably updates status, decision timestamp,
+  actor, approval events, and audit events in one transaction.
+- The Tollbooth row still reads `pending` with `decided_at=null`, so the
+  source path is present but no durable owner decision has been recorded. No
+  approval was simulated or self-applied.
