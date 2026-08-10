@@ -192,10 +192,10 @@ funds or make paid calls.
 
 ## Current continuation state
 
-- Next permitted external action: execute approval
-  `2bb81d92-0a3d-47db-9dc4-dd0e96cd3142` only after its PostgreSQL status is
-  `approved`; then POST the exact free-tier PayAPI listing once and verify the
-  response. Otherwise continue read-only origin and bid monitoring.
+- Approval `2bb81d92-0a3d-47db-9dc4-dd0e96cd3142` is now approved and its one
+  external POST has already been sent. The effect is reconciliation-required;
+  the next permitted action is read-only provider/catalog verification, not a
+  second POST. Continue origin and bid monitoring in parallel.
 
 ## PayAPI execution reconciliation
 
