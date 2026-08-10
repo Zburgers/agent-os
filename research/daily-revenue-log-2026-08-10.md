@@ -847,3 +847,15 @@ funds or make paid calls.
   follow-up deployment approval `57b6ff66-8a52-4c32-9b5d-ba4f5aa198cc` for a
   read-only mode-0400 secret mount and one verification GET. No credential was
   copied into the image, repository, logs, dashboard, Telegram, or output.
+
+## 11:11 UTC PayanAgent monitor verified
+
+- Owner-approved follow-up deployment effect
+  `fddae167-5068-4d0f-802e-8c264fdbba57` mounted the existing credential
+  read-only at `/run/goofy-payanagent/credential` (mode 0400), rebuilt/recreated
+  only app and supervisor, and kept both services healthy.
+- Migration 030 is applied and exactly one redacted authenticated GET monitor
+  run completed successfully: request `ks76vc9pzpz3qfgf8aawjckn5n8bezhf` is
+  still `open`, escrow is 4 cents, both Goofy bids remain `pending`, and no
+  status-change alert was raised.
+- No bid, acceptance, fulfillment, payment, wallet signing, or spend occurred.

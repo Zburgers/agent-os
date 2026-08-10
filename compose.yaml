@@ -84,6 +84,7 @@ services:
       SUPERVISOR_POLL_MS: ${SUPERVISOR_POLL_MS:-1000}
       SUPERVISOR_ID: compose-supervisor
       NEAR_AGENT_CREDENTIAL_FILE: /run/goofy-near-agent/credential
+      PAYANAGENT_PROVIDER_CREDENTIAL_FILE: /run/goofy-payanagent/credential
       OWNER_TELEGRAM_IDS: ${OWNER_TELEGRAM_IDS:-}
       TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID: ${TELEGRAM_NOTIFICATION_POLICY_APPROVAL_ID:-}
     depends_on:
@@ -91,10 +92,13 @@ services:
         condition: service_healthy
       app:
         condition: service_healthy
-    command: ["sh", "-c", "install -d -m 0700 -o agent -g agent /run/goofy-near-agent; install -m 0400 -o agent -g agent /run/secrets/near_agent /run/goofy-near-agent/credential; exec su-exec agent node --experimental-strip-types src/supervisor.ts"]
+    command: ["sh", "-c", "install -d -m 0700 -o agent -g agent /run/goofy-near-agent /run/goofy-payanagent; install -m 0400 -o agent -g agent /run/secrets/near_agent /run/goofy-near-agent/credential; install -m 0400 -o agent -g agent /run/secrets/payanagent_provider /run/goofy-payanagent/credential; exec su-exec agent node --experimental-strip-types src/supervisor.ts"]
     secrets:
       - source: near_agent
         target: near_agent
+        mode: 0400
+      - source: payanagent_provider
+        target: payanagent_provider
         mode: 0400
     healthcheck:
       test: ["CMD", "node", "-e", "import('pg').then(async({default:p})=>{const c=new p.Client();await c.connect();const r=await c.query(\"select 1 from supervisor_heartbeats where worker_id='compose-supervisor' and status='running' and heartbeat_at>now()-interval '30 seconds'\");await c.end();process.exit(r.rowCount===1?0:1)}).catch(()=>process.exit(1))"]
@@ -109,3 +113,5 @@ secrets:
     file: /home/goofy/.hermes/approval-token-secret
   near_agent:
     file: /home/goofy/.hermes/near-agent.json
+  payanagent_provider:
+    file: /home/goofy/.hermes/payanagent-provider.json

@@ -24,6 +24,14 @@
   follow-up deployment approval `57b6ff66-8a52-4c32-9b5d-ba4f5aa198cc` for a
   read-only mode-0400 secret mount and one redacted verification GET.
 
+## 2026-08-10 — PayanAgent monitor live verification
+
+- Approved follow-up effect `fddae167-5068-4d0f-802e-8c264fdbba57` mounted the
+  protected provider credential read-only and recreated only app/supervisor.
+- Migration 030 and one authenticated monitor run now pass: request
+  `ks76vc9pzpz3qfgf8aawjckn5n8bezhf` is still open, escrow is 4 cents, and both
+  Goofy bids remain pending. No marketplace mutation or spend occurred.
+
 ## 2026-08-10 — BountyBook verifier still failing
 
 - Fresh read-only sampling of 20 current open jobs found 20/20 latest
