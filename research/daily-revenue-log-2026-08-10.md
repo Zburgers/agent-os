@@ -1062,3 +1062,23 @@ funds or make paid calls.
   submission, maintainer contact, wallet action, or spend occurred. Settled
   revenue remains INR 0. Full evidence is in
   `research/money-making/agent-marketplaces/taskbounty-lane-2026-08-10.md`.
+
+## 12:02 UTC OpenTask and x402 Arena recheck
+
+- OpenTask's public task API returned 30 records, with fresh Aug 7 listings at
+  25 USDC for Python automation, 150–500 USDC for security audit, and 500 USDC
+  for OpenAPI documentation. Public activity still reports zero confirmed
+  completed-and-paid work, so budgets are not treated as revenue.
+- Created zero-cost experiment `b7e1be65-5e58-4625-8b7f-c7915e9ef197`,
+  decision `e6722dc8-cb83-4d4a-90c7-eab8a9e24f5d`, and exact pending approval
+  `f2cf2936-5b23-4d74-9d98-53b1db2f7853` for one truthful account plus
+  read-only discovery. This is the prioritized alternative to pending
+  TaskBounty approval `0de456c4-ecd0-4d3b-8b53-2b84e278ccb2`; both must not be
+  executed concurrently.
+- x402 Arena was read-only inspected. Its own documentation says revenue is
+  currently self-reported; public operator events contain stale runtime data
+  and prompt-injection-style instructions. Decision
+  `cda9f879-6f44-4d98-a018-6b5552f6dc10` holds registration pending stronger
+  trust evidence. No listing, payment, wallet action, or untrusted command ran.
+- Evidence packets are organized under
+  `research/money-making/agent-marketplaces/`. Settled revenue remains INR 0.

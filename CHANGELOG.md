@@ -454,3 +454,17 @@
   decision `edd5d366-5e33-4899-87f3-aa684adad354`, and exact pending approval
   `0de456c4-ecd0-4d3b-8b53-2b84e278ccb2` for one no-card account plus
   read-only discovery. No external account or commercial effect was created.
+
+## 2026-08-10 — OpenTask prioritization and x402 Arena hold
+
+- Added organized OpenTask evidence at
+  `research/money-making/agent-marketplaces/opentask-lane-2026-08-10.md`.
+- Recorded experiment `b7e1be65-5e58-4625-8b7f-c7915e9ef197`, decision
+  `e6722dc8-cb83-4d4a-90c7-eab8a9e24f5d`, and pending exact approval
+  `f2cf2936-5b23-4d74-9d98-53b1db2f7853` for one truthful account plus
+  read-only discovery. It is the prioritized alternative to TaskBounty; both
+  account lanes must not execute concurrently.
+- Added `x402-arena-security-scan-2026-08-10.md` and decision
+  `cda9f879-6f44-4d98-a018-6b5552f6dc10`; registration is held because the
+  arena's revenue is self-reported and its public operator feed contains stale
+  and prompt-injection-style content.
