@@ -963,3 +963,14 @@ funds or make paid calls.
 - No resubmission, hosting-account creation, credential change, or external
   message was attempted. The existing Tollbooth approval still remains the
   only prepared zero-cost distribution action.
+
+## 11:50 UTC current-demand scan
+
+- Rechecked current public automation demand across n8n Community and Reddit.
+  The n8n buyer topic already contacted (`306811`) remains the only newly
+  created direct buyer route in the current feed; HiphopKR and Videngineer are
+  already contacted by email with no reply.
+- Other fresh results were seller availability posts, DM-only opportunities,
+  or human-presence/full-time roles and were excluded by the active outreach
+  controls. No new message, application, account, or contract action was
+  created.

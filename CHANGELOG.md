@@ -34,6 +34,12 @@
   resubmission or hosting-account change was attempted; Tollbooth remains the
   pending distribution path.
 
+## 2026-08-10 — Current-demand scan
+
+- Rechecked public n8n and Reddit automation demand. No distinct permitted
+  buyer route was found beyond already-contacted prospects; no new outreach
+  effect was created.
+
 ## 2026-08-10 — Current n8n buyer reconciliation
 
 - Qualified current n8n Community buyer topic `306811` and preserved the
