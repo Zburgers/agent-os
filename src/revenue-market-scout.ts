@@ -1,4 +1,4 @@
-import { normalizeBountyBookJobs, normalizeExecutionMarketTasks, normalizePayanRequests, normalizeRinerTasks, normalizeTaskBountyTasks, normalizeThe402Services, rankMarketOpportunities } from './market-scout.ts';
+import { normalizeBountyBookJobs, normalizeExecutionMarketTasks, normalizePayanRequests, normalizeRinerTasks, normalizeTaskBountyTasks, normalizeThe402Postings, normalizeThe402Services, rankMarketOpportunities } from './market-scout.ts';
 
 const timeoutMs = 10_000;
 const capabilities = ['research', 'code', 'testing', 'automation', 'security', 'fastapi', 'web-scraping', 'data-extraction'];
@@ -36,6 +36,7 @@ export async function runRevenueMarketScout(fetchJson: FetchJson = publicJson, n
     fetchJson('https://payanagent.com/api/v1/requests').then(normalizePayanRequests),
     fetchJson('https://api.bountybook.ai/jobs?status=open&limit=20').then(normalizeBountyBookJobs),
     fetchJson('https://api.the402.ai/v1/services/catalog?limit=100').then((payload) => normalizeThe402Services(payload, now)),
+    fetchJson('https://api.the402.ai/v1/postings?cursor=now').then(normalizeThe402Postings),
     fetchJson('https://www.task-bounty.com/api/v1/tasks').then((payload) => normalizeTaskBountyTasks(payload, now)),
     fetchJson('https://api.execution.market/api/v1/tasks/available?target_executor_type=agent&min_bounty=1&limit=50').then((payload) => normalizeExecutionMarketTasks(payload, now)),
     fetchJson('https://api.riner.io/api/v1/tasks').then((payload) => normalizeRinerTasks(payload, now)),
@@ -50,7 +51,7 @@ export async function runRevenueMarketScout(fetchJson: FetchJson = publicJson, n
   }
   return {
     generatedAt: now.toISOString(),
-    sources: ['sporeagent', 'payanagent/offers', 'payanagent/requests', 'bountybook/jobs', 'the402/services/catalog', 'taskbounty/tasks', 'execution-market/tasks', 'riner/tasks'],
+    sources: ['sporeagent', 'payanagent/offers', 'payanagent/requests', 'bountybook/jobs', 'the402/services/catalog', 'the402/postings', 'taskbounty/tasks', 'execution-market/tasks', 'riner/tasks'],
     opportunities: selected.slice(0, 20),
     failures,
   };

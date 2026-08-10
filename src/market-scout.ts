@@ -84,6 +84,29 @@ export function normalizeThe402Services(payload: unknown, observedAt: Date = new
   });
 }
 
+export function normalizeThe402Postings(payload: unknown): MarketOpportunity[] {
+  const postings = payload && typeof payload === 'object' && Array.isArray((payload as { postings?: unknown }).postings)
+    ? (payload as { postings: unknown[] }).postings : [];
+  return postings.flatMap((item) => {
+    if (!item || typeof item !== 'object') return [];
+    const record = item as Record<string, unknown>;
+    if (String(record.status ?? '').toLowerCase() !== 'open') return [];
+    const assigned = Boolean(record.assigned_agent_id ?? record.awarded_agent_id ?? record.awarded_at);
+    if (assigned) return [];
+    const category = typeof record.category === 'string' ? record.category : '';
+    const requiredTier = typeof record.required_tier === 'string' ? record.required_tier : '';
+    const tags = Array.isArray(record.tags) ? record.tags.map(String) : [];
+    const budgetMax = Number(record.budget_max_usd ?? record.budget_max ?? record.budget_min_usd ?? record.budget_min ?? 0);
+    const createdAt = normalizeTimestamp(record.created_at);
+    return [{
+      source: 'the402-posting', id: String(record.id ?? record.posting_id ?? ''), title: String(record.title ?? ''),
+      budgetUsd: Number.isFinite(budgetMax) ? budgetMax : 0, postedAt: createdAt,
+      bidCount: Number(record.bid_count ?? 0), assigned: false,
+      capabilities: [category, requiredTier, ...tags].filter(Boolean),
+    }];
+  });
+}
+
 export function normalizeTaskBountyTasks(payload: unknown, observedAt: Date = new Date()): MarketOpportunity[] {
   if (!Number.isFinite(observedAt.getTime())) throw new Error('invalid_market_scout_time');
   const data = payload && typeof payload === 'object' && Array.isArray((payload as { data?: unknown }).data)

@@ -17,6 +17,11 @@
   still returns HTTP 404 while the USD 80 task remains open in the public task
   feed, so no undocumented REST write was attempted. AgentMail still has no
   buyer reply or payment notice.
+- Added a ninth, read-only revenue-scout source for the402 buyer postings
+  (`GET /v1/postings?cursor=now`) with pure open/unassigned normalization. The
+  live feed was empty, so no bid or account action occurred. Decision
+  `29f61b8c-913e-438d-ac1f-cf1c2641fe9d`; tests: 144 total, 141 passed, 3
+  skipped, 0 failed.
 
 ## 2026-08-10 — stable-host revenue checkpoint
 

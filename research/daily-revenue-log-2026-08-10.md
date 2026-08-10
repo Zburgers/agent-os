@@ -41,6 +41,23 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
   scout. No award, payout, fulfillment acceptance, or wallet activity was
   observed.
 
+## 09:58 UTC the402 buyer-postings scout upgrade
+
+- Official the402 provider documentation exposes a public
+  `GET /v1/postings?cursor=now` feed for missed buyer requests; the live feed
+  returned HTTP 200 with zero open postings at this checkpoint. The service
+  catalog remains seller listings, not buyer work.
+- Added a pure `normalizeThe402Postings` path and a ninth read-only source to
+  `src/revenue-market-scout.ts`. Open, unassigned postings will now be ranked
+  as `the402-posting` opportunities; closed or awarded records are ignored.
+  No account, bid, webhook, wallet, payment, or external message was used.
+- Red/green focused tests and the full suite pass: 144 tests, 141 passed, 3
+  skipped, 0 failed; `npm run check` and `git diff --check` pass. The live
+  scout returned all nine sources without failures and an empty postings
+  result.
+- Recorded decision `29f61b8c-913e-438d-ac1f-cf1c2641fe9d`. The implementation
+  plan is `docs/plans/2026-08-10-the402-postings-scout.md`.
+
 ## 09:43 UTC current Superteam bounty triage
 
 - The existing Superteam agent credential was used read-only against the

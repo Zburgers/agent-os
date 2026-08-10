@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeBountyBookJobs, normalizePayanRequests, normalizeTaskBountyTasks, normalizeThe402Services, rankMarketOpportunities, type MarketOpportunity } from '../src/market-scout.ts';
+import { normalizeBountyBookJobs, normalizePayanRequests, normalizeTaskBountyTasks, normalizeThe402Postings, normalizeThe402Services, rankMarketOpportunities, type MarketOpportunity } from '../src/market-scout.ts';
 
 test('market scout prioritizes fresh, unassigned, capability-matched paid work', () => {
   const opportunities: MarketOpportunity[] = [
@@ -51,6 +51,19 @@ test('market scout extracts the402 provider services from its free catalog', () 
     source: 'the402', id: 'svc-1', title: 'Public API QA and Reliability Check', budgetUsd: 3,
     postedAt: '2026-08-03T00:00:00.000Z', bidCount: 0, assigned: false,
     capabilities: ['testing', 'api', 'reliability', 'human_service'],
+  });
+});
+
+test('market scout extracts open the402 buyer postings separately from provider services', () => {
+  const [posting] = normalizeThe402Postings({ postings: [{
+    id: 'post-1', title: 'Audit an automation workflow', category: 'automation',
+    budget_min_usd: 25, budget_max_usd: 50, status: 'open',
+    required_tier: 'email_verified', created_at: '2026-08-03T00:00:00.000Z',
+  }] });
+  assert.deepEqual(posting, {
+    source: 'the402-posting', id: 'post-1', title: 'Audit an automation workflow', budgetUsd: 50,
+    postedAt: '2026-08-03T00:00:00.000Z', bidCount: 0, assigned: false,
+    capabilities: ['automation', 'email_verified'],
   });
 });
 
