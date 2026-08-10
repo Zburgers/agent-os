@@ -7,6 +7,21 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+- The owner-approved Agent402 registration is now reflected in authoritative
+  PostgreSQL. Executed exactly one guarded account-change effect
+  `4aecdc3a-89b3-4649-950c-b05075a38e29`; the provider returned HTTP 200 with
+  `listed: true`, one Base-routable tool, and health `1`. Origin health and
+  discovery remained 200. No paid call, wallet action, or revenue occurred.
+  The public index snapshot did not show the low-rank seller in its first 100
+  rows, so no registration replay was attempted. Updated packet
+  `research/agent402-distribution-2026-08-10.md` (SHA-256
+  `4cdd72143cc3fdd86f2f1ffce1e61762293ffd07ad5e2c488ce7324038b7c3d0`).
+- The newly approved SporeAgent lane remains unexecuted: the provider's
+  documented `https://sporeagent.com/mcp` endpoint returns HTTP 404 for both
+  GET and MCP `initialize` POST. Because the approval requires the documented
+  MCP write flow, no REST write, account creation, bid, credential, or
+  contract action was attempted.
+
 - Revalidated the authoritative approval state: the free Agent402 registration
   request `353b68ca-e7cd-4cd4-ae7e-6e7d92fde05b` remains `pending`, so no
   external POST was sent despite the owner chat confirmation. Controls remain
@@ -19,7 +34,7 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
   `a3d4bf5b-6fe6-4705-86a9-37af5820b6bd`, decision
   `6d3f76f7-cd9e-486e-8e0f-24f89c8448a2`, and checksummed packet
   `research/spore-pytest-bid-2026-08-10.md` (SHA-256
-  `f23d9425208ea7dc86b512a0ff72422209b904d7c984cb63d78582ea6fe85bd1`).
+  `c967e228dc07726da4468f6aff08386fbdb4eac0b58185ff1eca5f7f55afffbe`).
   Created precise pending approval `4f527379-b0d2-4eb6-aa76-f87a5c46e733` for
   exactly one free SporeAgent registration and one bid; no account, bid,
   credential, contract, wallet, or payment action has occurred.

@@ -39,3 +39,17 @@ response and public listing only; do not call the paid endpoint.
 - The quick-tunnel hostname is ephemeral, so this is a short-lived demand test,
   not a substitute for a stable production host.
 
+## Execution result — 2026-08-10
+
+- Approval `353b68ca-e7cd-4cd4-ae7e-6e7d92fde05b` was durably approved.
+- One Agent OS account-change effect `4aecdc3a-89b3-4649-950c-b05075a38e29`
+  was authorized, guarded, executed once, and reconciled as `succeeded`.
+- Provider response was HTTP 200 with `listed: true`, display name `Goofy
+  Automation Reliability Check`, one tool, Base (`eip155:8453`), and
+  `routable: true` with health `1`.
+- Read-only origin checks remained HTTP 200 for `/healthz` and
+  `/.well-known/x402`; no paid call, wallet signature, wallet funding, or
+  settled revenue occurred.
+- The public `/api/index` snapshot returned HTTP 200 but did not include this
+  low-rank seller in its first 100 records; the provider response is the
+  authoritative registration receipt and no POST replay was attempted.

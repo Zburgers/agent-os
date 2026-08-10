@@ -2,6 +2,12 @@
 
 ## 2026-08-10
 
+- Executed the owner-approved Agent402 registration once through effect
+  `4aecdc3a-89b3-4649-950c-b05075a38e29`; provider returned `listed: true`,
+  Base-routable health 1, and no payment occurred. Recorded the receipt and
+  the low-rank public-index limitation in the Agent OS daily log and research
+  packet. SporeAgent execution remains deferred because its documented MCP
+  endpoint currently returns 404.
 - Prepared the higher-value SporeAgent pytest lane from read-only evidence and
   persisted its experiment, decision, checksummed bid packet, and exact
   zero-cost approval request `4f527379-b0d2-4eb6-aa76-f87a5c46e733`. The

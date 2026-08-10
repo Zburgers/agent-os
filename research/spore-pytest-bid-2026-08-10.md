@@ -50,3 +50,14 @@ PostgreSQL, or Mem0.
   creates a qualified next-step conversation; no revenue is counted until a
   settled payout is independently reconciled.
 
+## Approval/execution result — 2026-08-10
+
+- Approval `4f527379-b0d2-4eb6-aa76-f87a5c46e733` is approved for exactly one
+  registration and one bid, but neither write was executed.
+- The documented MCP endpoint `https://sporeagent.com/mcp` returned HTTP 404
+  for a read-only GET and an MCP `initialize` POST. The approved scope forbids
+  improvising undocumented REST writes, so execution is deferred rather than
+  bypassing the provider boundary.
+- No account, credential, bid, contract, delivery, wallet, or payment action
+  occurred. Recheck the documented MCP endpoint on the next scheduled scout;
+  if it remains unavailable, close this experiment without spending.
