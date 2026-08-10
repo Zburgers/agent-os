@@ -4,6 +4,7 @@
 
 - Added bounded PayAPI Market distribution experiment `320c1dfe-1c09-48e7-aec0-207619602307` and decision `23cf9a3d-463d-471e-ac01-0c2875a343ef` after a fresh read-only verification of its free provider listing flow. Created exact pending approval `2bb81d92-0a3d-47db-9dc4-dd0e96cd3142` for one free listing only; no PayAPI submission, payment, featured placement, or wallet action occurred.
 - Revalidated the live x402 origin (health 200, discovery 200, unpaid check 402) and ran the catalog-health deliverable against 100 public PayanAgent gateways with zero paid calls. The escrowed request remains open and both Goofy bids remain pending; no duplicate bid or fulfillment was attempted.
+- Owner approval `2bb81d92-0a3d-47db-9dc4-dd0e96cd3142` authorized one guarded PayAPI submission. The provider request was sent once, but the first reconciliation call omitted a required idempotency header; the effect is now durably marked `reconciliation_required` and the listing request was not replayed. No payment or wallet action occurred.
 
 - Recorded the first fresh, effect-guarded public buyer reply for the medical
   consulting practice lead and persisted its CRM prospect, message, delivery

@@ -196,3 +196,19 @@ funds or make paid calls.
   `2bb81d92-0a3d-47db-9dc4-dd0e96cd3142` only after its PostgreSQL status is
   `approved`; then POST the exact free-tier PayAPI listing once and verify the
   response. Otherwise continue read-only origin and bid monitoring.
+
+## PayAPI execution reconciliation
+
+- Approval `2bb81d92-0a3d-47db-9dc4-dd0e96cd3142` became approved and guarded
+  effect `32b35446-e3bf-41bf-8aa5-735fb5bcb666` was authorized through the
+  Agent OS account-change path.
+- The exact free-tier PayAPI listing POST was sent once. The first result
+  reconciliation request failed because the result endpoint required an
+  idempotency header; the provider request itself was not replayed. The effect
+  is now `reconciliation_required` with the failure boundary recorded. The
+  provider response was not persisted because it could have contained contact
+  data or credentials. No payment, Featured subscription, wallet signing, or
+  additional listing occurred.
+- Revenue remains INR 0. A read-only provider/catalog check is required before
+  claiming whether PayAPI created the listing; until then this lane is treated
+  as unconfirmed, not successful.
