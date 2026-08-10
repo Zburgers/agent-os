@@ -130,6 +130,16 @@ function unavailableReason(config: ApprovalNotificationConfig) {
   return null;
 }
 
+async function notificationPolicyAvailable(client: QueryClient, policyApprovalId: string) {
+  const result = await client.query<{ id: string }>(
+    `SELECT id FROM approvals
+     WHERE id=$1 AND status='approved' AND expires_at>now()
+       AND action_type=ANY($2::text[]) FOR SHARE`,
+    [policyApprovalId, ['message', 'external_outreach']],
+  );
+  return Boolean(result.rows[0]);
+}
+
 async function enqueueRecipient(
   client: QueryClient,
   approval: ApprovalNotificationInput,
@@ -168,6 +178,10 @@ export async function enqueueApprovalNotifications(
   if (recipients.some((recipient) => !/^\d{1,20}$/.test(recipient))) {
     await auditUnavailable(client, approval.id, 'invalid_owner_recipient');
     return { enqueued: 0, duplicates: 0, denied: 1, reason: 'invalid_owner_recipient' };
+  }
+  if (!(await notificationPolicyAvailable(client, config.policyApprovalId))) {
+    await auditUnavailable(client, approval.id, 'notification_policy_unavailable');
+    return { enqueued: 0, duplicates: 0, denied: 1, reason: 'notification_policy_unavailable' };
   }
 
   const notice = buildApprovalNotification(approval, (config.now ?? (() => new Date()))());

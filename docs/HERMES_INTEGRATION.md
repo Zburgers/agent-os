@@ -73,6 +73,22 @@ Before enabling the Agent OS relay, disable the same-bot Telegram polling lane
 in Hermes (or give Hermes a different bot token); running both consumers is
 not supported.
 
+### Dual Telegram control plane
+
+Use two separate Telegram bots for the two polling responsibilities. Agent OS
+owns the approval-notification bot: it sends the durable approval outbox and
+native Approve/Reject buttons, then validates and audits callbacks. Hermes owns
+the control bot: messages in its private owner chat run Hermes agents through
+the normal gateway authorization and tool guards. Do not put either token in
+Git, PostgreSQL, Mem0, or container environment; provision each as a distinct
+mode-0600 host file.
+
+The Hermes service reads `HERMES_TELEGRAM_BOT_TOKEN_FILE` through
+`scripts/run-hermes-gateway-with-telegram.mjs` and injects `TELEGRAM_BOT_TOKEN`
+only into the Hermes child process. The Agent OS relay reads only
+`TELEGRAM_BOT_TOKEN_FILE`. This separation is required because Telegram's
+`getUpdates` queue is single-consumer.
+
 Hermes' configured Mem0 provider remains the single contextual-memory provider.
 Agent OS stores scoped, policy-screened memory references and never treats
 Mem0 as an authorization, accounting, approval, or audit store. The PostgreSQL

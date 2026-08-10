@@ -54,7 +54,7 @@ test('approval notification redacts generic credentials and remains within Teleg
   assert.equal(notice.inlineKeyboard?.[0]?.[0]?.callbackData, `ao1:approve:${approval.id}`);
 });
 
-function databaseFixture(duplicate = false) {
+function databaseFixture(duplicate = false, policyAvailable = true) {
   const calls: Array<{ sql: string; values?: unknown[] }> = [];
   let effects = 0;
   let outboxes = 0;
@@ -64,7 +64,7 @@ function databaseFixture(duplicate = false) {
     if (sql.startsWith('SELECT id,state FROM effect_intents')) return { rows: duplicate ? [{ id: `effect-${effects + 1}`, state: 'authorized' }] : [] };
     if (sql.startsWith('INSERT INTO effect_intents')) { effects += 1; return { rows: [{ id: `effect-${effects}`, state: 'proposed' }] }; }
     if (sql.startsWith('SELECT paused,killed,commercial_lock')) return { rows: [{ paused: false, killed: false, commercial_lock: false }] };
-    if (sql.startsWith('SELECT id FROM approvals')) return { rows: [{ id: 'policy-approval' }] };
+    if (sql.startsWith('SELECT id FROM approvals')) return { rows: policyAvailable ? [{ id: 'policy-approval' }] : [] };
     if (sql.startsWith("UPDATE effect_intents SET state='authorized'")) return { rows: [{ id: `effect-${effects}`, state: 'authorized' }] };
     if (sql.startsWith('INSERT INTO audit_events')) return { rows: [] };
     if (sql.startsWith('INSERT INTO channel_outbox')) {
@@ -114,6 +114,18 @@ test('approval notification fails closed with audit evidence when policy is abse
   const audit = calls.find((call) => call.sql.startsWith('INSERT INTO audit_events'));
   assert.ok(audit);
   assert.equal(JSON.stringify(audit.values).includes(secret), false);
+});
+
+test('approval notification returns an audited policy denial instead of relying on a foreign-key failure', async () => {
+  const { calls, client } = databaseFixture(false, false);
+  assert.deepEqual(await enqueueApprovalNotifications(client, approval, {
+    policyApprovalId: '22222222-2222-4222-8222-222222222222', ownerTelegramIds: ['123456'], signingSecret: secret, now: () => now,
+  }), { enqueued: 0, duplicates: 0, denied: 1, reason: 'notification_policy_unavailable' });
+  assert.equal(calls.some((call) => call.sql.startsWith('INSERT INTO effect_intents')), false);
+  assert.equal(calls.some((call) => call.sql.startsWith('INSERT INTO channel_outbox')), false);
+  const audit = calls.find((call) => call.sql.startsWith('INSERT INTO audit_events'));
+  assert.ok(audit);
+  assert.equal(JSON.stringify(audit.values).includes('notification_policy_unavailable'), true);
 });
 
 test('approval notification rejects invalid recipients instead of accepting request data', async () => {

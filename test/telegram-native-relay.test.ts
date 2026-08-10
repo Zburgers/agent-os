@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { pollTelegramUpdatesOnce, sendTelegramDelivery } from '../scripts/relay-channel-outbox.mjs';
 
 const token = '123456789:telegram-secret-never-log';
@@ -74,4 +75,15 @@ test('Agent OS forwards callback identity to its own decision endpoint and remov
   });
   assert.deepEqual(calls[2].body, { callback_query_id: 'callback-42', text: 'Approved' });
   assert.deepEqual(calls[3].body, { chat_id: '123456', message_id: 99, reply_markup: { inline_keyboard: [] } });
+});
+
+test('Telegram deployment documents separate Agent OS and Hermes polling ownership', async () => {
+  const envExample = await readFile(new URL('../.env.example', import.meta.url), 'utf8');
+  const integration = await readFile(new URL('../docs/HERMES_INTEGRATION.md', import.meta.url), 'utf8');
+  const runbook = await readFile(new URL('../RUNBOOK.md', import.meta.url), 'utf8');
+  assert.match(envExample, /HERMES_TELEGRAM_BOT_TOKEN_FILE=\/home\/goofy\/\.hermes\/hermes-telegram-bot-token/);
+  assert.match(integration, /two separate Telegram bots/i);
+  assert.match(integration, /Agent OS[\s\S]*approval-notification bot/i);
+  assert.match(integration, /Hermes[\s\S]*control bot/i);
+  assert.match(runbook, /second[\s\S]*bot[\s\S]*BotFather/i);
 });

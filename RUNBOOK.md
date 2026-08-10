@@ -110,6 +110,17 @@ relay forwards callback identity to Agent OS, which performs the owner/chat
 allowlist check and immutable approval transition, then acknowledges the
 callback and removes the buttons.
 
+For Hermes agent control, create a second private bot with BotFather and store
+its token only in the mode-0600 file named by
+`HERMES_TELEGRAM_BOT_TOKEN_FILE` (default:
+`/home/goofy/.hermes/hermes-telegram-bot-token`). The Hermes gateway service
+injects that token only into its child process. Keep the two bots separate:
+Agent OS owns approval notifications and buttons; Hermes owns agent-control
+messages. Verify both identities with `getMe`, verify both queues with
+`getWebhookInfo`, and never configure both services to poll the same token.
+The owner must complete the BotFather action because creating or issuing a bot
+credential is a human-only identity boundary.
+
 Provision the dedicated approval-token secret directly to an owner-controlled
 mode-0600 host file without printing it, mount only that exact file read-only,
 and set `APPROVAL_TOKEN_SECRET_FILE` to its absolute in-container path. Start
