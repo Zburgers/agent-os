@@ -818,3 +818,18 @@ funds or make paid calls.
   connection, transaction, payment, claim, or outreach occurred.
 - Full evidence and next gates are preserved in
   `research/work402-tollbooth-marketplace-2026-08-10.md`.
+
+## 11:00 UTC Work402 onboarding result
+
+- Owner-approved effect `205ad6cd-2100-4fe6-9cf1-4910e2dd77f8` completed exactly
+  one Work402 seller onboarding call for Goofy/Neuratech.
+- Provider returned DID `did:work402:0xbc49db8c6e0c716e228bce7251321de2a2fb3d2e`
+  and dedicated payout address `0xBc49db8c6E0C716E228bce7251321dE2A2FB3D2e`.
+  The provider reported `funded=true`; no owner funds were used.
+- The returned private key is stored only in protected runtime secret
+  `/home/goofy/.hermes/work402-provider.json` (mode 0600, goofy-owned). It was
+  not printed or persisted in Agent OS, Git, logs, dashboard, Telegram, or
+  memory.
+- A read-only postcondition check still found 7 historical Work402 jobs (2
+  completed, 5 cancelled) and 0 open jobs. No claim, submission, bootstrap,
+  wallet transaction, or spend was attempted.

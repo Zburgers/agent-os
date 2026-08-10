@@ -9,6 +9,11 @@
 - Recorded Tollbooth decision `9c27febc-4e5d-44ee-82a1-67c897e54528`; no listing
   was submitted because stable hosting and a dedicated payout wallet are not
   yet authoritative.
+- Executed the exact approved Work402 onboarding effect
+  `205ad6cd-2100-4fe6-9cf1-4910e2dd77f8` once. The provider returned a new DID
+  and dedicated payout address; the private key remains only in the protected
+  mode-0600 runtime secret. No Work402 job claim, submission, bootstrap, or
+  spend occurred because the live feed has no open jobs.
 
 ## 2026-08-10 — BountyBook verifier still failing
 

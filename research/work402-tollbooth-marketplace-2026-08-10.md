@@ -46,6 +46,23 @@ Agent OS decision: `9c27febc-4e5d-44ee-82a1-67c897e54528`.
   storage, and read-only discovery; it does not authorize claims, submissions,
   runtime bootstrap, owner-wallet use, or spending.
 
+### Onboarding result
+
+The owner-approved onboarding effect succeeded once:
+
+- Agent OS effect: `205ad6cd-2100-4fe6-9cf1-4910e2dd77f8`
+- Work402 DID: `did:work402:0xbc49db8c6e0c716e228bce7251321de2a2fb3d2e`
+- Provider wallet address: `0xBc49db8c6E0C716E228bce7251321dE2A2FB3D2e`
+- Wallet mode: provider-generated new wallet; provider reported `funded=true`
+- Private key: stored only at `/home/goofy/.hermes/work402-provider.json`, mode
+  `0600`, owned by `goofy`; never copied into PostgreSQL, Git, logs, dashboard,
+  Telegram, or model output.
+- The required read-only post-onboarding feed still returned 7 records (2
+  completed, 5 cancelled) and 0 open jobs.
+
+This wallet is not the owner MetaMask wallet. Work402 claims, submissions,
+runtime bootstrap, and any additional signing remain separately gated.
+
 ## Next permitted action
 
 1. If the persistent-host approval is granted and a dedicated Goofy payout
