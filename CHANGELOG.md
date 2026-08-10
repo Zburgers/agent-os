@@ -34,6 +34,9 @@
 - Added and smoke-tested the dependency-free catalog-health bounty deliverable
   in `commercial/deliveries/`; the bid was polled without side effects and
   remains pending, so fulfillment was not attempted.
+- Continuation audit confirms the public origin is still healthy, the escrow
+  bid is still pending, and the existing listing remains on its stale endpoint
+  until exact approval `5b183bdf-b7b1-4332-8225-f4909b86f095` is decided.
 
 ## 2026-08-09 — Agent OS-owned Telegram native approval buttons
 

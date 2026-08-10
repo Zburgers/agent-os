@@ -77,6 +77,21 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
   clear public-buy-gateway evidence boundary. A six-poll acceptance watch found
   the submitted bid still pending, so no fulfillment effect was attempted.
 
+## Continuation audit — 2026-08-10
+
+- Agent OS controls remain open (`paused=false`, `killed=false`,
+  `commercial_lock=false`); financial truth is unchanged at settled revenue
+  INR 0, expenses INR 200,000 minor, and wallet transactions 0.
+- The quick origin still returns health 200. The PayanAgent bid remains open
+  with our 4 USDC bid pending and escrow still 4 USDC.
+- The existing PayanAgent listing is still active but publicly advertises the
+  old DNS-dead endpoint. Exact replacement approval
+  `5b183bdf-b7b1-4332-8225-f4909b86f095` remains pending; no stale approval was
+  reused.
+- AgentMail remains reply-free. The durable market scout and NEAR monitors are
+  queued/running normally; no additional paid or speculative lane cleared a
+  safer expected-value threshold in this audit.
+
 ## Current commercial truth
 
 - Settled revenue: INR 0
