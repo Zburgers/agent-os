@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-08-10 — Revenue execution and x402 recovery gate
+
+- Recorded the first fresh, effect-guarded public buyer reply for the medical
+  consulting practice lead and persisted its CRM prospect, message, delivery
+  evidence, and reply-review activity.
+- Recorded and suppressed a second forum attempt rejected by provider link
+  policy; failed external effects are never replayed.
+- Added the dated revenue log and truthful outreach artifacts for this block.
+- Detected that the previously deployed x402 tunnel is DNS-dead and created
+  pending approval `858b1a84-916b-4057-b89a-c9f4636935d2` for one isolated,
+  zero-cost origin recovery. PayanAgent remains inactive until health checks
+  pass.
+
 ## 2026-08-09 — Agent OS-owned Telegram native approval buttons
 
 - Replaced copy-paste approval commands in Telegram notices with native Approve and Reject inline buttons carrying bounded, hidden callback data.
