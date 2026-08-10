@@ -7,6 +7,19 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
 
 ## Actions completed
 
+## 10:34 UTC provider-health checkpoint
+
+- A fresh read-only scan of 20 open BountyBook jobs found 20/20 latest
+  verification failures. Dominant failures remain provider-side `ipfs_fetch`
+  errors (`undefined.length` or gateway 504) plus malformed code-output checks.
+- The approved vector and AVL effects are already consumed; no claim, submit,
+  replay, wallet action, or spend was made. Decision
+  `136bd49b-8b87-45af-8902-e003da85b17d` keeps this lane closed until an
+  independent successful provider sample appears.
+- Revenue remains `0`; the live PayanAgent offer is active with zero paid
+  attempts. The read-only PayanAgent acceptance monitor is staged in GitHub but
+  its private deployment approval remains pending.
+
 ## 10:32 UTC PayanAgent acceptance-monitor checkpoint
 
 - Read-only provider reconciliation confirms request

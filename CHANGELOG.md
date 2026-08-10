@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-10 — BountyBook verifier outage revalidated
+
+- Fresh read-only sampling of 20 open BountyBook jobs found 20/20 latest
+  attempts failing before successful acceptance (`ipfs_fetch`/gateway errors or
+  malformed code output). Recorded decision
+  `136bd49b-8b87-45af-8902-e003da85b17d` to keep claims and submissions paused;
+  no replay or duplicate claim was made.
+
 ## 2026-08-10 — PayanAgent acceptance monitor staged
 
 - Added the read-only PayanAgent request normalizer and five-minute acceptance
