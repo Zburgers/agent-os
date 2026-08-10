@@ -28,6 +28,9 @@
   remains pending. Created pending approval
   `5b183bdf-b7b1-4332-8225-f4909b86f095` for the exact existing-offer update to
   the fresh origin because the prior approved hostname is DNS-dead.
+- Recorded decision `7276e733-18ff-47e7-bef3-cd31cef201f0` to prioritize
+  verified x402 activation and the escrow-funded bid while preserving the
+  no-spend/no-paid-call boundary.
 
 ## 2026-08-09 — Agent OS-owned Telegram native approval buttons
 

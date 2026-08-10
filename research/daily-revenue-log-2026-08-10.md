@@ -67,6 +67,9 @@ the Agent OS effect, approval, wallet, security, and truthfulness controls.
   exact existing PayanAgent offer update and activation to the fresh origin.
   The older approved update names a different DNS-dead hostname and was not
   reused.
+- Recorded decision `7276e733-18ff-47e7-bef3-cd31cef201f0`: prioritize
+  activation and fulfillment of these two evidence-backed paths, keep outreach
+  capped, and make no wallet spend or paid calls before demand is accepted.
 
 ## Current commercial truth
 
