@@ -46,3 +46,9 @@ test('finance page includes the dedicated Goofy wallet operational view', () => 
   assert.ok(html.includes('Dedicated Goofy wallet'));
   assert.ok(html.includes('/api/agent-wallet/status'));
 });
+
+test('accounts page is an owner-facing live credential observability surface', () => {
+  const html = renderControlPlane('accounts' as any, {}, 'csrf-test');
+  for (const value of ['Accounts', '/accounts', 'Owned account access', '/api/owned-accounts', 'Raw secrets are never displayed', 'Protected runtime']) assert.ok(html.includes(value), value);
+  assert.match(html, /data-page="accounts"/);
+});
